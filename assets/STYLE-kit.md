@@ -17,7 +17,7 @@
 
 ## Labelled boxes (the honesty rules)
 - **Analogy**: a pasted-in slip with tape (`.vls-analogy`). Every analogy must sit in one of these slips, or be explicitly tagged "Analogy". Never present an analogy as a fact.
-- **Simplification**: a marginal note with a red double rule (`.vls-simplification`). Use it for every place the software departs from reality. Apps may rename the label to fit their voice; Maxwell's Demon uses "How the game cheats".
+- **Simplification**: a marginal note with a red double rule (`.vls-simplification`). Use it for every place the software departs from reality. Apps may rename the label to fit their voice; Maxwell's Demon uses "In the game".
 - **cf.**: every factual page ends with a handwritten `cf.` footnote naming a reputable source (an encyclopaedia, NIST, a textbook or a paper).
 
 ## B&W theme
