@@ -273,6 +273,23 @@
   body[data-theme="bw"] #hint-plaque { background: #000; color: #fff; border: 2px solid #fff; box-shadow: none; font-family: ui-monospace, monospace; }
   #shop-list td.lines { white-space: normal; font-size: 12px; }
   @media (max-width: 520px) { #shop-list th, #shop-list td { padding: 3px 3px; } #shop-list td:first-child, #shop-list td:nth-child(3) { white-space: normal; } #shop-list td button { padding: 2px 6px; } }
+  /* ---- level editor, My mazes, coin packs ---- */
+  .ed-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: center; }
+  .ed-head .ed-name { display: flex !important; gap: 6px; margin: 0 !important; } .ed-head input { min-height: 36px; font-size: 15px; width: 12em; }
+  .ed-wrap { display: flex; justify-content: center; margin: 6px 0; } #ed-canvas { touch-action: manipulation; border-radius: 4px; max-width: 100%; }
+  .ed-drawer h4 { margin: 8px 0 2px; font-variant: small-caps; font-size: 14px; }
+  .ed-tier, .ed-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ed-drawer button { display: grid; text-align: left; font-size: 13px !important; padding: 4px 10px !important; line-height: 1.15; }
+  .ed-drawer button small { font-weight: normal; font-size: 11px; }
+  .ed-drawer button.sel { outline: 3px solid #1b2a40; outline-offset: 1px; } body[data-theme="bw"] .ed-drawer button.sel { background: #fff; color: #000; }
+  #ed-code-row { display: none; } #ed-code-row.show { display: flex; } #ed-code, #mm-code { width: 100%; box-sizing: border-box; font: 12px ui-monospace, monospace; }
+  .mm-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(60,35,5,.35); }
+  .mm-row span:nth-child(2) { font-size: 13px; } .mm-row .row { grid-column: 1 / -1; justify-content: flex-start; }
+  .shop-h { margin: 12px 0 2px; font-variant: small-caps; text-align: center; }
+  .packs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  .packs button, .packs div { display: grid; text-align: left; font-size: 13px; padding: 6px 10px; line-height: 1.2; }
+  .packs div { border: 1px solid rgba(60,35,5,.5); border-radius: 6px; } body[data-theme="bw"] .packs div { border-color: #fff; }
+  .packs small { font-weight: normal; font-size: 11px; }
 </style>
 </head>
 <body data-theme="victorian">
@@ -289,7 +306,7 @@
     <h1>Vacuum Maze</h1>
     <p class="sub">An apparatus for the extraction of single atoms from laboratory tubing, after Knudsen (1909)</p>
     <p>One cold atom is loose in a maze of stainless-steel vacuum pipe. Tip the apparatus (your phone) and real gravity pulls it along. It doesn't bounce like a marble: it sticks to the steel for a moment, then leaves at a random angle (Knudsen's cosine law) with the wall's temperature. Steer it into a vacuum pump.</p>
-    <div class="row"><button id="b-begin">Begin ▸</button><button id="b-notebook">Lab notebook</button><button id="b-shop">Element shop</button><button id="b-settings">Settings</button></div>
+    <div class="row"><button id="b-begin">Begin ▸</button><button id="b-notebook">Lab notebook</button><button id="b-shop">Shop</button><button id="b-editor">Level editor</button><button id="b-settings">Settings</button></div>
     <p class="sub" id="tilt-note"></p>
   </div>
 
@@ -300,7 +317,7 @@
     <p class="coins" id="lv-coins"></p>
     <div class="levels" id="level-list"></div>
     <p class="sub muted" style="font-size:13px">★★★ within par, ★★ within twice par, ★ for any escape. Par per route cell: Earth 1.05 s, Mars 1.25 s, Moon 1.55 s. Finish a level to open the next.</p>
-    <div class="row"><button id="b-levels-back">◂ Back</button><button id="b-levels-shop">Element shop</button><button id="b-levels-notebook">Notebook</button></div>
+    <div class="row"><button id="b-levels-back">◂ Back</button><button id="b-levels-mine">My mazes</button><button id="b-levels-shop">Shop</button><button id="b-levels-notebook">Notebook</button></div>
   </div>
 
   <div class="panel wide scrollable ledger" id="p-ledger" role="dialog" aria-labelledby="ledger-title">
@@ -309,8 +326,9 @@
     <div class="entry"><span>Apparatus 1–3 (bench test &amp; roughing lines)</span><span>free</span>
       <span>Apparatus 4–30: load-locks, gate valves, surface-science UHV</span><span>included</span>
       <span>Every future chapter (MBE, cold atoms, lasers, beamlines, gravitational-wave arms)</span><span>free updates</span>
-      <span>Every pump and notebook page in levels 1–30; more pumps, lasers and pages arrive in the free updates</span><span>included</span>
-      <span>Coins</span><span>earned in play, never sold</span></div>
+      <span>Every pump and notebook page in levels 1–30; free updates add later chapters' levels and notebook pages</span><span>included</span>
+      <span>Level editor: build mazes from parts unlocked with each released chapter</span><span>open to all; saves 50 mazes (free: 1)</span>
+      <span>Coins</span><span>earned in play or bought in packs</span></div>
     <div class="price" id="ledger-price">$4.99</div>
     <p class="fine">One payment, no subscription, no adverts.</p>
     <div class="row" id="ledger-buy-row"><button id="b-buy">Buy</button><button id="b-restore">Restore purchase</button><button id="b-trial">Try 15 minutes free</button><button id="b-notnow">Not now</button></div>
@@ -327,11 +345,42 @@
   </div>
 
   <div class="panel scrollable" id="p-shop">
-    <h2>Element shop</h2>
+    <h2>Shop</h2>
     <p class="coins" id="shop-coins"></p>
-    <p class="sub" style="font-size:13px">Every element plays at a similar speed, because its wall temperature is set by its mass. Heavier atoms are drawn bigger, although real atomic size doesn't follow mass. The last column is each element's cooling line; lasers arrive in the free updates, and each element will answer only to its own laser colours.</p>
+    <p class="sub" style="font-size:13px">Every element plays at a similar speed, because its wall temperature is set by its mass. Heavier atoms are drawn bigger, although real atomic size doesn't follow mass. The last column is each element's cooling line. Cooling lasers unlock in the editor (and the official mazes) with the cold-atom chapters — a free update — and each element answers only to its own laser colours.</p>
+    <h3 class="shop-h">Elements</h3>
     <div class="shop-scroll"><table id="shop-list"><thead><tr><th>Element</th><th>Mass</th><th>Cooling line</th><th></th></tr></thead><tbody></tbody></table></div>
+    <h3 class="shop-h">Coin packs</h3>
+    <p class="sub" style="font-size:13px" id="packs-note">Coins are earned in play or bought in packs. They buy elements and level-editor parts; mazes you build never pay coins.</p>
+    <div class="packs" id="shop-packs"></div>
+    <p class="fine" id="packs-msg" role="status"></p>
     <div class="row"><button id="b-shop-back">Done ◂</button></div>
+  </div>
+
+
+  <div class="panel wide scrollable" id="p-editor">
+    <h2>Level editor</h2>
+    <div class="ed-head"><label class="ed-name"><span>Name</span><input id="ed-name" maxlength="40"></label>
+      <span class="stepper">Width <button id="ed-c-" aria-label="Narrower">−</button><b id="ed-cols"></b><button id="ed-c+" aria-label="Wider">+</button></span>
+      <span class="stepper">Height <button id="ed-r-" aria-label="Shorter">−</button><b id="ed-rows"></b><button id="ed-r+" aria-label="Taller">+</button></span>
+      <select id="ed-cf" aria-label="Tube size"></select></div>
+    <p class="coins" id="ed-coins"></p>
+    <div class="ed-wrap"><canvas id="ed-canvas" width="400" height="400"></canvas></div>
+    <p class="fine" id="ed-msg" role="status"></p>
+    <p class="sub" id="ed-blurb" style="font-size:13px"></p>
+    <div id="ed-drawer" class="ed-drawer"></div>
+    <div class="row" id="ed-code-row"><textarea id="ed-code" rows="3" readonly aria-label="Share code"></textarea></div>
+    <div class="row"><button id="ed-test">Test-play ▸</button><button id="ed-save">Save</button><button id="ed-share">Share code</button><button id="ed-done">Done ◂</button></div>
+  </div>
+
+  <div class="panel wide scrollable" id="p-mymazes">
+    <h2>My mazes</h2>
+    <p class="sub" id="mm-slots"></p>
+    <div id="mm-list"></div>
+    <div class="row"><button id="mm-new">New maze</button></div>
+    <div class="row"><textarea id="mm-code" rows="2" placeholder="Paste a VM1: share code" aria-label="Share code to import"></textarea><button id="mm-import">Import</button></div>
+    <p class="fine" id="mm-msg" role="status"></p>
+    <div class="row"><button id="mm-back">◂ Back</button></div>
   </div>
 
   <div class="panel scrollable" id="p-notebook">
@@ -1932,8 +1981,9 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
  *   seg: {type:'seg', ax, ay, bx, by, nx, ny}   (n = unit normal pointing into the vacuum)
  *   arc: {type:'arc', cx, cy, R, a0, a1, s}      (s = +1: vacuum outside the circle (inner wall of a bend),
  *                                                  s = -1: vacuum inside the circle (outer wall of a bend))
- * Elbows (two adjacent openings) are true quarter-annuli (bend radius C/2 at the bore centre line); tees,
- * crosses, straights and dead ends are built from straight walls. */
+ * Elbows (two adjacent openings) are true quarter-annuli (bend radius C/2 at the bore centre line) in every official
+ * level ('elbow', the arced / radius elbow); the level editor also offers the square (mitred) elbow ('elbowSq'), whose
+ * walls are straight and meet at sharp corners. Tees, crosses, straights and dead ends are built from straight walls. */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api; else root.VMMaze = api;
@@ -2010,7 +2060,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     // with several pumps, the one farthest from the source is the bonus pump (more coins)
     if (exits.length > 1) { let far = exits[0]; for (const e of exits) if (fromStart[idx(e.i, e.j)] > fromStart[idx(far.i, far.j)]) far = e; far.bonus = true; }
     // route lengths: multi-source BFS from every exit cell
-    const dist = bfsMulti(open, cols, rows, exits.map((e) => idx(e.i, e.j)));
+    const dist = bfsMulti(open, cols, rows, exits.map((e) => idx(e.i, e.j)));   // (also passed on to assemble)
     // decorations, thermal sections and dead-end parts
     const kinds = new Array(cols * rows).fill(null), parts = new Array(cols * rows).fill(null);
     const isExit = (i, j) => exits.some((e) => e.i === i && e.j === j);
@@ -2030,7 +2080,15 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     for (; p < straights.length; p++) if (rand() < 0.4) kinds[straights[p]] = deco[Math.floor(rand() * deco.length)];
     const kit = spec.deadEnds && spec.deadEnds.length ? spec.deadEnds : DEAD_END_PARTS;
     deads.forEach((k, n) => { parts[k] = kit[(n + Math.floor(rand() * kit.length)) % kit.length]; });
-    const level = { ...spec, open, exits, exit: exits[0], start, kinds, parts, dist, pathCells: dist[idx(start.i, start.j)] + 1 };
+    return assemble({ ...spec, open, exits, start, kinds, parts }, { spec, rand, dist });
+  }
+  // Shared by generate() (official levels) and fromLayout() (level-editor mazes): exact walls for every cell, exit mouths,
+  // plates, gates and laser beams. b: { cols, rows, open, exits, start, kinds, parts, square? }. square[k] = true turns an
+  // elbow cell into a square (mitred) elbow; otherwise elbows are arced (radius) bends, as in every official level.
+  function assemble(b, { spec = null, rand = null, dist = null, fixtures = null } = {}) {
+    const { cols, rows, exits, start } = b, idx = (i, j) => j * cols + i;
+    if (!dist) dist = bfsMulti(b.open, cols, rows, exits.map((e) => idx(e.i, e.j)));
+    const level = { ...b, exit: exits[0], dist, pathCells: dist[idx(start.i, start.j)] + 1 };
     level.cells = []; for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) level.cells.push(buildCell(level, i, j));
     // exit mouths: the bore continues past each pump flange (stub walls, so the atom can't clip the flange edge)
     for (const e of exits) {
@@ -2042,11 +2100,41 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       }
       ec.stubWalls = (ec.stubWalls || 0) + 2;
     }
-    placePlates(level, spec, rand);
-    level.lasers = placeLasers(level, spec.lasers || [], rand);
+    if (spec) { placePlates(level, spec, rand); level.lasers = placeLasers(level, spec.lasers || [], rand); }
+    else level.lasers = placeFixtures(level, fixtures || []);
     level.widthPx = cols * C; level.heightPx = rows * C;
     level.stats = mazeStats(level);
     return level;
+  }
+  // Editor fixtures on straight cells: { i, j, fix: 'gate' | 'aperture' | 'laser', line? }. Cold/hot sections arrive as kinds.
+  const CROSS_S0 = { 'H-Lya': 1.44e-7, 'Li-D2': 9.31e-5, 'Na-D2': 1.62e-4, 'Mg-285': 1.04e-5, 'K-D2': 5.83e-4, 'Ca-423': 5.73e-5, 'Cr-426': 5.18e-4 };   // as the official cross beams
+  function placeFixtures(L, list) {
+    const out = [];
+    for (const f of list) {
+      const c = L.cells[f.j * L.cols + f.i]; if (!c || c.shape !== 'straight' || c.kind && c.kind !== f.fix) continue;
+      const vert = !!(c.mask & N);
+      if (f.fix === 'aperture') { const hole = 0.5 * D; c.kind = 'aperture'; c.plate = { type: 'aperture', vert, hole, walls: plateWalls(c, vert, hole) }; c.walls.push(...c.plate.walls); }
+      else if (f.fix === 'gate') { c.kind = 'gate'; c.gate = { type: 'gate', vert, period: 4, open: 0.6, phase: 0, walls: plateWalls(c, vert, 0) }; }
+      else if (f.fix === 'laser' && CROSS_S0[f.line]) {
+        c.kind = 'laser';
+        const placed = vert ? { mode: 'cross', x0: c.cx - H, y0: c.cy, x1: c.cx + H, y1: c.cy, cells: 1 } : { mode: 'cross', x0: c.cx, y0: c.cy - H, x1: c.cx, y1: c.cy + H, cells: 1 };
+        const len = Math.hypot(placed.x1 - placed.x0, placed.y1 - placed.y0);
+        out.push({ line: f.line, detuneGamma: -1, s0: CROSS_S0[f.line], waist: 0.55 * H, ...placed, ux: (placed.x1 - placed.x0) / len, uy: (placed.y1 - placed.y0) / len, len });
+      }
+    }
+    return out;
+  }
+  // A level-editor maze → the same level object generate() makes. lay: { cols, rows, open (masks, already matched between
+  // neighbours), square (bool per cell), kinds, parts, exits [{i, j, side, pump}], start {i, j}, fixtures, boreMM, cf, kappa }
+  function fromLayout(lay) {
+    const n = lay.cols * lay.rows, open = lay.open.slice(0, n).map((m) => m & 15);
+    for (const e of lay.exits) open[e.j * lay.cols + e.i] |= e.side;
+    const b = { id: lay.id || 'custom', name: lay.name || 'My maze', custom: true, cols: lay.cols, rows: lay.rows, boreMM: lay.boreMM || 35, cf: lay.cf || 'DN40CF', kappa: lay.kappa || 1,
+      caption: lay.caption || '', open, square: (lay.square || []).slice(0, n).map(Boolean), kinds: (lay.kinds || []).slice(0, n).concat(new Array(n).fill(null)).slice(0, n),
+      parts: (lay.parts || []).slice(0, n).concat(new Array(n).fill(null)).slice(0, n), exits: lay.exits.map((e) => ({ ...e })), start: { ...lay.start }, body: lay.body || null };
+    // editor-made mazes pay no coins, so none of their pumps is a bonus pump
+    for (const e of b.exits) delete e.bonus;
+    return assemble(b, { fixtures: lay.fixtures || [] });
   }
   // Plates across the bore of straight cells: 'aperture' (a fixed plate with a central hole; differential pumping) and
   // 'gate' (a gate-valve blade that is shut for part of each cycle). Plates are PLATE_T thick so the two faces never
@@ -2085,7 +2173,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // Each beam: {line, detuneGamma, s0, x0,y0,x1,y1, ux,uy, waist (px), mode}
   function placeLasers(L, list, rand) {
     const out = [], idx = (i, j) => j * L.cols + i, used = new Set();
-    const isElbow = (k) => L.cells[k].shape === 'elbow';
+    const isElbow = (k) => L.cells[k].shape === 'elbow' || L.cells[k].shape === 'elbowSq';
     for (const spec of list) {
       let placed = null;
       if (spec.mode === 'axial') {
@@ -2168,12 +2256,13 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
 
   // ---------------- wall primitives for one cell ----------------
   function buildCell(L, i, j) {
-    const m = L.open[j * L.cols + i] & 15, cx = (i + 0.5) * C, cy = (j + 0.5) * C;
+    const m = L.open[j * L.cols + i] & 15, cx = (i + 0.5) * C, cy = (j + 0.5) * C, square = !!(L.square && L.square[j * L.cols + i]);
     const walls = [], has = (b) => !!(m & b);
     const n = [N, E, S, Wd].filter(has).length;
+    if (n === 0) return { i, j, cx, cy, mask: 0, shape: 'empty', walls: [], kind: null, part: null };   // editor mazes only: no tube here
     const elbowCorner = { [N | E]: [1, -1], [E | S]: [1, 1], [S | Wd]: [-1, 1], [Wd | N]: [-1, -1] }[m];
     let shape;
-    if (n === 2 && elbowCorner) {
+    if (n === 2 && elbowCorner && !square) {
       shape = 'elbow';
       const [sx, sy] = elbowCorner, kx = cx + sx * HC, ky = cy + sy * HC;
       // the quarter of the circle facing back into the cell: angles between (-sx,0) and (0,-sy)
@@ -2184,7 +2273,9 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       walls.push({ type: 'arc', cx: kx, cy: ky, R: HC + H, a0, a1, s: -1 });
       return { i, j, cx, cy, mask: m, shape, corner: [sx, sy], walls, kind: L.kinds[j * L.cols + i], part: null };
     }
-    shape = n === 1 ? 'dead' : n === 2 ? 'straight' : n === 3 ? 'tee' : 'cross';
+    // a square (mitred) elbow is two straight arms meeting at a sharp corner: its flat end walls are the closed sides below
+    shape = n === 1 ? 'dead' : n === 2 ? (elbowCorner ? 'elbowSq' : 'straight') : n === 3 ? 'tee' : 'cross';
+    const corner = shape === 'elbowSq' ? elbowCorner : undefined;
     // closed sides: one straight wall at distance H from the centre, extended to the cell edge where the
     // perpendicular neighbour side is open (it then continues as that arm's wall).
     const seg = (ax, ay, bx, by, nx, ny) => walls.push({ type: 'seg', ax, ay, bx, by, nx, ny });
@@ -2198,7 +2289,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       seg(cx + sx * H, cy + sy * H, cx + sx * H, cy + sy * HC, -sx, 0);   // vertical arm's wall
       seg(cx + sx * H, cy + sy * H, cx + sx * HC, cy + sy * H, 0, -sy);   // horizontal arm's wall
     }
-    return { i, j, cx, cy, mask: m, shape, walls, kind: L.kinds[j * L.cols + i], part: L.parts ? L.parts[j * L.cols + i] : null };
+    return { i, j, cx, cy, mask: m, shape, corner, walls, kind: L.kinds[j * L.cols + i], part: L.parts ? L.parts[j * L.cols + i] : null };
   }
 
   // ---------------- queries ----------------
@@ -2269,7 +2360,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     }
     const m = L.open[j * L.cols + i] & 15, cx = (i + 0.5) * C, cy = (j + 0.5) * C, lx = px - cx, ly = py - cy;
     const elbow = { [N | E]: [1, -1], [E | S]: [1, 1], [S | Wd]: [-1, 1], [Wd | N]: [-1, -1] }[m];
-    if (elbow) { const rho = Math.hypot(px - (cx + elbow[0] * HC), py - (cy + elbow[1] * HC)); return rho >= HC - H + margin && rho <= HC + H - margin; }
+    if (elbow && !(L.square && L.square[j * L.cols + i])) { const rho = Math.hypot(px - (cx + elbow[0] * HC), py - (cy + elbow[1] * HC)); return rho >= HC - H + margin && rho <= HC + H - margin; }
     const h = H - margin;
     if (Math.abs(lx) <= h && Math.abs(ly) <= h) return true;
     if (m & N && ly < 0 && Math.abs(lx) <= h) return true;
@@ -2300,7 +2391,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     return null;
   }
 
-  return { C, D, H, HC, WALL_T, BIT, DIRS, SIDE_DIR, LEVELS, DEAD_END_PARTS, mulberry, generate, bfs, bfsMulti, buildCell, nearestWall, wallDistance,
+  return { C, D, H, HC, WALL_T, BIT, DIRS, SIDE_DIR, LEVELS, DEAD_END_PARTS, CROSS_S0, mulberry, generate, fromLayout, assemble, bfs, bfsMulti, buildCell, nearestWall, wallDistance,
     insideBore, cellAt, connected, exitPlane, exitPlanes, nextToward, gateClosed, PLATE_T, setLevels: (l) => { LEVELS.length = 0; LEVELS.push(...l); } };
 });
 
@@ -2765,7 +2856,8 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
 <script>/* src/settings.js */
 /* Settings + progress (localStorage). Plain script: window.VMSettings (also CommonJS for tests).
  * v2: realistic gravity per body, Cercignani–Lampis wall kernel (accommodation setting), coins, owned elements,
- * pumps seen, notebook entries, best times keyed by level AND body. Purchases live in src/purchase (separate key, so
+ * pumps seen, notebook entries, best times keyed by level AND body, level-editor parts owned (parts), and paidCoins (the
+ * unspent coins that came from packs; Erase progress keeps them). Purchases live in src/purchase (separate key, so
  * "Erase progress" never removes a purchase). */
 (function (root, factory) {
   const api = factory(root);
@@ -2792,7 +2884,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   const RANGES = { arcadeG: [0.1, 9.81], accommodation: [0, 1], residenceMean: [0, 1.5], smoothing: [0, 0.3] };
   const BODY_IDS = ['earth', 'mars', 'moon', 'arcade'];
   const clamp = (v, [a, b], d) => (Number.isFinite(+v) ? Math.min(b, Math.max(a, +v)) : d);
-  function blank() { return { settings: { ...DEFAULTS }, best: {}, cleared: {}, coins: 0, owned: [1], pumpsSeen: {}, notebook: {}, notebookNew: {} }; }
+  function blank() { return { settings: { ...DEFAULTS }, best: {}, cleared: {}, coins: 0, paidCoins: 0, owned: [1], parts: {}, pumpsSeen: {}, notebook: {}, notebookNew: {} }; }
   function load(storage) {
     const ls = storage || root.localStorage; let s = blank();
     try {
@@ -2811,6 +2903,8 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     for (const b of ['haptics', 'minimap']) st[b] = st[b] !== false;
     if (!(st.levelRef && Number.isFinite(st.levelRef.x) && Number.isFinite(st.levelRef.y))) st.levelRef = null;
     s.coins = Math.max(0, Math.floor(+s.coins || 0));
+    s.paidCoins = Math.min(s.coins, Math.max(0, Math.floor(+s.paidCoins || 0)));   // the unspent part of the purse that came from coin packs
+    if (!s.parts || typeof s.parts !== 'object' || Array.isArray(s.parts)) s.parts = {};   // level-editor parts bought with coins
     return s;
   }
   function save(s, storage) { try { (storage || root.localStorage).setItem(KEY, JSON.stringify(s)); } catch (e) { /* ignore */ } }
@@ -2820,8 +2914,108 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
 });
 
 </script>
+<script>/* src/economy-config.js */
+/* Vacuum Maze: the level-editor economy in one place (costs, the parts catalogue, coin packs, editor save limits).
+ * Plain script (window.VMEconomyConfig) + CommonJS. Read by src/economy.js, src/editor-core.js, src/editor.js and src/purchase/.
+ *
+ * Part cost = round(BASE · R^tier), tiers 0–7 → 10, 25, 63, 156, 391, 977, 2441, 6104 coins (DECISIONS §6, the coolness
+ * ladder is owner-locked). A part is bought once with coins and can then be placed in any number of custom mazes.
+ * Coins are earned in play (official levels only) or bought in packs. Coin pack k costs about k dollars (store price points
+ * $0.99 … $6.99, so dollars are linear in the cool factor) and holds roughly the coins for one tier-k part plus a small
+ * bonus, so the coins per pack grow exponentially with k (as Fantastic Apparatus does).
+ * Editor parts unlock with official chapters (DECISIONS dbf8d25): a part is buyable only once the pre-made levels that
+ * introduce it have shipped (releasedThrough ≥ chapter·10). Unreleased parts are omitted from the drawer entirely
+ * (DECISIONS 657c839), not shown greyed-out. */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api; else root.VMEconomyConfig = api;
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  const APP = 'com.gillundlabs.vacuummaze';
+  const COST = { BASE: 10, R: 2.5, TIERS: 8 };
+  const cost = (tier) => (tier == null ? 0 : Math.round(COST.BASE * Math.pow(COST.R, tier)));
+  // place: 'topo' = a tube cell (rotatable), 'cap' = a dead-end part closing a one-ended cell (rotatable), 'pump' = an exit on a
+  // border cell, 'fix' = a fitting on a straight tube cell (one per cell), 'source' = the atom source (free, exactly one)
+  const CATALOGUE = [
+    { id: 'source', name: 'Atom source', tier: null, place: 'source', chapter: 1, blurb: 'Where the atom starts. Free; one per maze.' },
+    // tier 0
+    { id: 'tube', name: 'Straight tube', tier: 0, place: 'topo', chapter: 1, topo: 'tube', blurb: 'A full nipple: a length of tube with a CF flange on each end.' },
+    { id: 'elbowSq', name: 'Square elbow', tier: 0, place: 'topo', chapter: 1, topo: 'elbowSq', blurb: 'A mitred 90° elbow: two tubes cut at 45° and welded, with a sharp outer corner.' },
+    { id: 'elbowArc', name: 'Arced elbow', tier: 0, place: 'topo', chapter: 1, topo: 'elbowArc', blurb: 'A radius 90° elbow: a bent tube that turns in a smooth arc.' },
+    { id: 'blank', name: 'Blank flange', tier: 0, place: 'cap', chapter: 1, part: 'blank', blurb: 'A solid CF cap sealing an unused port.' },
+    { id: 'piston', name: 'Two-stage piston pump', tier: 0, place: 'pump', chapter: 1, pump: 'piston', blurb: 'An oil-free roughing pump: two piston stages in series compress the gas up to atmosphere.' },
+    // tier 1
+    { id: 'tee', name: 'Tee', tier: 1, place: 'topo', chapter: 1, topo: 'tee', blurb: 'Three ports at right angles.' },
+    { id: 'cross', name: 'Cross', tier: 1, place: 'topo', chapter: 1, topo: 'cross', blurb: 'Four ports at right angles.' },
+    { id: 'bellows', name: 'Bellows', tier: 1, place: 'cap', chapter: 1, part: 'bellows', blurb: 'Flexible welded bellows, blanked off.' },
+    { id: 'pirani', name: 'Pirani gauge', tier: 1, place: 'cap', chapter: 1, part: 'pirani', blurb: 'A heated wire whose cooling by the gas tells the pressure.' },
+    { id: 'valve', name: 'All-metal valve', tier: 1, place: 'cap', chapter: 1, part: 'valve', blurb: 'An all-metal angle valve, shut.' },
+    { id: 'rotary', name: 'Rotary-vane pump', tier: 1, place: 'pump', chapter: 1, pump: 'rotary', blurb: 'Oil-sealed sliding vanes sweep gas round to the exhaust.' },
+    { id: 'scroll', name: 'Scroll pump', tier: 1, place: 'pump', chapter: 1, pump: 'scroll', blurb: 'An orbiting spiral squeezes gas toward the centre, oil-free.' },
+    // tier 2
+    { id: 'viewport', name: 'Viewport', tier: 2, place: 'cap', chapter: 1, part: 'viewport', blurb: 'A glass window sealed into a CF flange.' },
+    { id: 'capacitance', name: 'Capacitance manometer', tier: 2, place: 'cap', chapter: 1, part: 'capacitance', blurb: 'A thin diaphragm bends with pressure; its capacitance is measured.' },
+    { id: 'roots', name: 'Roots blower', tier: 2, place: 'pump', chapter: 5, pump: 'roots', blurb: 'Two figure-8 lobes turn in step without touching.' },
+    // tier 3
+    { id: 'gate', name: 'Gate valve', tier: 3, place: 'fix', chapter: 2, fix: 'gate', blurb: 'A blade that shuts the tube for part of every cycle.' },
+    { id: 'aperture', name: 'Aperture plate', tier: 3, place: 'fix', chapter: 5, fix: 'aperture', blurb: 'A plate across the bore with a hole half the bore wide.' },
+    { id: 'ionGauge', name: 'Ion gauge', tier: 3, place: 'cap', chapter: 1, part: 'ionGauge', blurb: 'A hot-filament gauge that reads ultra-high vacuum by ion current.' },
+    { id: 'holweck', name: 'Holweck drag pump', tier: 3, place: 'pump', chapter: 7, pump: 'holweck', blurb: 'A spinning drum drags gas along helical grooves.' },
+    { id: 'sorption', name: 'Sorption pump', tier: 3, place: 'pump', chapter: 7, pump: 'sorption', blurb: 'Zeolite chilled in liquid nitrogen soaks up air.' },
+    // tier 4
+    { id: 'cold', name: 'Cold jacket', tier: 4, place: 'fix', chapter: 4, fix: 'cold', blurb: 'A liquid-nitrogen jacket: walls at 0.26 × the wall temperature.' },
+    { id: 'hot', name: 'Bake-out tape', tier: 4, place: 'fix', chapter: 4, fix: 'hot', blurb: 'Heater tape: walls at 1.5 × the wall temperature.' },
+    { id: 'diffusion', name: 'Oil diffusion pump', tier: 4, place: 'pump', chapter: 5, pump: 'diffusion', blurb: 'Jets of oil vapour knock molecules toward the foreline.' },
+    { id: 'tsp', name: 'Titanium sublimation pump', tier: 4, place: 'pump', chapter: 3, pump: 'tsp', blurb: 'Fresh titanium films on the walls trap active gases.' },
+    // tier 5
+    { id: 'neg', name: 'Non-evaporable getter pump', tier: 5, place: 'pump', chapter: 6, pump: 'neg', blurb: 'A heat-activated alloy binds active gases chemically.' },
+    { id: 'ion', name: 'Sputter-ion pump', tier: 5, place: 'pump', chapter: 3, pump: 'ion', blurb: 'Ionised gas is buried in titanium inside Penning cells.' },
+    { id: 'cryo', name: 'Cryopump', tier: 5, place: 'pump', chapter: 4, pump: 'cryo', blurb: 'Surfaces at 10–80 K freeze the gas out.' },
+    // tier 6
+    { id: 'turbo', name: 'Turbomolecular pump', tier: 6, place: 'pump', chapter: 2, pump: 'turbo', blurb: 'Fast-spinning angled blades bat molecules toward the exhaust.' },
+    // tier 7: lasers, one per resonance line (each pushes only its own element), and the Lyman-α kit for hydrogen
+    { id: 'laser-Li-D2', name: 'Laser: Li D₂ 671 nm', tier: 7, place: 'fix', chapter: 6, fix: 'laser', line: 'Li-D2', blurb: 'A beam across the tube, resonant with lithium only.' },
+    { id: 'laser-Na-D2', name: 'Laser: Na D₂ 589 nm', tier: 7, place: 'fix', chapter: 6, fix: 'laser', line: 'Na-D2', blurb: 'A beam across the tube, resonant with sodium only.' },
+    { id: 'laser-Mg-285', name: 'Laser: Mg 285 nm', tier: 7, place: 'fix', chapter: 6, fix: 'laser', line: 'Mg-285', blurb: 'An ultraviolet beam, resonant with magnesium only.' },
+    { id: 'laser-K-D2', name: 'Laser: K D₂ 767 nm', tier: 7, place: 'fix', chapter: 6, fix: 'laser', line: 'K-D2', blurb: 'A beam across the tube, resonant with potassium only.' },
+    { id: 'laser-Ca-423', name: 'Laser: Ca 423 nm', tier: 7, place: 'fix', chapter: 6, fix: 'laser', line: 'Ca-423', blurb: 'A violet beam, resonant with calcium only.' },
+    { id: 'laser-Cr-426', name: 'Laser: Cr 426 nm', tier: 7, place: 'fix', chapter: 6, fix: 'laser', line: 'Cr-426', blurb: 'A violet beam, resonant with chromium only.' },
+    { id: 'lya', name: 'Lyman-α viewport kit', tier: 7, place: 'fix', chapter: 6, fix: 'laser', line: 'H-Lya', blurb: 'MgF₂ windows and a 121.6 nm vacuum-ultraviolet beam: the laser for hydrogen.' },
+  ];
+  // ---------------- coin packs: CONSUMABLE in-app purchases (one per tier 1–7) ----------------
+  // price = the US price point (the store's localised price replaces it when known). coins ≈ cost(k) + a 5–20 % bonus.
+  const COIN_PACKS = [
+    { k: 1, productId: `${APP}.coins_t1`, coins: 30, price: '$0.99', name: 'A pocketful of coins' },
+    { k: 2, productId: `${APP}.coins_t2`, coins: 70, price: '$1.99', name: 'A brass tin of coins' },
+    { k: 3, productId: `${APP}.coins_t3`, coins: 175, price: '$2.99', name: 'A leather purse' },
+    { k: 4, productId: `${APP}.coins_t4`, coins: 425, price: '$3.99', name: 'A petty-cash box' },
+    { k: 5, productId: `${APP}.coins_t5`, coins: 1050, price: '$4.99', name: 'The bursar\u2019s drawer' },
+    { k: 6, productId: `${APP}.coins_t6`, coins: 2600, price: '$5.99', name: 'A research grant' },
+    { k: 7, productId: `${APP}.coins_t7`, coins: 6500, price: '$6.99', name: 'The Laboratory Endowment' },
+  ];
+  const EDITOR = {
+    enabled: true,          // the editor is open to everyone (free and paid)
+    freeSaveSlots: 1,       // without the full-laboratory unlock, one custom maze can be saved (an import counts)
+    maxSaved: 50,
+    codePrefix: 'VM1:',
+    minCols: 2, maxCols: 8, minRows: 2, maxRows: 10, defCols: 4, defRows: 5,
+    flanges: [{ cf: 'DN40CF', boreMM: 35 }, { cf: 'DN63CF', boreMM: 60 }, { cf: 'DN100CF', boreMM: 98 }],
+    earnsCoins: false,      // editor-made mazes never pay coins (no farming), as in Fantastic Apparatus
+  };
+  // a part is buyable/placeable in the editor only once the official chapter that introduces it has shipped
+  // (DECISIONS dbf8d25 / 657c839). releasedThrough is levels/batches.json; chapter N ships as levels (N-1)*10+1 .. N*10.
+  const chapterReleased = (releasedThrough, chapter) => (releasedThrough | 0) >= chapter * 10;
+  const isReleased = (id, releasedThrough) => { const c = byId[id]; return !!c && (c.tier == null || chapterReleased(releasedThrough, c.chapter)); };
+  const catalogueFor = (releasedThrough) => CATALOGUE.filter((c) => c.tier == null || chapterReleased(releasedThrough, c.chapter));
+  const byId = Object.fromEntries(CATALOGUE.map((c) => [c.id, c]));
+  return { VERSION: 1, APP, COST, cost, CATALOGUE, COIN_PACKS, COIN_PACKS_ENABLED: true, EDITOR,
+    byId, chapterReleased, isReleased, catalogueFor };
+});
+
+</script>
 <script>/* src/economy.js */
-/* Coins, par and stars. Coins are earned only (never sold). Plain script + CommonJS: window.VMEconomy. */
+/* Coins, par and stars. Coins are earned in play (official levels only) or bought in coin packs (src/economy-config.js);
+ * they are spent on elements and on level-editor parts. Plain script + CommonJS: window.VMEconomy. */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api; else root.VMEconomy = api;
@@ -2850,7 +3044,16 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     return 1;
   }
   const elementCost = (Z) => (Z <= 1 ? 0 : 5 * Z);   // hydrogen is free; krypton 180
-  return { PAR_PER_CELL, BODY_COIN, STAR_COIN, PUMP_BONUS, BONUS_EXIT, parFor, starsFor, baseCoins, coinsForWin, elementCost };
+  // The purse (store = VMSettings progress): coins is the balance; paidCoins is the part of it that came from coin packs and
+  // is still unspent. Spending uses earned coins first, so "Erase progress" can keep what was bought (Purchases are kept).
+  function spend(store, n) {
+    n = Math.round(n); if (!(n >= 0) || store.coins < n) return false;
+    store.coins -= n; store.paidCoins = Math.min(Math.max(0, store.paidCoins || 0), store.coins); return true;
+  }
+  function creditPack(store, n) { n = Math.round(n); if (!(n > 0)) return false; store.coins += n; store.paidCoins = Math.max(0, store.paidCoins || 0) + n; return true; }
+  // editor-made mazes never pay (no farming): every award path checks this
+  const coinsForCustomWin = () => 0;
+  return { PAR_PER_CELL, BODY_COIN, STAR_COIN, PUMP_BONUS, BONUS_EXIT, parFor, starsFor, baseCoins, coinsForWin, coinsForCustomWin, elementCost, spend, creditPack };
 });
 
 </script>
@@ -2928,7 +3131,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   const molecule = (p, x, y) => p.circle(x, y, 3.2, 1.2);
 
   // ---------------------------------------------------------------- entries
-  // unlock: event names emitted by the game: 'start', 'contact', 'pump:<type>', 'part:<part>', 'body:<id>', 'kind:<cold|hot|gate|aperture>', 'laser', 'element', 'win'
+  // unlock: event names emitted by the game: 'editor:elbow' (placing either elbow in the level editor), 'start', 'contact', 'pump:<type>', 'part:<part>', 'body:<id>', 'kind:<cold|hot|gate|aperture>', 'laser', 'element', 'win'
   const E = [];
   const add = (e) => E.push(e);
 
@@ -2975,7 +3178,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       'For hydrogen on Earth that gives 1 nK in a DN16CF tube and 11 nK in a DN160CF tube (at κ = 1); this edition\'s 30 levels span 3–8 nK (2–15 nK across all 100 planned levels), about a sixteenth of the 40 nK at which Maxwell\'s Demon starts its hydrogen. On the Moon the walls are six times colder still. Heavier atoms get proportionally warmer walls: krypton in a DN63CF tube on Earth needs about 371 nK.'],
     analogy: 'Like playing marbles on a tilted table: the walls set how fast the marble leaves each bounce, while the tilt sets how hard gravity pulls between bounces.',
     simplification: 'No real wall is this cold. Dilution refrigerators reach a few millikelvin, and real cold-atom experiments keep their atoms in traps away from the 295 K walls: an atom that touches the wall is lost. Under full Earth gravity the same nanokelvin temperatures give a gravitational scale height of only tens of micrometres, so a real atom would sit on the tube floor; the game is flat and ignores that direction (see "Tilting the apparatus").',
-    game: 'Cold traps and bake-out tape arrive with the free-update chapters; there, the real 77/295 and 443/295 temperature ratios are applied to these nanokelvin walls, not to 295 K.',
+    game: 'Cold traps and bake-out tape arrive with the free-update chapters (and become level-editor parts then); there, the real 77/295 and 443/295 temperature ratios are applied to these nanokelvin walls, not to 295 K.',
     cf: 'k<sub>B</sub> = 1.380649 × 10⁻²³ J/K (SI, exact); hydrogen mass 1.008 u (CIAAW); F. Pobell, <i>Matter and Methods at Low Temperatures</i>, Springer (2007) (dilution refrigerators).',
     sketch(p) {} });
   add({ id: 'flight', title: 'Falling in a tube: parabolas between bounces', unlock: 'start', group: 'Basics',
@@ -3042,6 +3245,16 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     cf: 'Jousten (2016), ch. 21; P. A. Redhead, <i>J. Vac. Sci. Technol. A</i> 13, 467 (1995).',
     sketch(p) { tube(p, 20, 300, 100, 32); for (let x = 100; x < 230; x += 14) p.line(x, 60, x + 10, 74, 2); for (let x = 100; x < 230; x += 14) p.line(x, 126, x + 10, 140, 2); p.label('heater tape · 150–250 °C', 160, 40); p.curve((t) => [80 + t * 10, 100 - t * 30 + 4 * Math.sin(t * 20)], 0, 1, 20, 0.9); p.label('H₂O', 70, 120); } });
 
+  add({ id: 'conductance', title: 'Square or arced elbows? Conductance round a bend', unlock: 'editor:elbow', group: 'Apparatus',
+    body: ['In high vacuum a molecule meets only the walls. Each time it hits one it sticks for an instant and leaves in a new random direction that does not depend on how it arrived. Knudsen\'s cosine law gives the odds: the flux leaving at an angle θ from the wall\'s normal is proportional to cos θ (not cos² θ), so straight out from the wall is the most likely direction. A fitting\'s conductance measures how readily it passes molecules from one end to the other.',
+      'Picture one molecule going round a 90° bend. In a square (mitred) elbow, the far wall of the incoming leg is a flat end wall that faces straight down the outgoing leg, so a molecule leaving that wall near its normal heads into the exit leg. In an arced (radius) elbow the outer wall curves, and its normal everywhere points across the bend toward the inner wall, so molecules leaving near the normal cross from wall to wall as they work their way round.',
+      'That picture follows only one bounce. The same cosine law sends molecules back the way they came just as readily: the square elbow\'s other flat end wall faces straight back up the incoming leg. Counting every bounce, the two shapes come out even. For the same bore in molecular flow, mitred and radius elbows have essentially the same conductance; the Kurt J. Lesker fittings notes put it as identical. A radius elbow does conduct better in continuum and transitional flow, at higher pressures, where the gas moves as a fluid and a smooth bend disturbs the flow less.',
+      'So why are mitred elbows everywhere in high-vacuum systems? Not for a higher conductance at the same bore. A mitred elbow is two straight tube ends cut at 45° and welded, so its legs can be short and it turns the corner in little more room than the flanges need. A bent tube needs a bend radius of a few tube diameters, so a radius elbow of the same bore is bigger. In a crowded apparatus the compact mitred elbow gives the gas a shorter path and takes up less space.'],
+    simplification: 'The square-corner and arc picture is a way to see where the cosine law sends molecules after one wall hit; it is not a calculation. Conductance comes from counting every bounce (for example by Monte Carlo, as Davis did in 1960), and for elbows of the same bore that count gives essentially the same answer for both shapes. Real conductance also depends on the length of each leg, which this page does not compare.',
+    game: 'The level editor offers both shapes, at the same price; the official mazes use arced elbows. Both use the same walls as the rest of the maze (the Cercignani–Lampis kernel, see "Walls trade energy"), not a pure cosine law, and the maze is flat with gravity along it. There is only ever one atom, so there is no gas flow or flow regime in the game: your tilt, not conductance, decides how fast it gets round a corner.',
+    cf: 'M. Knudsen, <i>Ann. Phys.</i> 28, 75 (1909); Kurt J. Lesker Company, <i>Fittings, adaptors &amp; couplings: technical notes</i> (lesker.com); D. H. Davis, <i>J. Appl. Phys.</i> 31, 1169 (1960); R. G. Livesey, in J. M. Lafferty (ed.), <i>Foundations of Vacuum Science and Technology</i>, Wiley (1998), ch. 2.',
+    sketch(p) {} });
+
   add({ id: 'laser', title: 'Pushing atoms with light', unlock: 'laser', group: 'Lasers',
     body: ['Each photon carries momentum h/λ. When an atom absorbs one from a laser beam it gets a kick along the beam; when it re-emits, the kick goes in a random direction and averages away.',
       'Tuned to the atom\'s resonance, an atom can scatter millions of photons a second, at most Γ/2 (half its natural decay rate). For sodium that is a push of about 10⁵ times gravity.',
@@ -3082,7 +3295,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   add({ id: 'elements', title: 'Choosing an element', unlock: 'element', group: 'Atoms',
     body: ['At the same temperature, heavier atoms are slower: speed goes as √(T/m).',
       'Heavier does not mean bigger. An atom\'s size is set by its outer electrons, not its mass: potassium (39 u, van der Waals radius about 2.75 Å) is much larger than krypton (84 u, about 2.0 Å).',
-      'Each element has its own resonance lines, so a laser that pushes sodium leaves potassium alone. When the laser chapters arrive (a free update), pick the atom the lasers will not catch, or the one they will help.'],
+      'Each element has its own resonance lines, so a laser that pushes sodium leaves potassium alone. When the laser chapters arrive as a free update, those lasers also unlock in the level editor; pick the atom the lasers will not catch, or the one they will help.'],
     game: 'The game sets each element\'s wall temperature in proportion to its mass, so every element moves at similar speeds and all of them are playable. It also draws heavier atoms bigger (radius 12 + 3√Z px) so you can tell them apart; that is a drawing choice, not real atomic size.',
     cf: 'NIST Atomic Spectra Database v5.11; atomic masses: CIAAW 2021; van der Waals radii: A. Bondi, <i>J. Phys. Chem.</i> 68, 441 (1964).',
     sketch(p) { [['H', 6], ['Na', 11], ['K', 13], ['Kr', 16]].forEach(([s, r], i) => { const x = 50 + i * 72; p.circle(x, 90, r * 1.6, 1.6); p.label(s, x, 95, s === 'H' ? { size: 10 } : {}); p.arrow(x, 140, x + 40 / Math.sqrt([1, 23, 39, 84][i]) * 3, 140, 1, 5); }); p.label('same T: lighter is faster', 160, 175); p.label('(sizes as drawn in the game)', 160, 40, { size: 10 }); } });
@@ -3138,6 +3351,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
 
   // ---------------------------------------------------------------- accuracy pass (claims we flag as less certain)
   const UNCERTAIN = [
+    ['conductance', 'The "identical in molecular flow" wording is the Kurt J. Lesker fittings note; we did not reproduce a same-bore mitred-versus-radius Monte Carlo ourselves, so the page says "essentially the same". "A bend radius of a few tube diameters" for bent tube is typical of tube-bending practice and varies by maker and wall thickness. The square-corner and arc picture is a one-bounce illustration (labelled as such), not a result.'],
     ['accommodation', 'The default α_n = σ_t = 0.5 is a judgement call. Measured values span roughly 0.02 (He on clean W) to ~0.9 (heavier gases on rough, contaminated metal); the "few hundredths" and "0.3–0.9" ranges are quoted from secondary summaries (Goodman 1974; Saxena & Joshi 1989) and were not checked against the original tables. No data exist at micro- or nanokelvin impact energies, where quantum reflection and sticking would dominate.'],
     ['pump-turbo', 'Rotor speed range 24,000–90,000 rpm spans common commercial pumps; some small pumps exceed 90k rpm.'],
     ['pump-ion', 'Field "about 0.1–0.2 T" and "down to about 10⁻¹¹ mbar" are typical catalogue values, not limits.'],
@@ -3606,6 +3820,29 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     p.note('H, Lyman-α: 3.3 m/s per photon', 32, 30, 215, 70, { align: 'start' }); p.note('Na, 589 nm: 2.9 cm/s per photon', 150, 150, 200, 132, { align: 'start' });
     p.label('same average push (3 g)', 170, 186, { size: 10 });
   };
+  // square (mitred) vs arced (radius) elbow: one cosine-law re-emission from the square elbow's flat end wall heads down the
+  // exit leg; in the arc the wall normals point across the bend, so the molecule crosses wall to wall
+  SK['conductance'] = (p) => {
+    // square elbow: in from the top, out to the right
+    p.line(30, 12, 30, 132, 2.2); p.line(30, 132, 150, 132, 2.2); p.line(66, 12, 66, 96, 2.2); p.line(66, 96, 150, 96, 2.2);
+    p.hatchPoly([rectPts(22, 12, 8, 128)], 6, Math.PI / 4, 0.6); p.hatchPoly([rectPts(30, 132, 120, 8)], 6, Math.PI / 4, 0.6);
+    p.hatchPoly([rectPts(66, 12, 8, 84)], 6, Math.PI / 4, 0.6); p.hatchPoly([rectPts(74, 88, 76, 8)], 6, Math.PI / 4, 0.6);
+    p.line(66, 96, 30, 132, 0.6);   // the 45° weld seam
+    molecule(p, 31.5, 114);
+    for (const a of [-50, -20, 0, 20, 50]) { const L = 34 * Math.cos(a * DEG); p.arrow(34, 114, 34 + L * Math.cos(a * DEG), 114 + L * Math.sin(a * DEG), 1, 5); }
+    p.arrow(48, 18, 48, 44, 1, 5); p.arrow(108, 114, 140, 114, 1, 5);
+    p.label('square (mitred)', 90, 152, { size: 11 }); p.label('end wall faces the exit', 90, 166, { size: 10 });
+    // arced elbow: centre of the bend at (290, 40)
+    const K = [290, 40], ri = 28, ro = 64, at = (r, a) => [K[0] + r * Math.cos(a), K[1] + r * Math.sin(a)];
+    p.line(226, 8, 226, 40, 2.2); p.line(262, 8, 262, 40, 2.2); p.line(290, 68, 314, 68, 2.2); p.line(290, 104, 314, 104, 2.2);
+    p.curve((a) => at(ro, a), Math.PI, Math.PI / 2, 30, 2.2); p.curve((a) => at(ri, a), Math.PI, Math.PI / 2, 20, 2.2);
+    p.curve((a) => at(ro + 6, a), Math.PI, Math.PI / 2, 30, 0.8);
+    const zig = [at(ro - 2, 170 * DEG), at(ri + 2, 150 * DEG), at(ro - 2, 140 * DEG), at(ri + 2, 120 * DEG), at(ro - 2, 108 * DEG)];
+    p.poly(zig, 1); for (const [x, y] of zig) p.dot(x, y, 1.6);
+    p.arrow(244, 10, 244, 30, 1, 5);
+    p.label('arced (radius)', 262, 152, { size: 11 }); p.label('walls face across', 262, 166, { size: 10 });
+    p.label('same bore, molecular flow: about the same conductance', 160, 184, { size: 11 });
+  };
   for (const e of E) if (SK[e.id]) e.sketch = SK[e.id];
   const byId = Object.fromEntries(E.map((e) => [e.id, e]));
   // which entries does an event unlock?
@@ -3614,7 +3851,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // (start, wall contact, win, buying an element, choosing a world, plus each level's pumps, parts, gates, apertures,
   // cold/hot sections and lasers). Used for the contents page and by the tests, so nothing outside the edition is implied.
   function editionEntries(levels) {
-    const ev = new Set(['start', 'contact', 'win', 'element', 'body:earth', 'body:mars', 'body:moon', 'body:arcade']);
+    const ev = new Set(['start', 'contact', 'win', 'element', 'body:earth', 'body:mars', 'body:moon', 'body:arcade', 'editor:elbow']);   // the level editor ships in every edition
     for (const L of levels) {
       if (L.body) ev.add('body:' + L.body);
       for (const bm of L.lasers || []) { ev.add('laser'); ev.add('laser:' + bm.line); }
@@ -3639,14 +3876,19 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
  *   P.isLevelUnlocked(i)      → i < FREE_LEVELS || full || trial running   (i is the 0-based level index)
  *   P.price()                 → localized price string from the store, or the fallback ('$4.99')
  *   P.trial: { available(), start(), tick(dtMs, activePlay, idleMs), runMayFinish() }
+ *   P.getCoinPacks()          → [{ id, k, coins, name, displayPrice, priceIsFallback, canPurchase }]   (consumables)
+ *   await P.buyCoins(id)      → { ok, coins?, cancelled?, error? }   (credited through opts.onCoins once per transaction id)
  *
  * Adapters (src/purchase/adapter-*.js) implement:
- *   { name, kind: 'store'|'web', init({ onOwned(productId), onPrice(productId, price) }) → Promise,
+ *   { name, kind: 'store'|'web', init({ onOwned(productId), onPrice(productId, price), onConsumable(txId, productId) → bool }) → Promise,
  *     order(productId) → Promise<{ ok, cancelled?, error? }>, restore() → Promise<{ ok, error? }>,
  *     owns(productId) → boolean, trialMode: 'storekit-product'|'local'|'none', storeLinks? }
  * so RevenueCat or a custom-server adapter can replace adapter-cdv.js without touching the game.
  *
- * Coins are never sold: nothing here touches the coin balance.
+ * Coins are earned in play or bought in packs (src/economy-config.js COIN_PACKS, consumable products). A delivered pack is
+ * credited through opts.onCoins(pack, txId) exactly once per store transaction id (the ids are kept with the entitlement, so
+ * a re-delivery after the app was killed, or "Erase progress", never credits twice); only then may the adapter finish it.
+ * The web build sells nothing: the shop there points to the App Store and Google Play.
  * The 15-minute trial (docs/IAP-PLAN.md, approved) counts ACTIVE PLAY only; when it runs out mid-level the run
  * finishes (runMayFinish), then levels 4+ lock again; progress made during the trial is kept.
  */
@@ -3681,9 +3923,12 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     const storage = opts.storage || (typeof localStorage !== 'undefined' ? localStorage : memoryStorage());
     const adapter = opts.adapter;
     const now = opts.now || (() => Date.now());
+    const packs = Array.isArray(opts.packs) ? opts.packs : [], packOf = (id) => packs.find((p) => p.productId === id) || null;
+    let onCoins = typeof opts.onCoins === 'function' ? opts.onCoins : null;
     // persisted state: { full, source, at, trial: { state: 'unused'|'running'|'expired', usedMs, startedAt } }
-    let st = { full: false, source: 'none', at: 0, trial: { state: 'unused', usedMs: 0, startedAt: 0 } };
+    let st = { full: false, source: 'none', at: 0, trial: { state: 'unused', usedMs: 0, startedAt: 0 }, credited: {} };
     try { const raw = JSON.parse(storage.getItem(cfg.STORAGE_KEY) || 'null'); if (raw) st = { ...st, ...raw, trial: { ...st.trial, ...(raw.trial || {}) } }; } catch (e) { /* corrupt → default */ }
+    if (!st.credited || typeof st.credited !== 'object') st.credited = {};
     if (st.full) st.source = 'cache';   // cached unlock until the store confirms at launch
     const prices = {};
     const subs = new Set();
@@ -3715,6 +3960,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
             // the $0 trial product already owned on this Apple ID but no local trial record → the trial was used before
             if (id === cfg.PRODUCT_TRIAL && st.trial.state === 'unused' && !trialClaimPending) { st.trial.state = 'expired'; st.trial.usedMs = cfg.TRIAL_MS; save(); emit(); } },
           onPrice: (id, p) => { prices[id] = p; emit(); },
+          onConsumable: (txId, id) => deliver(txId, id),
         });
       } catch (e) { /* store unavailable: keep the cached state */ }
       return getEntitlement();
@@ -3758,24 +4004,52 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       runMayFinish() { return runGrace; },
       endRun() { runGrace = false; },
     };
+    // ---- coin packs (consumables). deliver() → true when the transaction is credited (now or earlier) and may be finished.
+    function deliver(txId, id) {
+      const pk = packOf(id); if (!pk || !txId) return false;
+      if (st.credited[txId]) return true;   // already in the purse: just let the store finish it
+      if (!onCoins) return false;           // nobody to credit yet: leave it unfinished, the store re-delivers at the next start
+      st.credited[txId] = { productId: id, coins: pk.coins, at: now() }; save();
+      try { onCoins(pk, txId); } catch (e) { /* the purse is the game's */ }
+      return true;
+    }
+    const sellsPacks = () => !!adapter && adapter.kind === 'store' && packs.length > 0;
+    function getCoinPacks() {
+      return packs.map((pk) => ({ id: pk.productId, k: pk.k, coins: pk.coins, name: pk.name, displayPrice: prices[pk.productId] || pk.price, priceIsFallback: !prices[pk.productId], canPurchase: sellsPacks() }));
+    }
+    let packBusy = false;
+    async function buyCoins(id) {
+      const pk = packOf(id); if (!pk) return { ok: false, error: 'unknown-pack' };
+      if (!sellsPacks()) return { ok: false, error: 'no-store' };
+      if (packBusy) return { ok: false, error: 'busy' };
+      packBusy = true;
+      try {
+        const before = Object.keys(st.credited).length, r = await adapter.order(id);
+        if (!r || !r.ok) return r || { ok: false };
+        for (let t = 0; t < 60 && Object.keys(st.credited).length === before; t++) await new Promise((res) => setTimeout(res, 50));   // the store's approved event credits it
+        const got = Object.keys(st.credited).length > before;
+        return got ? { ok: true, coins: pk.coins } : { ok: true, pending: true };
+      } finally { packBusy = false; }
+    }
     function onChange(fn) { subs.add(fn); return () => subs.delete(fn); }
     function price() { return prices[cfg.PRODUCT_FULL] || cfg.PRICE_FALLBACK; }
     // test / support helper (Settings → Erase progress does NOT call this: purchases survive a progress wipe)
     
-    return { config: cfg, adapter, init, getEntitlement, purchase, restore, onChange, isLevelUnlocked, price, trial,  };
+    return { config: cfg, adapter, init, getEntitlement, purchase, restore, onChange, isLevelUnlocked, price, trial, getCoinPacks, buyCoins, sellsPacks,
+      setCoinHandler(fn) { onCoins = typeof fn === 'function' ? fn : null; }, isCredited: (txId) => !!st.credited[txId],  };
   }
   return { CONFIG, create, memoryStorage };
 });
 
 </script>
 <script>/* src/purchase/adapter-web.js */
-/* Purchase adapter: web / no store (the browser build and the website demo). Nothing can be bought here; the
- * paywall shows App Store and Google Play buttons instead of Buy. The web build has the same 15-minute full-access
+/* Purchase adapter: web / no store (the browser build and the website demo). Nothing can be bought here (neither the
+ * full unlock nor coin packs); the paywall shows App Store and Google Play buttons instead of Buy. The web build has the same 15-minute full-access
  * trial as the apps (DECISIONS.md), on a local timer kept in localStorage by purchase.js (trialMode 'local').
  * Window global: VMPurchaseAdapters.web(config). Also usable from Node for tests. */
 (function (root, factory) {
   const api = factory();
-  if (typeof module === 'object' && module.exports) module.exports = api; else (root.VMPurchaseAdapters = root.VMPurchaseAdapters || {}).web = api.web;
+  if (typeof module === 'object' && module.exports) module.exports = api; else { (root.VMPurchaseAdapters = root.VMPurchaseAdapters || {}).web = api.web;  }
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
   const SLUG = 'vacuum-maze';
@@ -3811,17 +4085,19 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       get storeLinks() { return storeLinks(cfg); },   // read at use time: the site's config.js may load after the game
       async init() {}, async order() { return { ok: false, error: 'no-store' }; }, async restore() { return { ok: false, error: 'no-store' }; }, owns: () => false };
   }
-  return { web, storeLinks, safeStoreUrl };
+  
+  return { web, storeLinks, safeStoreUrl,  };
 });
 
 </script>
 <script>/* src/purchase/adapter-cdv.js */
 /* Purchase adapter: cordova-plugin-purchase (CdvPurchase v13) for the App Store (StoreKit) and Google Play Billing.
- * Local-only: no receipt-validation server (docs/IAP-PLAN.md). Approved transactions are finished at once and
- * ownership is read from the platform receipt (store.owned). Window global: VMPurchaseAdapters.cdv(config). */
+ * Local-only: no receipt-validation server (docs/IAP-PLAN.md). The full unlock is finished at once and ownership is read
+ * from the platform receipt (store.owned); a coin pack (consumable) is finished once the game has credited its coins. Window global: VMPurchaseAdapters.cdv(config). */
 (function (root) {
   'use strict';
-  function cdv(cfg) {
+  // packIds: the coin-pack product ids (CONSUMABLE). A pack is finished only after the game has credited it (onConsumable).
+  function cdv(cfg, packIds = []) {
     const C = root.CdvPurchase; if (!C || !C.store) return null;
     const { store, ProductType, Platform, ErrorCode } = C;
     const isIOS = root.Capacitor && root.Capacitor.getPlatform && root.Capacitor.getPlatform() === 'ios';
@@ -3829,9 +4105,15 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     let hooks = null;
     const products = [{ id: cfg.PRODUCT_FULL, type: ProductType.NON_CONSUMABLE, platform }];
     if (isIOS) products.push({ id: cfg.PRODUCT_TRIAL, type: ProductType.NON_CONSUMABLE, platform });
+    for (const id of packIds) products.push({ id, type: ProductType.CONSUMABLE, platform });
+    const onApproved = (t) => {
+      const pk = (t.products || []).map((p) => p.id).find((id) => packIds.includes(id));
+      if (!pk) { t.finish(); return; }
+      if (hooks.onConsumable(t.transactionId, pk)) t.finish();   // credited (once per transaction id): consume it
+    };
     const report = () => {
       for (const p of products) {
-        if (store.owned(p.id)) hooks.onOwned(p.id);
+        if (p.type !== ProductType.CONSUMABLE && store.owned(p.id)) hooks.onOwned(p.id);
         const prod = store.get(p.id, platform), offer = prod && prod.getOffer && prod.getOffer();
         const ph = offer && offer.pricingPhases && offer.pricingPhases[0];
         if (ph && ph.price) hooks.onPrice(p.id, ph.price);
@@ -3843,7 +4125,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
         hooks = h;
         store.verbosity = C.LogLevel ? C.LogLevel.WARNING : 1;
         store.register(products);
-        store.when().approved((t) => t.finish()).receiptUpdated(() => report()).productUpdated(() => report());
+        store.when().approved(onApproved).receiptUpdated(() => report()).productUpdated(() => report());
         await store.initialize([platform]);
         report();
       },
@@ -3864,10 +4146,340 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
+<script>/* src/editor-core.js */
+/* Vacuum Maze: the level-editor model (no DOM). Plain script (window.VMEditorCore) + CommonJS (tests).
+ * A custom maze is a grid of tube cells, each holding one catalogue part with a rotation, plus fittings on straight cells,
+ * pumps on border ports and one atom source:
+ *   { v: 1, name, cols, rows, cf, boreMM, cells: [{ p, r } | null], fix: [partId | null], start: { i, j } | null,
+ *     pumps: [{ i, j, side, p }] }
+ * toLevel() turns it into the same level object VMMaze.generate() makes (via VMMaze.fromLayout), so the engine, renderer and
+ * tests treat editor mazes exactly like official ones. Mazes are saved in localStorage['vacuum-maze.custom.v1'] and shared as a
+ * text code 'VM1:<base64url JSON>.<checksum>' (no server). Ends of tube that do not meet a matching end are closed walls. */
+(function (root, factory) {
+  const isNode = typeof module === 'object' && module.exports;
+  const api = factory(isNode ? require('./economy-config.js') : root.VMEconomyConfig, isNode ? require('./maze.js') : root.VMMaze);
+  if (isNode) module.exports = api; else root.VMEditorCore = api;
+})(typeof self !== 'undefined' ? self : this, function (CFG, M) {
+  'use strict';
+  const KEY = 'vacuum-maze.custom.v1', VERSION = 1, ED = CFG.EDITOR, CAT = CFG.byId;
+  const { N, E, S, W } = M.BIT;
+  // openings of each tube shape at rotation 0 (N = up); rotation r turns it r × 90° clockwise
+  const BASE = { tube: N | S, elbowSq: N | E, elbowArc: N | E, tee: N | E | S, cross: N | E | S | W, cap: N };
+  const rotMask = (m, r) => { r = ((r % 4) + 4) % 4; return ((m << r) | (m >> (4 - r))) & 15; };
+  const shapeOf = (p) => { const c = CAT[p]; return !c ? null : c.place === 'topo' ? c.topo : c.place === 'cap' ? 'cap' : null; };
+  const maskOf = (cell) => (cell && shapeOf(cell.p) ? rotMask(BASE[shapeOf(cell.p)], cell.r || 0) : 0);
+  const clampInt = (v, a, b, d) => (Number.isFinite(+v) ? Math.max(a, Math.min(b, Math.round(+v))) : d);
+
+  function newMaze(name = 'My maze') {
+    const cols = ED.defCols, rows = ED.defRows;
+    return { v: VERSION, name, cols, rows, cf: ED.flanges[0].cf, boreMM: ED.flanges[0].boreMM, cells: new Array(cols * rows).fill(null), fix: new Array(cols * rows).fill(null), start: null, pumps: [] };
+  }
+  // change the grid size, keeping everything that still fits
+  function resize(L, cols, rows) {
+    cols = clampInt(cols, ED.minCols, ED.maxCols, L.cols); rows = clampInt(rows, ED.minRows, ED.maxRows, L.rows);
+    const cells = new Array(cols * rows).fill(null), fix = new Array(cols * rows).fill(null);
+    for (let j = 0; j < Math.min(rows, L.rows); j++) for (let i = 0; i < Math.min(cols, L.cols); i++) { cells[j * cols + i] = L.cells[j * L.cols + i]; fix[j * cols + i] = L.fix[j * L.cols + i]; }
+    const pumps = L.pumps.filter((p) => p.i < cols && p.j < rows && isBorderSide(cols, rows, p.i, p.j, p.side));
+    const start = L.start && L.start.i < cols && L.start.j < rows ? L.start : null;
+    return { ...L, cols, rows, cells, fix, pumps, start };
+  }
+  const SIDE_D = { [N]: [0, -1], [E]: [1, 0], [S]: [0, 1], [W]: [-1, 0] };
+  const OPP = { [N]: S, [E]: W, [S]: N, [W]: E };
+  function isBorderSide(cols, rows, i, j, side) { const [dx, dy] = SIDE_D[side] || [0, 0]; const ii = i + dx, jj = j + dy; return !!SIDE_D[side] && (ii < 0 || jj < 0 || ii >= cols || jj >= rows); }
+  // the off-grid sides of a cell's tube where a pump can bolt on
+  function pumpSides(L, i, j) { const m = maskOf(L.cells[j * L.cols + i]); return [N, E, S, W].filter((s) => m & s && isBorderSide(L.cols, L.rows, i, j, s)); }
+
+  // ---------------- edits (each returns { ok, reason? }; ownership and coins are checked by the caller, src/editor.js) ----------------
+  function place(L, partId, i, j, r = 0) {
+    const c = CAT[partId], k = j * L.cols + i; if (!c) return { ok: false, reason: 'unknown part' };
+    if (i < 0 || j < 0 || i >= L.cols || j >= L.rows) return { ok: false, reason: 'outside the grid' };
+    if (c.place === 'topo' || c.place === 'cap') {
+      L.cells[k] = { p: partId, r: ((r % 4) + 4) % 4 };
+      if (L.fix[k] && !fixFits(L, k)) L.fix[k] = null;
+      L.pumps = L.pumps.filter((p) => !(p.i === i && p.j === j) || pumpSides(L, i, j).includes(p.side));
+      return { ok: true };
+    }
+    if (c.place === 'fix') { if (!(L.cells[k] && L.cells[k].p === 'tube')) return { ok: false, reason: 'Fittings go on a straight tube.' }; L.fix[k] = partId; return { ok: true }; }
+    if (c.place === 'source') { if (!maskOf(L.cells[k])) return { ok: false, reason: 'Put the source in a tube.' }; L.start = { i, j }; return { ok: true }; }
+    if (c.place === 'pump') {
+      const sides = pumpSides(L, i, j); if (!sides.length) return { ok: false, reason: 'A pump bolts onto a tube end at the edge of the grid.' };
+      const have = L.pumps.find((p) => p.i === i && p.j === j);   // tap again: next free side, or swap the pump type
+      const side = have && have.p === partId ? sides[(sides.indexOf(have.side) + 1) % sides.length] : have ? have.side : sides[0];
+      L.pumps = L.pumps.filter((p) => !(p.i === i && p.j === j)); L.pumps.push({ i, j, side, p: partId });
+      if (L.pumps.length > 4) L.pumps.shift();
+      return { ok: true };
+    }
+    return { ok: false, reason: 'cannot place that' };
+  }
+  const fixFits = (L, k) => !!(L.cells[k] && L.cells[k].p === 'tube');
+  function rotate(L, i, j) { const c = L.cells[j * L.cols + i]; if (!c) return { ok: false }; c.r = (c.r + 1) % 4; L.pumps = L.pumps.filter((p) => !(p.i === i && p.j === j) || pumpSides(L, i, j).includes(p.side)); return { ok: true }; }
+  // remove the top-most thing in a cell: pump, then fitting, then source, then the tube part
+  function remove(L, i, j) {
+    const k = j * L.cols + i;
+    if (L.pumps.some((p) => p.i === i && p.j === j)) { L.pumps = L.pumps.filter((p) => !(p.i === i && p.j === j)); return { ok: true, what: 'pump' }; }
+    if (L.fix[k]) { L.fix[k] = null; return { ok: true, what: 'fitting' }; }
+    if (L.start && L.start.i === i && L.start.j === j) { L.start = null; return { ok: true, what: 'source' }; }
+    if (L.cells[k]) { L.cells[k] = null; return { ok: true, what: 'part' }; }
+    return { ok: false };
+  }
+  // every catalogue part a maze uses (for "buy before you can place" and for the shared-code summary)
+  function partsUsed(L) {
+    const s = new Set(); for (const c of L.cells) if (c) s.add(c.p); for (const f of L.fix) if (f) s.add(f); for (const p of L.pumps) s.add(p.p); return [...s];
+  }
+
+  // ---------------- the playable level ----------------
+  function layout(L) {
+    const n = L.cols * L.rows, raw = L.cells.map(maskOf), open = new Array(n).fill(0);
+    for (let j = 0; j < L.rows; j++) for (let i = 0; i < L.cols; i++) {
+      const k = j * L.cols + i;
+      for (const s of [N, E, S, W]) { if (!(raw[k] & s)) continue; const [dx, dy] = SIDE_D[s], ii = i + dx, jj = j + dy;
+        if (ii >= 0 && jj >= 0 && ii < L.cols && jj < L.rows && raw[jj * L.cols + ii] & OPP[s]) open[k] |= s; }
+    }
+    const exits = L.pumps.filter((p) => raw[p.j * L.cols + p.i] & p.side && isBorderSide(L.cols, L.rows, p.i, p.j, p.side)).map((p) => ({ i: p.i, j: p.j, side: p.side, pump: CAT[p.p].pump }));
+    const withExit = open.slice(); for (const e of exits) withExit[e.j * L.cols + e.i] |= e.side;
+    const count = (m) => [N, E, S, W].filter((b) => m & b).length, straight = (m) => m === (N | S) || m === (E | W);
+    const square = L.cells.map((c) => !!c && c.p !== 'elbowArc'), kinds = new Array(n).fill(null), parts = new Array(n).fill(null), fixtures = [];
+    for (let k = 0; k < n; k++) {
+      const c = L.cells[k], m = withExit[k];
+      if (c && CAT[c.p].place === 'cap' && count(m) === 1) parts[k] = CAT[c.p].part;
+      else if (count(m) === 1) parts[k] = 'blank';
+      const f = L.fix[k] && CAT[L.fix[k]]; if (!f || !straight(m) || (L.start && k === L.start.j * L.cols + L.start.i) || exits.some((e) => e.j * L.cols + e.i === k)) continue;
+      if (f.fix === 'cold' || f.fix === 'hot') kinds[k] = f.fix; else fixtures.push({ i: k % L.cols, j: Math.floor(k / L.cols), fix: f.fix, line: f.line });
+    }
+    return { cols: L.cols, rows: L.rows, open, square, kinds, parts, exits, fixtures, start: L.start || { i: 0, j: 0 }, boreMM: L.boreMM, cf: L.cf, kappa: 1, name: L.name };
+  }
+  function validate(L) {
+    const e = [];
+    if (!L.cells.some(Boolean)) e.push('Lay some tube.');
+    if (!L.start) e.push('Place the atom source.');
+    else if (!maskOf(L.cells[L.start.j * L.cols + L.start.i])) e.push('The atom source must sit in a tube.');
+    const lay = layout(L);
+    if (!lay.exits.length) e.push('Bolt a pump onto a tube end at the edge of the grid.');
+    if (!e.length) { const lv = M.fromLayout(lay); if (!(lv.pathCells > 0)) e.push('No tube route joins the atom source to a pump.'); }
+    return e;
+  }
+  function toLevel(L, id) { const lay = layout(L); lay.id = id || 'custom'; return Object.assign(M.fromLayout(lay), { custom: true, name: L.name, caption: 'A maze of my own design.', setup: 'Custom maze', editor: L }); }
+
+  // ---------------- sanitising imported codes (never trust a pasted string) ----------------
+  const str = (v, n, d = '') => (typeof v === 'string' ? v.replace(/[<>&"]/g, '').slice(0, n) : d);
+  function sanitize(x) {
+    if (!x || typeof x !== 'object') throw new Error('That code does not contain a maze.');
+    const cols = clampInt(x.cols, ED.minCols, ED.maxCols, ED.defCols), rows = clampInt(x.rows, ED.minRows, ED.maxRows, ED.defRows), n = cols * rows;
+    const fl = ED.flanges.find((f) => f.cf === x.cf) || ED.flanges[0];
+    const cells = new Array(n).fill(null), fix = new Array(n).fill(null);
+    for (let k = 0; k < n; k++) {
+      const c = Array.isArray(x.cells) ? x.cells[k] : null;
+      if (c && CAT[c.p] && (CAT[c.p].place === 'topo' || CAT[c.p].place === 'cap')) cells[k] = { p: c.p, r: clampInt(c.r, 0, 3, 0) };
+      const f = Array.isArray(x.fix) ? x.fix[k] : null; if (typeof f === 'string' && CAT[f] && CAT[f].place === 'fix' && cells[k] && cells[k].p === 'tube') fix[k] = f;
+    }
+    const L = { v: VERSION, name: str(x.name, 40, 'Imported maze') || 'Imported maze', cols, rows, cf: fl.cf, boreMM: fl.boreMM, cells, fix, start: null, pumps: [] };
+    if (x.start && Number.isFinite(+x.start.i) && Number.isFinite(+x.start.j)) { const i = clampInt(x.start.i, 0, cols - 1, 0), j = clampInt(x.start.j, 0, rows - 1, 0); L.start = { i, j }; }
+    for (const p of (Array.isArray(x.pumps) ? x.pumps : []).slice(0, 4)) {
+      if (!p || !CAT[p.p] || CAT[p.p].place !== 'pump') continue; const i = clampInt(p.i, 0, cols - 1, 0), j = clampInt(p.j, 0, rows - 1, 0), side = [N, E, S, W].includes(+p.side) ? +p.side : 0;
+      if (side && isBorderSide(cols, rows, i, j, side) && !L.pumps.some((q) => q.i === i && q.j === j)) L.pumps.push({ i, j, side, p: p.p });
+    }
+    return L;
+  }
+  // ---------------- share codes ----------------
+  const b64e = (s) => (typeof Buffer !== 'undefined' ? Buffer.from(s, 'utf8').toString('base64') : btoa(unescape(encodeURIComponent(s)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const b64d = (s) => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return typeof Buffer !== 'undefined' ? Buffer.from(s, 'base64').toString('utf8') : decodeURIComponent(escape(atob(s))); };
+  const fnv = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(36); };
+  function encode(L) { const json = JSON.stringify(sanitize(L)); return `${ED.codePrefix}${b64e(json)}.${fnv(json)}`; }
+  function decode(code) {
+    const c = String(code || '').trim().replace(/\s+/g, '');
+    if (!c.startsWith(ED.codePrefix)) throw new Error(`A Vacuum Maze code starts with ${ED.codePrefix}`);
+    const [body, sum] = c.slice(ED.codePrefix.length).split('.'); let json;
+    try { json = b64d(body || ''); } catch (e) { throw new Error('That code is damaged.'); }
+    if (fnv(json) !== sum) throw new Error('That code is damaged (checksum).');
+    let x; try { x = JSON.parse(json); } catch (e) { throw new Error('That code is damaged.'); }
+    return sanitize(x);
+  }
+  // ---------------- saved mazes ----------------
+  function store(storage) {
+    const ls = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
+    const load = () => { try { const r = JSON.parse((ls && ls.getItem(KEY)) || 'null'); return r && Array.isArray(r.mazes) ? r.mazes.map((m) => ({ id: String(m.id), maze: sanitize(m.maze) })) : []; } catch (e) { return []; } };
+    let list = load();
+    const write = () => { try { ls && ls.setItem(KEY, JSON.stringify({ v: VERSION, mazes: list })); } catch (e) { /* ignore */ } };
+    const limit = (full) => (full ? ED.maxSaved : ED.freeSaveSlots);
+    return {
+      list: () => list.slice(),
+      get: (id) => { const m = list.find((x) => x.id === id); return m ? JSON.parse(JSON.stringify(m.maze)) : null; },
+      limit,
+      // save: overwrite id if given and present, else a new slot (refused past the limit)
+      save(maze, id, full) {
+        const clean = sanitize(maze), at = id ? list.findIndex((x) => x.id === id) : -1;
+        if (at >= 0) { list[at] = { id, maze: clean }; write(); return { ok: true, id }; }
+        if (list.length >= limit(full)) return { ok: false, reason: full ? `At most ${ED.maxSaved} saved mazes.` : `The free edition keeps ${ED.freeSaveSlots} saved maze; the full laboratory keeps up to ${ED.maxSaved}.` };
+        const nid = 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36); list.push({ id: nid, maze: clean }); write(); return { ok: true, id: nid };
+      },
+      remove(id) { list = list.filter((x) => x.id !== id); write(); },
+    };
+  }
+  return { KEY, VERSION, BASE, rotMask, maskOf, shapeOf, newMaze, resize, place, rotate, remove, pumpSides, partsUsed, layout, validate, toLevel, sanitize, encode, decode, store, isBorderSide };
+});
+
+</script>
+<script>/* src/editor.js */
+/* Vacuum Maze: the level-editor screen (DOM + its own schematic canvas). Plain script: window.VMEditor.
+ * The model and share codes live in src/editor-core.js; costs, the catalogue, packs and save limits in src/economy-config.js.
+ * Parts are bought once with coins (round(10·2.5^tier)) and can then be placed in any number of mazes. Editor-made mazes are
+ * playable from "My mazes" but never pay coins. VMEditor.create(deps) wires the panels; game.js supplies:
+ *   deps = { $, store(), persist(), ECO, unlock(ev), full(), startCustom(level, ctx), showPanel(name), toast(text), theme(),
+ *            releasedThrough()  // official levels shipped; gates which catalogue parts appear (DECISIONS dbf8d25 / 657c839) } */
+(function (root) {
+  'use strict';
+  const CFG = root.VMEconomyConfig, EC = root.VMEditorCore, ED = CFG.EDITOR, CAT = CFG.byId;
+  const ABBR = { blank: 'BLANK', bellows: 'BELLOWS', pirani: 'PIRANI', valve: 'VALVE', viewport: 'VIEW', capacitance: 'CM', ionGauge: 'ION G.',
+    gate: 'GATE', aperture: 'APERTURE', cold: 'LN₂', hot: 'BAKE', piston: 'PISTON', rotary: 'ROTARY', scroll: 'SCROLL', roots: 'ROOTS', holweck: 'HOLWECK',
+    sorption: 'SORPTION', diffusion: 'DIFF.', tsp: 'TSP', neg: 'NEG', ion: 'ION', cryo: 'CRYO', turbo: 'TURBO' };
+  const SIDE = { 1: [0, -1], 2: [1, 0], 4: [0, 1], 8: [-1, 0] };
+  function create(d) {
+    const $ = d.$, sav = EC.store();
+    let maze = EC.newMaze(), editId = null, tool = 'tube', ret = 'title', msg = '';
+    const releasedThrough = () => (d.releasedThrough ? d.releasedThrough() : 30);
+    const available = (id) => CFG.isReleased(id, releasedThrough());
+    const owns = (id) => CAT[id] && available(id) && (CAT[id].tier == null || !!d.store().parts[id]);
+    const say = (t) => { msg = t || ''; $('ed-msg').textContent = msg; };
+    // ---- the drawer: parts by tier, buy with coins, select to place
+    function fillDrawer() {
+      const st = d.store(); $('ed-coins').textContent = `Purse: ${st.coins} coins`;
+      let html = `<div class="ed-tools"><button data-tool="erase" class="${tool === 'erase' ? 'sel' : ''}">Remove</button><button data-tool="rotate" class="${tool === 'rotate' ? 'sel' : ''}">Rotate</button><button data-part="source" class="${tool === 'source' ? 'sel' : ''}">Atom source<small>free</small></button></div>`;
+      // unreleased parts are omitted entirely (DECISIONS 657c839) — never greyed-out or "locked"
+      for (let t = 0; t < CFG.COST.TIERS; t++) {
+        const items = CFG.catalogueFor(releasedThrough()).filter((c) => c.tier === t);
+        if (!items.length) continue;
+        html += `<h4>Tier ${t} · ${CFG.cost(t)} coins each</h4><div class="ed-tier">`;
+        for (const c of items) {
+          const own = owns(c.id), sel = tool === c.id;
+          html += own ? `<button data-part="${c.id}" class="${sel ? 'sel' : ''}" title="${c.blurb}">${c.name}<small>owned</small></button>`
+            : `<button data-buy="${c.id}" ${st.coins < CFG.cost(t) ? 'disabled' : ''} title="${c.blurb}">${c.name}<small>buy · ${CFG.cost(t)} coins</small></button>`;
+        }
+        html += '</div>';
+      }
+      $('ed-drawer').innerHTML = html;
+      $('ed-blurb').textContent = CAT[tool] ? `${CAT[tool].name}: ${CAT[tool].blurb}` : tool === 'erase' ? 'Remove: tap a cell to take off its pump, fitting, source or part (in that order).' : 'Rotate: tap a part to turn it 90°.';
+    }
+    $('ed-drawer').onclick = (ev) => {
+      const b = ev.target.closest('button'); if (!b) return;
+      if (b.dataset.tool) { tool = b.dataset.tool; fillDrawer(); return; }
+      if (b.dataset.part) { tool = b.dataset.part; fillDrawer(); return; }
+      if (b.dataset.buy) { const id = b.dataset.buy, c = CAT[id], st = d.store();
+        if (!available(id)) { say('That part arrives with a later chapter.'); return; }
+        if (!d.ECO.spend(st, CFG.cost(c.tier))) { say(`${c.name} costs ${CFG.cost(c.tier)} coins: earn them in the apparatus levels, or buy a coin pack in the shop.`); return; }
+        st.parts[id] = true; d.persist(); tool = id; say(`Bought: ${c.name}. Tap a cell to place it.`); fillDrawer(); }
+    };
+    // ---- the schematic canvas
+    const cv = $('ed-canvas'), g = cv.getContext('2d');
+    let geo = { s: 40, ox: 20, oy: 20 };
+    function draw() {
+      const bw = d.theme() === 'bw', W = Math.min(cv.parentElement.clientWidth || 600, 760), m = 0.55;
+      const s = Math.max(26, Math.min(76, Math.floor(W / (maze.cols + 2 * m)))), dpr = Math.min(2, root.devicePixelRatio || 1);
+      const cw = Math.round(s * (maze.cols + 2 * m)), ch = Math.round(s * (maze.rows + 2 * m));
+      cv.width = cw * dpr; cv.height = ch * dpr; cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
+      geo = { s, ox: s * m, oy: s * m };
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.fillStyle = bw ? '#000' : '#2b1a0c'; g.fillRect(0, 0, cw, ch);
+      g.strokeStyle = bw ? 'rgba(255,255,255,.35)' : 'rgba(243,213,138,.22)'; g.lineWidth = 1;
+      for (let i = 0; i <= maze.cols; i++) { g.beginPath(); g.moveTo(geo.ox + i * s, geo.oy); g.lineTo(geo.ox + i * s, geo.oy + maze.rows * s); g.stroke(); }
+      for (let j = 0; j <= maze.rows; j++) { g.beginPath(); g.moveTo(geo.ox, geo.oy + j * s); g.lineTo(geo.ox + maze.cols * s, geo.oy + j * s); g.stroke(); }
+      const lay = EC.layout(maze), steel = bw ? '#fff' : '#c9d0d5', bore = bw ? '#000' : '#0b1016', ink = bw ? '#fff' : '#f3d58a';
+      const tw = s * 0.42;   // drawn tube width
+      for (let j = 0; j < maze.rows; j++) for (let i = 0; i < maze.cols; i++) {
+        const k = j * maze.cols + i, c = maze.cells[k]; if (!c) continue;
+        const raw = EC.maskOf(c), cx = geo.ox + (i + 0.5) * s, cy = geo.oy + (j + 0.5) * s, shape = EC.shapeOf(c.p);
+        const arm = (bit, wid, col) => { const [dx, dy] = SIDE[bit]; g.strokeStyle = col; g.lineWidth = wid; g.lineCap = 'butt'; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + dx * s / 2, cy + dy * s / 2); g.stroke(); };
+        if (shape === 'elbowArc') {
+          const bits = [1, 2, 4, 8].filter((b) => raw & b), [ax, ay] = SIDE[bits[0]], [bx, by] = SIDE[bits[1]], kx = cx + (ax + bx) * s / 2, ky = cy + (ay + by) * s / 2;
+          const a0 = Math.atan2(-(ay + by) * 0 + (cy + ay * s / 2) - ky, (cx + ax * s / 2) - kx), a1 = Math.atan2((cy + by * s / 2) - ky, (cx + bx * s / 2) - kx);
+          let A0 = a0, A1 = a1; if (((A1 - A0) + 2 * Math.PI) % (2 * Math.PI) > Math.PI) [A0, A1] = [A1, A0];
+          for (const [wid, col] of [[tw + 6, steel], [tw - 4, bore]]) { g.strokeStyle = col; g.lineWidth = wid; g.beginPath(); g.arc(kx, ky, s / 2, A0, A1); g.stroke(); }
+        } else {
+          g.lineJoin = 'miter';
+          const bits = [1, 2, 4, 8].filter((b) => raw & b);
+          const path = () => { g.beginPath(); if (bits.length === 1) { const [dx, dy] = SIDE[bits[0]]; g.moveTo(cx - dx * tw * 0.1, cy - dy * tw * 0.1); g.lineTo(cx + dx * s / 2, cy + dy * s / 2); }
+            else if (bits.length === 2) { const [ax, ay] = SIDE[bits[0]], [bx, by] = SIDE[bits[1]]; g.moveTo(cx + ax * s / 2, cy + ay * s / 2); g.lineTo(cx, cy); g.lineTo(cx + bx * s / 2, cy + by * s / 2); }
+            else for (const b of bits) { const [dx, dy] = SIDE[b]; g.moveTo(cx, cy); g.lineTo(cx + dx * s / 2, cy + dy * s / 2); } };
+          g.lineCap = bits.length > 2 ? 'square' : 'butt';
+          for (const [wid, col] of [[tw + 6, steel], [tw - 4, bore]]) { g.strokeStyle = col; g.lineWidth = wid; path(); g.stroke(); }
+          if (shape === 'elbowSq') { const [ax, ay] = SIDE[bits[0]], [bx, by] = SIDE[bits[1]], h = tw / 2 + 3;   // the 45° mitre seam
+            g.strokeStyle = steel; g.lineWidth = 1.5; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(cx + (ax + bx) * (tw / 2 - 2), cy + (ay + by) * (tw / 2 - 2)); g.lineTo(cx - (ax + bx) * h, cy - (ay + by) * h); g.stroke(); g.setLineDash([]); }
+          if (shape === 'cap') { const [dx, dy] = SIDE[bits[0]]; g.fillStyle = bw ? '#fff' : '#d9a943'; g.fillRect(cx - dx * tw * 0.1 - (dy ? tw / 2 + 4 : 4), cy - dy * tw * 0.1 - (dx ? tw / 2 + 4 : 4), dy ? tw + 8 : 8, dx ? tw + 8 : 8);
+            label(ABBR[CAT[c.p].part] || '', cx - dx * s * 0.28, cy - dy * s * 0.28 + (dx ? -s * 0.3 : 0), ink, s); }
+        }
+        // ends that meet nothing are closed: a short bar across the tube
+        for (const b of [1, 2, 4, 8]) if (raw & b && !(lay.open[k] & b) && !maze.pumps.some((p) => p.i === i && p.j === j && p.side === b)) {
+          const [dx, dy] = SIDE[b], ex = cx + dx * s * 0.46, ey = cy + dy * s * 0.46; g.strokeStyle = bw ? '#fff' : '#e05a3a'; g.lineWidth = 3; g.beginPath();
+          g.moveTo(ex - dy * (tw / 2 + 3), ey - dx * (tw / 2 + 3)); g.lineTo(ex + dy * (tw / 2 + 3), ey + dx * (tw / 2 + 3)); g.stroke(); }
+        if (maze.fix[k]) { const f = CAT[maze.fix[k]]; if (f.fix === 'laser') { g.strokeStyle = bw ? '#fff' : f.line === 'H-Lya' ? '#a98cff' : '#ff5a5a'; g.lineWidth = 2; g.setLineDash([4, 3]); g.beginPath();
+            if (raw & 1) { g.moveTo(cx - tw, cy); g.lineTo(cx + tw, cy); } else { g.moveTo(cx, cy - tw); g.lineTo(cx, cy + tw); } g.stroke(); g.setLineDash([]); label(f.line === 'H-Lya' ? 'Lyα' : f.line, cx, cy - s * 0.32, ink, s); }
+          else label(ABBR[f.fix] || f.fix, cx, cy, ink, s); }
+      }
+      for (const p of maze.pumps) { const [dx, dy] = SIDE[p.side], px = geo.ox + (p.i + 0.5) * s + dx * s * 0.78, py = geo.oy + (p.j + 0.5) * s + dy * s * 0.78;
+        g.fillStyle = bw ? '#000' : '#b07c25'; g.strokeStyle = bw ? '#fff' : '#3d2706'; g.lineWidth = 2; g.beginPath(); g.arc(px, py, s * 0.26, 0, 7); g.fill(); g.stroke(); label(ABBR[CAT[p.p].pump] || p.p, px, py, bw ? '#fff' : '#2a1803', s); }
+      if (maze.start) { const cx = geo.ox + (maze.start.i + 0.5) * s, cy = geo.oy + (maze.start.j + 0.5) * s; g.fillStyle = bw ? '#fff' : '#ff7a4a'; g.beginPath(); g.arc(cx, cy, s * 0.09, 0, 7); g.fill();
+        g.strokeStyle = g.fillStyle; g.setLineDash([2, 3]); g.lineWidth = 1.5; g.beginPath(); g.arc(cx, cy, s * 0.2, 0, 7); g.stroke(); g.setLineDash([]); }
+    }
+    function label(t, x, y, col, s) { if (!t) return; g.save(); g.font = `700 ${Math.max(8, Math.round(s * 0.15))}px Georgia, serif`; g.fillStyle = col; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 3; g.strokeStyle = d.theme() === 'bw' ? '#000' : 'rgba(26,14,6,.85)'; g.strokeText(t, x, y); g.fillText(t, x, y); g.restore(); }
+    cv.addEventListener('click', (ev) => {
+      const r = cv.getBoundingClientRect(), x = ev.clientX - r.left - geo.ox, y = ev.clientY - r.top - geo.oy;
+      let i = Math.floor(x / geo.s), j = Math.floor(y / geo.s);
+      // a tap just outside the grid edge lands on the border cell (pumps sit there)
+      i = Math.max(0, Math.min(maze.cols - 1, i)); j = Math.max(0, Math.min(maze.rows - 1, j));
+      tap(i, j);
+    });
+    function tap(i, j) {
+      const k = j * maze.cols + i, c = maze.cells[k];
+      if (tool === 'erase') { const r = EC.remove(maze, i, j); say(r.ok ? `Removed the ${r.what}.` : 'Nothing to remove there.'); }
+      else if (tool === 'rotate') { const r = EC.rotate(maze, i, j); say(r.ok ? '' : 'Nothing to rotate there.'); }
+      else if (!available(tool)) say('That part arrives with a later chapter.');
+      else if (!owns(tool)) say('Buy that part first.');
+      else if (c && c.p === tool && (CAT[tool].place === 'topo' || CAT[tool].place === 'cap')) EC.rotate(maze, i, j);   // tap the same part again: turn it
+      else { const r = EC.place(maze, tool, i, j, 0); say(r.ok ? '' : r.reason);
+        if (r.ok && (tool === 'elbowSq' || tool === 'elbowArc')) d.unlock('editor:elbow'); }
+      draw();
+    }
+    // ---- header controls
+    function fillHead() { $('ed-name').value = maze.name; $('ed-cols').textContent = maze.cols; $('ed-rows').textContent = maze.rows; $('ed-cf').value = maze.cf; }
+    $('ed-name').addEventListener('input', () => { maze.name = $('ed-name').value.replace(/[<>&"]/g, '').slice(0, 40); });
+    $('ed-cf').addEventListener('change', () => { const f = ED.flanges.find((x) => x.cf === $('ed-cf').value) || ED.flanges[0]; maze.cf = f.cf; maze.boreMM = f.boreMM; });
+    $('ed-cf').innerHTML = ED.flanges.map((f) => `<option value="${f.cf}">${f.cf} (${f.boreMM} mm bore)</option>`).join('');
+    const size = (dc, dr) => { maze = EC.resize(maze, maze.cols + dc, maze.rows + dr); fillHead(); draw(); };
+    $('ed-c-').onclick = () => size(-1, 0); $('ed-c+').onclick = () => size(1, 0); $('ed-r-').onclick = () => size(0, -1); $('ed-r+').onclick = () => size(0, 1);
+    $('ed-test').onclick = () => { const e = EC.validate(maze); if (e.length) { say(e.join(' ')); return; } d.startCustom(EC.toLevel(maze, editId || 'custom'), { from: 'editor' }); };
+    $('ed-save').onclick = () => { const e = EC.validate(maze); const r = sav.save(maze, editId, d.full()); if (r.ok) { editId = r.id; say(`Saved${e.length ? ' (not playable yet: ' + e.join(' ') + ')' : ''}.`); } else say(r.reason); };
+    $('ed-share').onclick = () => { const code = EC.encode(maze); $('ed-code').value = code; $('ed-code-row').classList.add('show');
+      if (root.navigator && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(() => say('Share code copied.'), () => say('Copy the share code below.')); else say('Copy the share code below.'); };
+    $('ed-done').onclick = () => d.showPanel(ret === 'mymazes' ? 'mymazes' : ret);
+    // ---- My mazes
+    function fillMine() {
+      const list = sav.list(), lim = sav.limit(d.full());
+      $('mm-slots').textContent = `${list.length} of ${lim} saved${d.full() ? '' : ' (the free edition keeps 1; the full laboratory keeps up to ' + ED.maxSaved + ')'}. Editor-made mazes never pay coins.`;
+      $('mm-list').innerHTML = list.length ? list.map(({ id, maze: m }) => { const ok = !EC.validate(m).length;
+        return `<div class="mm-row"><b>${m.name}</b><span>${m.cols}×${m.rows} · ${m.cf} · ${m.pumps.length} pump${m.pumps.length === 1 ? '' : 's'}</span><span class="row" style="margin:0"><button data-play="${id}" ${ok ? '' : 'disabled'}>Play</button><button data-edit="${id}">Edit</button><button data-del="${id}">Delete</button></span></div>`; }).join('')
+        : '<p class="sub">No saved mazes yet.</p>';
+    }
+    $('mm-list').onclick = (ev) => { const b = ev.target.closest('button'); if (!b) return;
+      if (b.dataset.play) { const m = sav.get(b.dataset.play); if (m) d.startCustom(EC.toLevel(m, b.dataset.play), { from: 'mymazes' }); }
+      if (b.dataset.edit) open(sav.get(b.dataset.edit), b.dataset.edit, 'mymazes');
+      if (b.dataset.del && root.confirm('Delete this maze?')) { sav.remove(b.dataset.del); fillMine(); } };
+    $('mm-new').onclick = () => open(null, null, 'mymazes');
+    $('mm-import').onclick = () => { let m; try { m = EC.decode($('mm-code').value); } catch (e) { $('mm-msg').textContent = e.message; return; }
+      const r = sav.save(m, null, d.full()); $('mm-msg').textContent = r.ok ? `Imported "${m.name}".` : r.reason; if (r.ok) { $('mm-code').value = ''; fillMine(); } };
+    function open(m, id, from) { maze = m || EC.newMaze(); editId = id || null; ret = from || 'title'; tool = owns('tube') ? 'tube' : 'source'; $('ed-code-row').classList.remove('show'); say(''); d.showPanel('editor'); fillHead(); fillDrawer(); draw(); }
+    function openMine(from) { $('mm-back').dataset.ret = from || 'title'; fillMine(); $('mm-msg').textContent = ''; d.showPanel('mymazes'); }
+    $('mm-back').onclick = () => d.showPanel($('mm-back').dataset.ret || 'title');
+    return { open, openMine, reopen: () => { d.showPanel('editor'); fillDrawer(); draw(); }, refresh: () => { fillDrawer(); draw(); }, fillMine, draw, maze: () => maze, tap, select: (t) => { tool = t; fillDrawer(); }, store: sav };
+  }
+  root.VMEditor = { create };
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
 <script>/* src/game.js */
 /* Vacuum Maze: loop, camera, rendering, input, menus. Plain script (no ES modules).
  * Round 2: real gravity per world (g·sin θ), stochastic (Cercignani–Lampis) walls, chapters, several pumps per level, gate valves, apertures,
- * lasers, coins + element shop, pump cards, lab notebook, haptics, purchases (src/purchase) and desktop steering. */
+ * lasers, coins + element shop, pump cards, lab notebook, haptics, purchases (src/purchase) and desktop steering.
+ * Round 3: the level editor (src/editor.js, editor-core.js, economy-config.js), square and arced elbows, coin packs. */
 (function () {
 'use strict';
 const VLS = window.VLS, AP = VLS.apparatus, HW = VLS.hardware, PAL = VLS.tokens.palette, FONTS = VLS.tokens.fonts, HIST = window.VMHistogram;
@@ -3875,7 +4487,7 @@ const A = VLS.atom.create({ shellsFor: window.MDPhysics.shellsFor, radiusFor: wi
 const TK = { font: { mono: FONTS.mono, italic: FONTS.serif, serif: FONTS.engraved }, ink: { victorian: PAL.brassText }, brass: { engraveInk: PAL.engraving },
   vacuum: { center: PAL.vacuum, edge: PAL.vacuumDeep }, cold: { label: '#e8f4ff' }, hot: { label: '#ffe2c4' } };
 const P = window.MDPhysics, M = window.VMMaze, E = window.VMEngine, SN = window.VMSensor, S = window.VMSettings, T = window.VMTilt;
-const LZ = window.VMLasers, ECO = window.VMEconomy, NB = window.VMNotebook, VP = window.VMPurchase;
+const LZ = window.VMLasers, ECO = window.VMEconomy, NB = window.VMNotebook, VP = window.VMPurchase, CFG = window.VMEconomyConfig, EC = window.VMEditorCore;
 const { ELEMENTS, formatT } = P;
 const { C, H, HC, WALL_T } = M;
 const VIEW_SHORT_WORLD = 215;          // world px across the screen's short side (tube OD 184 px nearly fills it)
@@ -3896,12 +4508,21 @@ function resize() {
 
 // ------------------------------------------------------------------ purchases (thin interface, src/purchase)
 const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-let purchase = VP.create({ adapter: window.VMPurchaseAdapters.web(VP.CONFIG) });
+// coin packs (consumables, src/economy-config.js): credited to the purse once per store transaction (src/purchase/purchase.js)
+const PACKS = CFG.COIN_PACKS_ENABLED ? CFG.COIN_PACKS : [];
+function onCoins(pk) {
+  ECO.creditPack(store, pk.coins); persist();
+  toast(`+${pk.coins} coins: ${pk.name}. Thank you!`);
+  if ($('p-shop').classList.contains('show')) fillShop();
+  if ($('p-editor').classList.contains('show')) editor.refresh();
+}
+const makePurchase = (adapter) => VP.create({ adapter, packs: PACKS, onCoins });
+let purchase = makePurchase(window.VMPurchaseAdapters.web(VP.CONFIG));
 async function initPurchases() {
   if (isNative) {
     await new Promise((res) => { if (window.CdvPurchase) return res(); document.addEventListener('deviceready', res, { once: true }); setTimeout(res, 4000); });
-    const ad = window.VMPurchaseAdapters.cdv && window.VMPurchaseAdapters.cdv(VP.CONFIG);
-    if (ad) purchase = VP.create({ adapter: ad });
+    const ad = window.VMPurchaseAdapters.cdv && window.VMPurchaseAdapters.cdv(VP.CONFIG, PACKS.map((p) => p.productId));
+    if (ad) purchase = makePurchase(ad);
   }
   purchase.onChange(onEntitlement);
   await purchase.init();
@@ -3921,7 +4542,7 @@ const isLevelUnlocked = (i) => purchase.isLevelUnlocked(i);
 const progressOpen = (i) => i === 0 || !!store.cleared[M.LEVELS[i - 1].id];
 
 // ------------------------------------------------------------------ state
-const state = { lastInput: performance.now(), screen: 'title', levelIdx: 0, level: null, world: null, model: null, cam: { x: 0, y: 0, k: 1 }, clock: 0, tilt: { x: 0, y: 0 },
+const state = { lastInput: performance.now(), screen: 'title', levelIdx: 0, level: null, custom: null, world: null, model: null, cam: { x: 0, y: 0, k: 1 }, clock: 0, tilt: { x: 0, y: 0 },
   demo: false, winT: 0, toast: null, toastT: 0, lastResult: null, seenCells: new Set(), contacted: false, started: false, unlockFlash: 0,
   pendingLevel: null, hapticLog: [], pumpQueue: [] };
 const levelCache = {};
@@ -3936,7 +4557,19 @@ let winTimer = 0;   // pending pump-card / win-panel timer (cancelled when a lev
 function startLevel(i, demo = false, force = false) {   // force: dev/screenshot hook only (unreleased chapters)
   clearTimeout(winTimer);
   if (!demo && !(force && devHooks.on) && (!isLevelUnlocked(i) || i >= RELEASED)) { openLedger(i); return; }
-  state.levelIdx = i; state.level = getLevel(i); state.demo = demo;
+  state.custom = null;
+  beginRun(getLevel(i), demo); state.levelIdx = i;
+}
+// an editor-made maze (open to every player, free or paid; it never pays coins). ctx.from: the panel to go back to.
+function startCustom(level, ctx = {}) {
+  clearTimeout(winTimer);
+  state.custom = { level, from: ctx.from || 'editor' };
+  beginRun(level, false);
+}
+const restart = () => (state.custom ? startCustom(state.custom.level, { from: state.custom.from }) : startLevel(state.levelIdx));
+const pumpName = (t) => (HW.PUMP_INFO[t] || CFG.byId[t] || { name: t }).name;
+function beginRun(level, demo) {
+  state.level = level; state.demo = demo;
   state.world = E.createWorld(state.level, demo ? 1 : settings.element, engineOpts(state.level));
   state.world.onContact = (a, hit) => onContact(a, hit);
   state.model = A.buildModel(state.world.atom.z);
@@ -3948,7 +4581,7 @@ function startLevel(i, demo = false, force = false) {   // force: dev/screenshot
     const L = state.level, b = bodyFor(L);
     unlock('start'); unlock('body:' + b);
     if (L.lasers.length) { unlock('laser'); for (const bm of L.lasers) unlock('laser:' + bm.line); }
-    const pumps = [...new Set(L.exits.map((e) => HW.PUMP_INFO[e.pump].name.toLowerCase()))].join(' or ');
+    const pumps = [...new Set(L.exits.map((e) => pumpName(e.pump).toLowerCase()))].join(' or ');
     toast(L.body ? `This apparatus stands on ${E.BODIES[L.body].name}: g = ${E.BODIES[L.body].g} m/s²` : `Steer the atom into the ${pumps}`);
     if (inputMode === 'manual') showHint();
   }
@@ -3958,7 +4591,9 @@ function lockOrientation() { try { const so = screen.orientation; if (so && so.l
 
 // ------------------------------------------------------------------ notebook unlocks
 function unlock(ev) {
-  const ids = NB.unlocksFor(ev).filter((id) => !store.notebook[id]);
+  // in editor-made mazes, only pages of this edition unlock (later-chapter pages stay with their free updates)
+  const inCustom = state.level && state.level.custom && !state.demo && ev !== 'editor:elbow';
+  const ids = NB.unlocksFor(ev).filter((id) => !store.notebook[id] && (!inCustom || edition().has(id)));
   if (!ids.length) return [];
   for (const id of ids) { store.notebook[id] = true; store.notebookNew[id] = true; }
   persist();
@@ -4076,6 +4711,7 @@ function watchCells() {
 }
 function onWin() {
   if (state.demo) return;
+  if (state.level.custom) return onCustomWin();
   const w = state.world, L = state.level, t = w.stats.time, body = bodyFor(L);
   const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(t, par);
   const key = S.bestKey(L.id, body), prev = store.best[key];
@@ -4093,12 +4729,31 @@ function onWin() {
   // only if the player is still on this won level 0.9 s later (leaving or restarting cancels it)
   clearTimeout(winTimer); winTimer = setTimeout(() => { if (state.world === w && state.screen === 'won') (newPump ? showPumpCard(exit.pump) : showWin()); }, 900);
 }
+// editor-made mazes never pay coins (no farming) and keep no best times or pump bonuses
+function onCustomWin() {
+  const w = state.world, L = state.level, t = w.stats.time, body = bodyFor(L), exit = w.wonExit || L.exits[0];
+  const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(t, par);
+  unlock('win'); purchase.trial.endRun();
+  state.lastResult = { t, stars, par, rec: false, prev: null, contacts: w.stats.contacts, coins: ECO.coinsForCustomWin(), exit, body, newPump: false, custom: true };
+  state.screen = 'won';
+  clearTimeout(winTimer); winTimer = setTimeout(() => { if (state.world === w && state.screen === 'won') showWin(); }, 900);
+}
 function showWin() {
   const r = state.lastResult, L = state.level, b = E.BODIES[r.body];
+  if (r.custom) {
+    $('win-title').textContent = `${L.name}: atom extracted!`;
+    $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
+    const rows = [['Time', `${r.t.toFixed(1)} s`], ['Par (★★★)', `${r.par} s (${L.pathCells} cells, ${b.name})`], ['Wall contacts', r.contacts], ['Pump', pumpName(r.exit.pump)],
+      ['Coins', 'none: mazes you build never pay coins'], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, left the pump at ${formatT(state.world.atom.T)}`]];
+    $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
+    $('win-note').textContent = 'An editor-made maze.';
+    $('b-next').style.display = ''; $('b-next').textContent = state.custom && state.custom.from === 'mymazes' ? 'My mazes ◂' : 'Back to the editor ◂';
+    showPanel('win'); return;
+  }
   $('win-title').textContent = `${L.name}: atom extracted!`;
   $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
   const rows = [['Time', `${r.t.toFixed(1)} s`], ['Par (★★★)', `${r.par} s (${L.pathCells} cells, ${b.name})`], ['Wall contacts', r.contacts],
-    [`Best on ${b.name}`, `${store.best[S.bestKey(L.id, r.body)].time.toFixed(1)} s`], ['Pump', HW.PUMP_INFO[r.exit.pump].name + (r.exit.bonus ? ' (bonus ×1.5)' : '')],
+    [`Best on ${b.name}`, `${store.best[S.bestKey(L.id, r.body)].time.toFixed(1)} s`], ['Pump', pumpName(r.exit.pump) + (r.exit.bonus ? ' (bonus ×1.5)' : '')],
     ['Coins', `+${r.coins} (${store.coins} in the purse)`], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, left the pump at ${formatT(state.world.atom.T)}`]];
   $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
   $('win-note').textContent = r.rec && r.prev ? `New best! (was ${r.prev.time.toFixed(1)} s)` : r.rec ? 'First escape from this apparatus on this world.' : '';
@@ -4149,6 +4804,7 @@ function render() {
   for (const cell of vis) drawThermal(cell, bw);
   for (const cell of vis) drawPlates(cell, bw);
   if (settingsLasersVisible()) for (const b of L.lasers) drawLaser(b, bw);
+  for (const cell of vis) drawMitre(cell, bw);
   for (const cell of vis) drawJoints(L, cell, bw);
   drawStart(L, bw);
   const a = state.world.atom;
@@ -4176,6 +4832,20 @@ function drawSteel(cell, bw) {
     if (w.type === 'seg') HW.wallBand(ctx, w.ax, w.ay, w.bx, w.by, w.nx, w.ny, WALL_T, o);
     else HW.arcWallBand(ctx, w.cx, w.cy, w.R, w.a0, w.a1, w.s, WALL_T, o);
   }
+  if (cell.shape === 'elbowSq') {   // the square (mitred) elbow's sharp outer corner: fill the steel where the two wall bands meet
+    const [sx, sy] = cell.corner, x = cell.cx - sx * H, y = cell.cy - sy * H, x2 = x - sx * WALL_T, y2 = y - sy * WALL_T;
+    ctx.fillStyle = bw ? '#fff' : HW.stainlessFill(ctx, x, y, x2, y2); ctx.fillRect(Math.min(x, x2), Math.min(y, y2), WALL_T, WALL_T);
+  }
+}
+// the mitre: a 45° weld seam from the inner corner to the outer corner, with weld beads where it cuts the wall (2D cutaway)
+function drawMitre(cell, bw) {
+  if (cell.shape !== 'elbowSq') return;
+  const [sx, sy] = cell.corner, ix = cell.cx + sx * H, iy = cell.cy + sy * H, ox = cell.cx - sx * H, oy = cell.cy - sy * H;
+  ctx.save(); ctx.strokeStyle = bw ? '#fff' : 'rgba(201,208,213,0.35)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 6]);
+  ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(ox, oy); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = bw ? '#fff' : '#8d949a'; ctx.strokeStyle = bw ? '#000' : 'rgba(10,12,14,0.6)'; ctx.lineWidth = 1;
+  for (const [x, y, d] of [[ix, iy, 1], [ox, oy, -1]]) { ctx.beginPath(); ctx.arc(x + d * sx * WALL_T * 0.5, y + d * sy * WALL_T * 0.5, WALL_T * 0.55, 0, 7); ctx.fill(); ctx.stroke(); }
+  ctx.restore();
 }
 function borePath(cell) {
   const { cx, cy } = cell, m = cell.mask;
@@ -4191,6 +4861,7 @@ function borePath(cell) {
   if (m & M.BIT.E) ctx.rect(cx + H - 0.5, cy - H, HC - H + 1, 2 * H);
 }
 function drawBore(cell, bw) {
+  if (cell.shape === 'empty') return;
   borePath(cell);
   if (bw) { ctx.fillStyle = '#000'; ctx.fill('nonzero'); return; }
   const g = ctx.createRadialGradient(state.cam.x, state.cam.y, 20, state.cam.x, state.cam.y, 420);
@@ -4305,7 +4976,30 @@ function drawExitStub(L, e, bw) {
 }
 function drawPump(L, e, bw) {
   const ep = M.exitPlane(L, e), d = PUMP_GAP + PUMP_R;
+  if (e.pump === 'piston') { drawPiston(ep.x + ep.ax * d, ep.y + ep.ay * d, PUMP_R, ep.ax, ep.ay, bw); return; }
   HW.pumpCutaway(ctx, e.pump, ep.x + ep.ax * d, ep.y + ep.ay * d, PUMP_R, { ax: ep.ax, ay: ep.ay, t: state.clock, theme: settings.theme });
+}
+// two-stage dry piston pump (level editor, tier 0; the shared kit has no cutaway for it): two cylinders in series on one crank
+function drawPiston(x, y, r, ax, ay, bw) {
+  const th = Math.atan2(-ax, ay), t = state.clock * 3;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(th); ctx.scale(r, r);
+  const steelF = (x0, y0, x1, y1) => (bw ? '#000' : HW.stainlessFill(ctx, x0, y0, x1, y1)), edge = bw ? '#fff' : 'rgba(10,12,14,0.7)';
+  ctx.lineWidth = 1 / r * (bw ? 1.5 : 1);
+  ctx.fillStyle = steelF(-0.85, 0, 0.85, 0); ctx.strokeStyle = edge; ctx.beginPath(); ctx.roundRect(-0.85, -0.55, 1.7, 1.45, 0.08); ctx.fill(); ctx.stroke();   // crankcase
+  ctx.fillStyle = steelF(-0.3, 0, 0.3, 0); ctx.beginPath(); ctx.rect(-0.18, -1, 0.36, 0.45); ctx.fill(); ctx.stroke();   // inlet from the tube
+  for (const [cx, ph] of [[-0.42, 0], [0.42, Math.PI]]) {   // first and second stage, half a turn apart
+    ctx.fillStyle = bw ? '#000' : '#0a0e12'; ctx.beginPath(); ctx.rect(cx - 0.24, -0.5, 0.48, 0.8); ctx.fill(); if (bw) ctx.stroke();
+    const py = -0.12 + 0.16 * Math.sin(t + ph);
+    ctx.fillStyle = bw ? '#fff' : VLS.apparatus.brassGrad(ctx, cx - 0.22, 0, cx + 0.22, 0); ctx.beginPath(); ctx.rect(cx - 0.22, py, 0.44, 0.16); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = bw ? '#fff' : '#3d2706'; ctx.lineWidth = 3 / r; ctx.beginPath(); ctx.moveTo(cx, py + 0.16); ctx.lineTo(Math.cos(t + ph) * 0.12, 0.62 + Math.sin(t + ph) * 0.12); ctx.stroke(); ctx.lineWidth = 1 / r; ctx.strokeStyle = edge;
+  }
+  ctx.beginPath(); ctx.arc(0, 0.62, 0.15, 0, 7); ctx.fillStyle = bw ? '#000' : '#5a3c0e'; ctx.fill(); ctx.stroke();   // crank
+  ctx.strokeStyle = bw ? '#fff' : 'rgba(243,213,138,0.6)'; ctx.setLineDash([0.06, 0.05]); ctx.beginPath(); ctx.moveTo(-0.18, -0.55); ctx.lineTo(-0.42, -0.5); ctx.moveTo(-0.18, -0.4); ctx.quadraticCurveTo(0, -0.62, 0.42, -0.5); ctx.stroke(); ctx.setLineDash([]);   // stage 1 → stage 2
+  ctx.restore();
+  ctx.save(); const py = y + r * 1.25, txt = 'TWO-STAGE PISTON PUMP';
+  ctx.font = bw ? `${Math.max(9, Math.round(r * 0.13))}px ${FONTS.mono}` : `700 ${Math.max(9, Math.round(r * 0.13))}px ${FONTS.engraved}`; const w = ctx.measureText(txt).width * 1.15 + r * 0.45;
+  if (bw) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(x - w / 2, py - r * 0.12, w, r * 0.24); ctx.fillStyle = '#fff'; } else { AP.plaque(ctx, x - w / 2, py - r * 0.13, w, r * 0.26, 3); ctx.fillStyle = PAL.engraving || '#2a1803'; }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x, py + 1); ctx.restore();
 }
 function drawStart(L, bw) {
   const cell = L.cells[L.start.j * L.cols + L.start.i];
@@ -4357,7 +5051,7 @@ function hud(theme) {
   if (!bw) {
     AP.plaque(ctx, left, top, width, h, 3);
     const cx = left + width / 2, col = width / 3;
-    AP.engrave(ctx, `${L.id}. ${L.name.toUpperCase()} · ${L.cf}`, cx, top + 19, 11, 'center', '700');
+    AP.engrave(ctx, `${L.custom ? '' : L.id + '. '}${L.name.toUpperCase()} · ${L.cf}`, cx, top + 19, 11, 'center', '700');
     AP.engrave(ctx, 'TIME', left + col * 0.5, top + 33, 9); AP.engrave(ctx, `${t.toFixed(1)} s`, left + col * 0.5, top + 52, 18, 'center', '700');
     AP.engrave(ctx, 'CONTACTS', left + col * 1.5, top + 33, 9); AP.engrave(ctx, String(w.stats.contacts), left + col * 1.5, top + 52, 18, 'center', '700');
     AP.engrave(ctx, 'TEMPERATURE', left + col * 2.5, top + 33, 9); AP.engrave(ctx, formatT(Tk), left + col * 2.5, top + 52, 16, 'center', '700');
@@ -4366,7 +5060,7 @@ function hud(theme) {
     ctx.fillStyle = '#000'; ctx.fillRect(left, top, width, h); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(left, top, width, h);
     const mono = (s, px, x, y) => { ctx.font = `${px}px ${TK.font.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff'; ctx.fillText(s, x, y); };
     const col = width / 3;
-    mono(`${L.id}. ${L.name.toUpperCase()} ${L.cf}`, 11, left + width / 2, top + 14);
+    mono(`${L.custom ? '' : L.id + '. '}${L.name.toUpperCase()} ${L.cf}`, 11, left + width / 2, top + 14);
     mono(`${t.toFixed(1)} S`, 17, left + col * 0.5, top + 40); mono(`${w.stats.contacts} HITS`, 15, left + col * 1.5, top + 40); mono(formatT(Tk), 15, left + col * 2.5, top + 40);
     mono(`${'*'.repeat(stars)}${'.'.repeat(3 - stars)} PAR ${par} S ${bname.toUpperCase()}${best ? ` BEST ${best.time.toFixed(1)}` : ''}`, 10, left + width / 2, top + 62);
   }
@@ -4445,7 +5139,7 @@ function titleHud(theme) {
 }
 
 // ------------------------------------------------------------------ menus
-const PANELS = ['title', 'levels', 'settings', 'pause', 'win', 'ledger', 'pump', 'shop', 'notebook'];
+const PANELS = ['title', 'levels', 'settings', 'pause', 'win', 'ledger', 'pump', 'shop', 'notebook', 'editor', 'mymazes'];
 let settingsReturn = 'title', shopReturn = 'title', nbReturn = 'title', pumpCardType = null;
 function showPanel(name) {
   for (const p of PANELS) $('p-' + p).classList.toggle('show', p === name);
@@ -4549,6 +5243,10 @@ $('b-pc-read').onclick = () => { openNotebook('win', 'pump-' + pumpCardType); };
 function openShop(from) { shopReturn = from; fillShop(); showPanel('shop'); }
 function fillShop() {
   $('shop-coins').textContent = `Purse: ${store.coins} coins`;
+  const sells = purchase.sellsPacks();
+  $('shop-packs').innerHTML = purchase.getCoinPacks().map((p) => sells ? `<button data-pack="${p.id}"><b>${p.name}</b><span>${p.coins} coins</span><small>${p.displayPrice}</small></button>`
+    : `<div><b>${p.name}</b><span>${p.coins} coins</span><small>${p.displayPrice} in the apps</small></div>`).join('');
+  $('packs-msg').textContent = sells ? '' : 'Coin packs are sold in the App Store and Google Play versions. Here, coins are earned in play.';
   $('shop-list').querySelector('tbody').innerHTML = ELEMENTS.map((e) => {
     const own = store.owned.includes(e.Z), cost = ECO.elementCost(e.Z), line = LZ.LINES[e.Z];
     const btn = settings.element === e.Z ? '<b>in use</b>' : own ? `<button data-use="${e.Z}">Use</button>` : `<button data-buy="${e.Z}" ${store.coins < cost ? 'disabled' : ''}>${cost} coins</button>`;
@@ -4557,11 +5255,18 @@ function fillShop() {
 }
 $('shop-list').onclick = (ev) => {
   const b = ev.target.closest('button'); if (!b) return;
-  if (b.dataset.buy) { const z = +b.dataset.buy, cost = ECO.elementCost(z); if (store.coins < cost) return; store.coins -= cost; store.owned.push(z); settings.element = z; persist(); unlock('element'); }
+  if (b.dataset.buy) { const z = +b.dataset.buy, cost = ECO.elementCost(z); if (!ECO.spend(store, cost)) return; store.owned.push(z); settings.element = z; persist(); unlock('element'); }
   if (b.dataset.use) { settings.element = +b.dataset.use; persist(); }
   fillShop();
 };
-$('b-shop-back').onclick = () => showPanel(shopReturn);
+$('b-shop-back').onclick = () => (shopReturn === 'editor' ? editor.reopen() : showPanel(shopReturn));
+$('shop-packs').onclick = async (ev) => {
+  const b = ev.target.closest('button[data-pack]'); if (!b) return;
+  $('packs-msg').textContent = 'Asking the store…';
+  const r = await purchase.buyCoins(b.dataset.pack);
+  $('packs-msg').textContent = r.ok ? (r.pending ? 'The store is still processing the purchase; the coins arrive as soon as it completes.' : `+${r.coins} coins added to the purse.`) : r.cancelled ? 'Purchase cancelled.' : `The store said: ${r.error || 'unavailable'}.`;
+  fillShop();
+};
 // ---- notebook
 let nbView = 'toc';
 let editionIds = null;
@@ -4604,20 +5309,23 @@ $('b-nb-plain').onclick = () => { settings.plainNotebook = !settings.plainNotebo
 $('b-nb-back').onclick = () => showPanel(nbReturn);
 
 function goTitle() { state.screen = 'title'; purchase.trial.endRun(); startLevel(0, true); showPanel('title'); }
+// leaving an editor-made maze: back to the editor (test-play) or to My mazes
+function leaveCustom() { const from = state.custom ? state.custom.from : 'editor'; state.screen = 'title'; purchase.trial.endRun(); startLevel(0, true); if (from === 'mymazes') editor.openMine('title'); else editor.reopen(); }
 function pause() { if (state.screen !== 'playing') return; state.screen = 'paused'; drag = null; showPanel('pause'); }
 function resume() { if (state.screen !== 'paused') return; state.screen = 'playing'; last = performance.now(); showPanel(null); }
-const toLevels = () => { state.screen = 'title'; purchase.trial.endRun(); startLevel(Math.min(state.levelIdx, RELEASED - 1), true); showPanel('levels'); };
+const toLevels = () => { if (state.custom) { leaveCustom(); return; } state.screen = 'title'; purchase.trial.endRun(); startLevel(Math.min(state.levelIdx, RELEASED - 1), true); showPanel('levels'); };
 $('b-begin').onclick = async () => { showPanel('levels'); detectSensor(); };   // user gesture → iOS motion permission
 $('b-settings').onclick = () => openSettings('title');
 $('b-notebook').onclick = () => openNotebook('title'); $('b-shop').onclick = () => openShop('title');
+$('b-editor').onclick = () => editor.openMine('title'); $('b-levels-mine').onclick = () => editor.openMine('levels');
 $('b-levels-back').onclick = () => showPanel('title'); $('b-levels-shop').onclick = () => openShop('levels'); $('b-levels-notebook').onclick = () => openNotebook('levels');
 $('b-resume').onclick = resume;
-$('b-restart').onclick = () => startLevel(state.levelIdx);
+$('b-restart').onclick = () => restart();
 $('b-pause-settings').onclick = () => openSettings('pause');
 $('b-pause-notebook').onclick = () => openNotebook('pause');
 $('b-pause-levels').onclick = toLevels;
-$('b-next').onclick = () => { const n = Math.min(RELEASED - 1, state.levelIdx + 1); if (!isLevelUnlocked(n)) openLedger(n); else startLevel(n); };
-$('b-retry').onclick = () => startLevel(state.levelIdx);
+$('b-next').onclick = () => { if (state.custom) { leaveCustom(); return; } const n = Math.min(RELEASED - 1, state.levelIdx + 1); if (!isLevelUnlocked(n)) openLedger(n); else startLevel(n); };
+$('b-retry').onclick = () => restart();
 $('b-win-levels').onclick = toLevels;
 $('b-pausebtn').addEventListener('click', () => pause());
 $('b-level').addEventListener('click', () => zeroLevel());
@@ -4625,6 +5333,10 @@ function zeroLevel() {
   if (!sensor.live()) { toast('No tilt sensor: nothing to zero'); return; }
   settings.levelRef = { x: sensor.st.tilt.x, y: sensor.st.tilt.y }; persist(); toast('This tilt now counts as level (Settings → True level to undo)');
 }
+
+// ---- level editor + My mazes (src/editor.js)
+const editor = window.VMEditor.create({ $, store: () => store, persist, ECO, unlock, full: () => purchase.getEntitlement().full, startCustom, showPanel, toast, theme: () => settings.theme, releasedThrough: () => RELEASED });
+addEventListener('resize', () => { if ($('p-editor').classList.contains('show')) editor.draw(); });
 
 // ---- keep the screen awake while playing
 let wakeLock = null;
@@ -4662,11 +5374,14 @@ function applySettings() {
   if (state.world) Object.assign(state.world.opts, { residenceMean: settings.residenceMean, accommodation: settings.accommodation, kernel: settings.kernel });
 }
 for (const id of ['s-theme', 's-kernel', 's-el', 's-smooth', 's-acc', 's-res', 's-map', 's-hist', 's-hold', 's-haptics']) $(id).addEventListener('input', applySettings);
-$('s-close').onclick = () => { if (state.world && !state.demo && state.world.atom.z !== settings.element && settingsReturn === 'pause') { startLevel(state.levelIdx); return; } showPanel(settingsReturn); };
+$('s-close').onclick = () => { if (state.world && !state.demo && state.world.atom.z !== settings.element && settingsReturn === 'pause') { restart(); return; } showPanel(settingsReturn); };
 $('s-zero').onclick = () => { zeroLevel(); };
 $('s-truelevel').onclick = () => { settings.levelRef = null; persist(); toast('Using true gravity'); };
 $('s-defaults').onclick = () => { const keep = { element: settings.element, body: settings.body }; Object.assign(settings, S.DEFAULTS, keep); persist(); fillSettings(); applySettings(); };
-$('s-wipe').onclick = () => { if (!confirm('Erase best times, stars, coins, elements and notebook? (Purchases are kept.)')) return; store = S.reset(); Object.assign(settings, store.settings); store.settings = settings; persist(); fillSettings(); };
+$('s-wipe').onclick = () => {
+  if (!confirm('Erase best times, stars, earned coins, elements, editor parts and notebook? (Purchases are kept, including unspent coins from packs, and so are your saved mazes.)')) return;
+  const paid = Math.min(store.coins, store.paidCoins || 0);
+  store = S.reset(); store.coins = paid; store.paidCoins = paid; Object.assign(settings, store.settings); store.settings = settings; persist(); fillSettings(); };
 $('s-restore').onclick = () => doRestore($('l-purchase'));
 $('s-check').onclick = () => runCheck($('s-kernel').value, +$('s-acc').value);
 // detailed balance: atoms arriving with the wall's own flux distribution must leave with it (cosine-law angles, T_out = T_w)
@@ -4683,7 +5398,7 @@ addEventListener('keydown', (e) => {
   keys.add(e.code);
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (e.code === 'KeyP' || e.code === 'Escape') { if (state.screen === 'playing') pause(); else if (state.screen === 'paused' && $('p-pause').classList.contains('show')) resume(); }
-  if (e.code === 'KeyR' && state.screen === 'playing') startLevel(state.levelIdx);
+  if (e.code === 'KeyR' && state.screen === 'playing') restart();
   if (e.code === 'KeyL' && state.screen === 'playing') zeroLevel();
   if (e.code === 'KeyH' && state.screen === 'playing') { settings.holdTilt = !settings.holdTilt; persist(); toast(settings.holdTilt ? 'Hold tilt: on (the apparatus stays tipped)' : 'Hold tilt: off (eases back to level)'); }
   if (e.code === 'Enter' && $('p-title').classList.contains('show')) { e.preventDefault(); $('b-begin').click(); }
