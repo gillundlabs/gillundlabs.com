@@ -3406,7 +3406,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
 
   add({ id: 'how-to', title: 'How to build an apparatus', group: 'The bench', unlock: 'start', hint: 'Open from the start.',
     body: ['Each experiment has a specimen (a weight, a crystal, a flask or a brick) and a specimen tray. Keep the specimen wholly inside the tray for two seconds and the experiment succeeds.',
-      'Pick a part from the drawer and draw it inside the dashed build area: drag from joint to joint for rods, string and springs; tap to drop a wheel; drag in the direction a piston should push. Ends that land on a joint are pinned there and turn freely.',
+      'Pick a part from the drawer and draw it inside the blue build area: drag from joint to joint for rods, string and springs; tap to drop a wheel; drag in the direction a piston should push. Ends that land on a joint are pinned there and turn freely.',
       'Some specimens carry their own brass joint: pin parts to it and carry the specimen along. Loose ones can only be pushed. Then pull the brass lever; pull it again to stop and edit.',
       'Fantastic Apparatus was inspired by Colin Northway\'s <i>Fantastic Contraption</i> (2008), rebuilt with real masses and materials.'],
     game: 'Parts of your own apparatus pass through one another; only specimens, loose objects and furniture get in their way; otherwise every pin would jam.',
@@ -3868,7 +3868,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     }
     void map;
     const errs = S.validateDesign(state.level, d);
-    return errs.length ? { error: errs[0].includes('build zone') ? 'Parts must sit wholly inside the dashed build area.' : errs[0], design: d } : { design: d };
+    return errs.length ? { error: errs[0].includes('build zone') ? 'Parts must sit wholly inside the blue build area.' : errs[0], design: d } : { design: d };
   }
   function snapExact(p, d) { for (const n of d.nodes) if (Math.hypot(n.x - p.x, n.y - p.y) < 1e-3) return { x: n.x, y: n.y, id: n.id }; for (const n of nm().values()) if (n.fixed && Math.hypot(n.x - p.x, n.y - p.y) < 1e-3) return { x: n.x, y: n.y, id: n.id }; return { x: p.x, y: p.y, id: null }; }
   function newIdPeek(d) { let id; do { id = 'n' + (state.nid++); } while (d.nodes.some((n) => n.id === id)); return id; }
@@ -3948,7 +3948,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       const nd = JSON.parse(moved);
       if (d.mergeWith) { for (const part of nd.parts) part.n = part.n.map((id) => (id === d.id ? d.mergeWith : id)); nd.nodes = nd.nodes.filter((n) => n.id !== d.id); if (nd.parts.some((pp) => new Set(pp.n).size !== pp.n.length)) { toast('A part cannot join itself.'); return; } }
       const errs = S.validateDesign(state.level, nd);
-      if (errs.length) { toast(errs[0].includes('build zone') ? 'Joints must stay inside the dashed build area.' : errs[0].replace(/^part \d+: /, '')); return; }
+      if (errs.length) { toast(errs[0].includes('build zone') ? 'Joints must stay inside the blue build area.' : errs[0].replace(/^part \d+: /, '')); return; }
       if (moved !== orig) commit(() => { state.design = nd; prune(state.design); });
     }
   }
