@@ -1,8 +1,31 @@
-/* Gillund Labs site: apparatus register (wood + brass) for chrome, notebook register for notes. See assets/STYLE-kit.md. */
+/* Gillund Labs site: apparatus register (wood + brass + ivory + glass) for chrome,
+   notebook register for notes. Soft-gold card chrome banned (DECISIONS 4e3607b);
+   beveled brass / engravers font (5b433b5); labels stay on button face (a10436a);
+   recessed walnut paneling (adfb6be). See assets/STYLE-kit.md. */
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
+
+/* Shared brass button surface: brushed lacquer + specular, kit stops (not soft-gold sheet). */
+:root{
+  --gl-brass-surface:
+    repeating-linear-gradient(0deg, rgba(40,22,4,.06) 0 1px, transparent 1px 3px),
+    linear-gradient(116deg, transparent 18%, rgba(255,241,184,.22) 38%, transparent 56%),
+    linear-gradient(180deg, #c49b4e 0%, #cda655 46%, #b58b3b 100%);
+  --gl-brass-bevel:
+    0 3px 0 #130a03,
+    0 4px 8px rgba(0,0,0,.55),
+    inset 2px 2px 0 var(--vls-brass-highlight),
+    inset -2px -2px 0 var(--vls-brass-shadow),
+    inset 0 0 0 4px var(--vls-brass-mid),
+    inset 0 0 0 5px #f0cf7f;
+  --gl-face-inset: 10px; /* engraving clearance from bevel (a10436a) */
+  --gl-ivory: #f8eed6;
+  --gl-ivory-deep: #f1e3c2;
+  --gl-steel-screw: #151b20;
+}
+
 body{margin:0;min-height:100vh;color:var(--vls-brass-text);font:18px/1.6 var(--vls-font-serif);
- /* OFFLINE PREP: owner-locked panelled walnut, kit b1f686b — Victorian only; B&W stays plain below */
+ /* Owner-locked panelled walnut, kit bake — Victorian only; B&W stays plain below */
  background-color:var(--vls-wood-deep);
  background-image:linear-gradient(180deg,rgba(10,5,2,.32) 0%,rgba(10,5,2,.18) 45%,rgba(10,5,2,.38) 100%),url("img/wood-site-desktop.jpg");
  background-image:
@@ -15,7 +38,6 @@ body{margin:0;min-height:100vh;color:var(--vls-brass-text);font:18px/1.6 var(--v
  background-position:center top;
  background-repeat:no-repeat;
  background-attachment:fixed}
-/* Narrow / portrait: phone bake so grain scale matches a tall panel */
 @media (max-width:700px), (orientation:portrait) and (max-width:920px){
  body{
   background-image:linear-gradient(180deg,rgba(10,5,2,.32) 0%,rgba(10,5,2,.18) 45%,rgba(10,5,2,.38) 100%),url("img/wood-site-phone.jpg");
@@ -25,10 +47,11 @@ body{margin:0;min-height:100vh;color:var(--vls-brass-text);font:18px/1.6 var(--v
      url("img/wood-site-phone.webp") type("image/webp"),
      url("img/wood-site-phone.jpg") type("image/jpeg")
    );
-  background-attachment:fixed; /* locked panel wall remains viewport anchored */
+  background-attachment:fixed;
  }
 }
-/* Black-and-white theme: plain page, no walnut */
+
+/* Black-and-white theme: plain page, no walnut / no brass chrome */
 html[data-theme="bw"] body,
 body[data-theme="bw"]{
  background:#fff;
@@ -37,7 +60,7 @@ body[data-theme="bw"]{
 }
 html[data-theme="bw"] .bar,
 body[data-theme="bw"] .bar{
- background:#fff;border-bottom:2px solid #000;box-shadow:none;
+ background:#fff;border-bottom:2px solid #000;box-shadow:none;filter:none
 }
 html[data-theme="bw"] .brand,
 html[data-theme="bw"] .bar nav a,
@@ -61,26 +84,52 @@ html[data-theme="bw"] a,
 body[data-theme="bw"] a{color:#000}
 html[data-theme="bw"] .btn,
 body[data-theme="bw"] .btn{
- background:#fff;color:#000;border:2px solid #000;box-shadow:none;filter:none
+ background:#fff;color:#000;border:2px solid #000;box-shadow:none;filter:none;text-transform:none;letter-spacing:0
 }
+html[data-theme="bw"] .btn::before,
+html[data-theme="bw"] .btn::after,
+body[data-theme="bw"] .btn::before,
+body[data-theme="bw"] .btn::after{display:none}
 html[data-theme="bw"] .btn.ghost,
 body[data-theme="bw"] .btn.ghost{background:transparent}
 html[data-theme="bw"] .card,
 body[data-theme="bw"] .card{
  background:#fff;border:2px solid #000;box-shadow:none;color:#000
 }
+html[data-theme="bw"] .cardbody,
+body[data-theme="bw"] .cardbody{background:#fff;color:#000;border:none;box-shadow:none}
 html[data-theme="bw"] .foot,
 body[data-theme="bw"] .foot{border-top:1px solid #000}
+
 a{color:var(--vls-brass-bright)}a:hover{color:var(--vls-brass-highlight)}
 :focus-visible{outline:3px solid var(--vls-brass-highlight);outline-offset:2px}
 .skip{position:absolute;left:-999px;top:0;background:var(--vls-paper);color:var(--vls-ink);padding:10px}.skip:focus{left:8px;z-index:9}
-.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 18px;padding:10px 20px;
- background:var(--vls-brass-gradient);border-bottom:2px solid var(--vls-brass-dark);box-shadow:0 3px 12px rgba(0,0,0,.5)}
-.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--vls-engraving);font:700 24px var(--vls-font-engraved);letter-spacing:.04em;text-shadow:0 1px 0 rgba(255,241,184,.6)}
-.brand img{border-radius:8px;border:1px solid var(--vls-brass-dark)}
+
+/* Instrument nameplate bar: brushed brass plate on wood, not a soft-gold ribbon */
+.bar{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 18px;padding:10px 20px;
+  color:var(--vls-engraving);
+  background:
+    repeating-linear-gradient(0deg, rgba(40,22,4,.07) 0 1px, transparent 1px 3px),
+    linear-gradient(116deg, transparent 22%, rgba(255,241,184,.18) 40%, transparent 58%),
+    linear-gradient(180deg, #b58b3b 0%, #c49b4e 18%, #d4ad5a 42%, #c49b4e 58%, #a87622 82%, #6a4514 100%);
+  border-bottom:2px solid var(--vls-brass-dark);
+  box-shadow:
+    0 3px 10px rgba(0,0,0,.55),
+    inset 0 1px 0 rgba(255,241,184,.35),
+    inset 0 -2px 0 rgba(61,39,6,.55),
+    inset 0 0 0 1px rgba(154,107,31,.55);
+}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--vls-engraving);font:700 24px var(--vls-font-engraved);letter-spacing:.04em;text-shadow:0 1px 0 rgba(255,241,184,.45)}
+.brand img{border-radius:8px;border:1px solid var(--vls-brass-dark);box-shadow:0 0 0 1px rgba(240,207,127,.35)}
 .bar nav{display:flex;flex-wrap:wrap;gap:2px}
-.bar nav a{color:var(--vls-engraving);text-decoration:none;font:600 16px var(--vls-font-engraved);padding:10px 10px;min-height:44px;display:inline-flex;align-items:center;border-radius:4px}
-.bar nav a:hover{background:rgba(42,24,3,.12);color:var(--vls-engraving)}
+.bar nav a{
+  color:var(--vls-engraving);text-decoration:none;font:600 15px var(--vls-font-engraved);
+  padding:10px 12px;min-height:44px;display:inline-flex;align-items:center;border-radius:2px;
+  letter-spacing:.03em;
+}
+.bar nav a:hover{background:rgba(42,24,3,.14);color:var(--vls-engraving)}
+
 main{max-width:1120px;margin:0 auto;padding:24px 18px 40px}
 h1,h2,h3{font-family:var(--vls-font-engraved);color:var(--vls-brass-bright);line-height:1.2}
 h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
@@ -88,26 +137,134 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 .lede{font-size:20px;max-width:46em;color:var(--vls-brass-text)}
 .hero{padding:30px 0 10px;text-align:center}.hero .lede{margin:0 auto 18px}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.center,.hero .row{justify-content:center}
-.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:7px;border:1px solid var(--vls-brass-dark);
- background:var(--vls-brass-gradient);color:var(--vls-engraving);font:700 17px var(--vls-font-engraved);text-decoration:none;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
-.btn:hover{color:var(--vls-engraving);filter:brightness(1.06)}.btn.big{font-size:21px;min-height:54px;padding:0 26px}
-.btn.ghost{background:transparent;color:var(--vls-brass-bright);border-color:var(--vls-brass-mid)}
+
+/* Beveled brass push-plates; engraver caps; face inset keeps labels off the bevel (a10436a) */
+.btn{
+  position:relative;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:44px;min-width:44px;
+  padding:calc(var(--gl-face-inset) + 2px) calc(var(--gl-face-inset) + 10px);
+  border-radius:2px;border:1px solid var(--vls-brass-dark);
+  background:var(--gl-brass-surface);
+  color:var(--vls-engraving);
+  font:600 15px/1.25 var(--vls-font-engraved);
+  letter-spacing:.045em;text-transform:uppercase;text-decoration:none;
+  box-shadow:var(--gl-brass-bevel);
+  text-shadow:0 1px 0 rgba(255,230,166,.55);
+  cursor:pointer;
+  overflow:hidden; /* clip any glyph that would spill onto bevel */
+  white-space:normal;overflow-wrap:anywhere;word-break:normal;
+  max-width:100%;
+}
+.btn::before{
+  content:"";position:absolute;inset:7px;border:1px solid rgba(84,59,22,.45);
+  box-shadow:0 1px 0 rgba(245,216,138,.45);pointer-events:none;border-radius:1px;
+}
+.btn:hover{color:var(--vls-engraving);filter:brightness(1.04)}
+.btn:active{
+  filter:brightness(.94);
+  box-shadow:0 1px 0 #130a03, inset 2px 2px 3px rgba(57,37,14,.75), inset -1px -1px 0 #f5d88a, inset 0 0 0 4px #876024;
+}
+.btn.big{font-size:17px;min-height:54px;padding:calc(var(--gl-face-inset) + 4px) calc(var(--gl-face-inset) + 16px);letter-spacing:.07em}
+.btn small{
+  margin-left:4px;font-weight:500;font-style:normal;font-size:.78em;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--vls-engraving);
+  opacity:.9;max-width:100%;
+}
+
+/* Secondary: ivory enamel face in a thin brass frame (not soft-gold fill) */
+.btn.ghost{
+  background:linear-gradient(180deg, var(--gl-ivory) 0%, var(--gl-ivory-deep) 100%);
+  color:var(--vls-engraving);
+  border:2px solid var(--vls-brass-mid);
+  box-shadow:0 2px 4px rgba(0,0,0,.4), inset 0 0 0 1px rgba(232,215,170,.9), inset 0 1px 0 rgba(255,255,255,.35);
+  text-shadow:none;filter:none;
+}
+.btn.ghost::before{border-color:rgba(154,107,31,.35);box-shadow:none}
+.btn.ghost:hover{filter:brightness(1.03);color:var(--vls-engraving)}
+
 .stores{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
-.btn.store{font-size:16px;background:#1a0e06;color:var(--vls-brass-text);border-color:var(--vls-brass-mid)}
-.btn.soon{opacity:.85;border-style:dashed;cursor:default}.btn small{margin-left:6px;font-weight:400;font-style:italic;color:var(--vls-brass)}
+/* Store / soon: dark walnut plate with brass rim (wood + brass, not soft gold) */
+.btn.store,.btn.soon:not(.store){
+  background:linear-gradient(180deg,#2b170b,#1a0e06);
+  color:var(--vls-brass-text);
+  border:2px solid var(--vls-brass-mid);
+  box-shadow:0 2px 6px rgba(0,0,0,.5), inset 0 0 0 1px rgba(61,39,6,.6);
+  text-shadow:0 1px 1px rgba(0,0,0,.6);
+  text-transform:none;letter-spacing:.03em;font-weight:600;
+}
+.btn.store::before,.btn.soon:not(.store)::before{display:none}
+.btn.store{font-size:14px}
+.btn.soon{opacity:.9;border-style:dashed;cursor:default}
+.btn.soon:not(.store){box-shadow:none;cursor:default}
+.btn.store small,.btn.soon small{color:var(--vls-brass);font-style:italic;text-transform:none;letter-spacing:0;font-weight:400}
+
 .small{font-size:15px;color:var(--vls-brass)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:22px;margin:30px 0}
-.card{background:linear-gradient(180deg,#24140a,#140a04);border:2px solid var(--vls-brass-mid);border-radius:10px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.5)}
-.card .shot img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-bottom:2px solid var(--vls-brass-mid)}
-.cardbody{padding:14px 16px 18px;position:relative}.cardbody .icon{float:right;border-radius:14px;margin:0 0 6px 10px}
-.cardbody h3{margin:4px 0;font-size:24px}.cardbody h3 a{text-decoration:none}
-.gamehead{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;padding-top:12px}.bigicon{border-radius:26px;border:2px solid var(--vls-brass-mid)}
+
+/* Game cards: walnut case + lacquered brass ridge + ivory enamel body (no soft-gold sheet) */
+.card{
+  background:
+    linear-gradient(180deg, rgba(16,8,3,.35), rgba(16,8,3,.55)),
+    linear-gradient(180deg, #2b170b, #1a0e06);
+  border:3px ridge #9a7437;
+  border-radius:2px;
+  overflow:hidden;
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.55),
+    inset 0 0 0 3px #1b0d05,
+    inset 0 0 0 4px #a07532;
+  color:var(--vls-engraving);
+}
+.card .shot img{
+  display:block;width:100%;aspect-ratio:16/10;object-fit:cover;
+  border-bottom:2px solid var(--vls-brass-shadow);
+  background:#000;
+}
+.cardbody{
+  padding:16px 18px 20px;
+  position:relative;
+  background:linear-gradient(180deg, var(--gl-ivory) 0%, var(--gl-ivory-deep) 100%);
+  color:var(--vls-engraving);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 0 0 1px rgba(107,77,33,.35);
+}
+.cardbody .icon{
+  float:right;border-radius:14px;margin:0 0 6px 10px;
+  border:2px solid var(--vls-brass-mid);
+  box-shadow:0 0 0 1px #1a0e06, 0 2px 6px rgba(0,0,0,.35);
+}
+.cardbody h3{margin:4px 0;font-size:22px;color:#2a1803;letter-spacing:.04em}
+.cardbody h3 a{text-decoration:none;color:inherit}
+.cardbody p{color:#3b2414;margin:.4em 0 .8em}
+.cardbody .btn{margin-top:2px}
+
+.gamehead{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;padding-top:12px}
+.bigicon{
+  border-radius:26px;border:3px ridge #9a7437;
+  box-shadow:0 0 0 2px #1a0e06, 0 6px 16px rgba(0,0,0,.45);
+}
 .gamehead>div{flex:1 1 300px}
 .prose{max-width:46em}.prose p{margin:0 0 1em}
-.plaquebox{background:rgba(0,0,0,.25);border:1px solid var(--vls-brass-mid);border-radius:10px;padding:20px 24px}
+.plaquebox{
+  background:linear-gradient(180deg, var(--gl-ivory) 0%, var(--gl-ivory-deep) 100%);
+  color:var(--vls-engraving);
+  border:8px ridge #b88d38;
+  border-radius:1px;
+  padding:22px 26px;
+  box-shadow:0 0 0 1px #2b170b, 0 0 0 3px #9a742d, 0 8px 22px rgba(0,0,0,.5), inset 0 0 0 1px #6b4d21;
+}
+.plaquebox h1,.plaquebox h2,.plaquebox h3{color:#2a1803}
+.plaquebox .lede,.plaquebox p{color:#3b2414}
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-.gallery figure{margin:0}.gallery img{width:100%;height:auto;display:block;border:2px solid var(--vls-brass-shadow);border-radius:6px;background:#000}
+.gallery figure{margin:0}
+.gallery img{
+  width:100%;height:auto;display:block;
+  border:2px solid var(--vls-brass-shadow);border-radius:2px;background:#000;
+  box-shadow:0 0 0 1px rgba(154,107,31,.45);
+}
+.gallery figcaption{color:var(--vls-brass-text);font-size:14px;margin-top:6px}
 .foot{text-align:center;padding:24px 16px;border-top:1px solid var(--vls-brass-shadow);color:var(--vls-brass)}.foot p{margin:4px 0}
+
 /* notebook register */
 .nbteaser{margin:34px auto}.nbhead{max-width:760px;margin:0 auto 18px}
 .vls-notebook .vls-page{font-size:21px;line-height:var(--vls-line)}
@@ -120,34 +277,54 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 .glnote{font-size:19px;color:var(--vls-ink-red);transform:rotate(-1deg)}
 .vls-plain .glnote{transform:none}
 .vls-notebook.vls-plain .vls-page,.vls-notebook.vls-plain .vls-page h2{font-family:var(--vls-font-plain)}
-@media (max-width:600px){.vls-notebook .vls-page{padding:16px 14px 18px 50px}.bar{justify-content:center}.brand{font-size:21px}body{font-size:17px}.vls-notebook .vls-page h2{font-size:34px}}
+@media (max-width:600px){
+  .vls-notebook .vls-page{padding:16px 14px 18px 50px}
+  .bar{justify-content:center}
+  .brand{font-size:21px}
+  body{font-size:17px}
+  .vls-notebook .vls-page h2{font-size:34px}
+  .btn{font-size:14px;padding:calc(var(--gl-face-inset) + 1px) calc(var(--gl-face-inset) + 8px)}
+  .btn.big{font-size:15px}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .vls-notebook .vls-page svg{display:block;max-width:100%;height:auto;margin:6px auto 14px;color:var(--vls-ink-sepia)}
 .vls-notebook .fa-fig{margin:0 0 10px;color:var(--vls-ink-sepia)}.vls-notebook .fa-sketch{width:100%;max-width:460px;display:block;margin:0 auto}
 .vls-notebook .fa-toc{columns:2;padding-left:22px}@media(max-width:560px){.vls-notebook .fa-toc{columns:1}}
-.btn.soon:not(.store){background:#1a0e06;color:var(--vls-brass-text);border:1px dashed var(--vls-brass-mid);box-shadow:none;cursor:default}
 
-/* Offline walnut preparation: hero sits on a soft parchment plaque so brass/ink stays legible over grain */
+/* Hero: ivory enamel nameplate in a stepped brass bezel (period instrument label) */
 .hero{
-  background:linear-gradient(180deg,rgba(241,227,194,.14),rgba(241,227,194,.06));
-  border:1px solid rgba(217,169,67,.28);
-  border-radius:12px;
-  padding:28px 22px 18px;
-  box-shadow:0 8px 28px rgba(0,0,0,.35);
-  backdrop-filter:blur(1.5px);
+  background:linear-gradient(180deg, var(--gl-ivory) 0%, var(--gl-ivory-deep) 100%);
+  border:8px ridge #b88d38;
+  border-radius:1px;
+  padding:28px 24px 20px;
+  box-shadow:
+    0 0 0 1px #2b170b,
+    0 0 0 3px #9a742d,
+    0 0 0 5px #190c04,
+    0 10px 28px rgba(0,0,0,.55),
+    inset 0 0 0 1px #6b4d21;
+  color:var(--vls-engraving);
 }
+.hero .eyebrow{color:#6b4a2e}
+.hero .lede{color:#3b2414}
+.hero h1,.hero h2{color:#2a1803}
 html[data-theme="bw"] .hero,
 body[data-theme="bw"] .hero{
-  background:#fff;border:2px solid #000;box-shadow:none;backdrop-filter:none
+  background:#fff;border:2px solid #000;box-shadow:none
 }
 
-/* Offline walnut preparation: game-page intro / prose sit on a dark plaque over the wood */
+/* Game-page intro: walnut instrument case with brass ridge (wood + brass, not soft gold wash) */
 .gamehead, main > .prose, main > section > .prose {
-  background:rgba(12,6,2,.55);
-  border:1px solid rgba(154,107,31,.45);
-  border-radius:12px;
+  background:
+    linear-gradient(180deg, rgba(16,8,3,.25), rgba(16,8,3,.4)),
+    linear-gradient(180deg, #24140a, #140a04);
+  border:3px ridge #9a7437;
+  border-radius:2px;
   padding:18px 22px;
-  box-shadow:0 6px 22px rgba(0,0,0,.4);
+  box-shadow:
+    0 6px 22px rgba(0,0,0,.45),
+    inset 0 0 0 3px #1b0d05,
+    inset 0 0 0 4px #a07532;
 }
 .gamehead + .prose, .gamehead + section .prose { margin-top:14px; }
 main > section > h2 {
@@ -160,4 +337,8 @@ body[data-theme="bw"] .gamehead,
 body[data-theme="bw"] main > .prose,
 body[data-theme="bw"] main > section > .prose{
   background:#fff;border:2px solid #000;box-shadow:none
+}
+html[data-theme="bw"] .plaquebox,
+body[data-theme="bw"] .plaquebox{
+  background:#fff;border:2px solid #000;box-shadow:none;color:#000
 }
