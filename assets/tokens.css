@@ -1,0 +1,88 @@
+/* Victorian Lab Style: CSS tokens and notebook styles. Same names and hex values as tokens.js.
+   Fonts are bundled (SIL OFL 1.1, see fonts/OFL-*.txt) so everything works offline and from file://. */
+@font-face { font-family: "VLS Caveat"; src: url("fonts/Caveat-Variable.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: "VLS Pinyon Script"; src: url("fonts/PinyonScript-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+
+:root {
+  /* apparatus */
+  --vls-wood: #2b170b; --vls-wood-deep: #1a0e06; --vls-wood-light: #5a3418;
+  --vls-brass-dark: #3d2706; --vls-brass-shadow: #4a300a; --vls-brass-mid: #9a6b1f; --vls-brass: #d9a943; --vls-brass-bright: #e8bb55;
+  --vls-brass-highlight: #fff1b8; --vls-brass-warm: #a87622; --vls-brass-text: #f3d58a; --vls-engraving: #2a1803;
+  --vls-steel-blue: #2c4466; --vls-steel-dark: #06090e; --vls-vacuum: #0d1117; --vls-vacuum-deep: #030405;
+  --vls-brass-gradient: linear-gradient(180deg, #4a300a 0%, #9a6b1f 12%, #d9a943 30%, #fff1b8 42%, #e8bb55 50%, #a87622 75%, #3d2706 100%);
+  /* notebook */
+  --vls-paper: #f1e3c2; --vls-paper-light: #f8eed6; --vls-paper-shade: #d9c39a; --vls-paper-edge: #b8965f;
+  --vls-rule: #9fb3c8; --vls-margin: #c96a5a; --vls-foxing: #a8743a; --vls-coffee: #7a4a1e;
+  --vls-ink: #3b2414; --vls-ink-faded: #6b4a2e; --vls-ink-sepia: #704214; --vls-ink-red: #8e2a1c; --vls-ink-blue: #24375e;
+  --vls-note-analogy: #fdf6dc; --vls-note-simplification: #f6e1d3;
+  /* type */
+  --vls-font-engraved: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --vls-font-serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --vls-font-mono: ui-monospace, Menlo, Consolas, monospace;
+  --vls-font-hand: "VLS Caveat", "Segoe Print", "Bradley Hand", Georgia, cursive;
+  --vls-font-script: "VLS Pinyon Script", "Snell Roundhand", "Apple Chancery", Georgia, cursive;
+  --vls-font-plain: Georgia, "Times New Roman", serif;
+  --vls-line: 30px;         /* ruled line pitch: body text sits on the rules */
+  --vls-min-touch: 44px;
+}
+
+/* ---------------- notebook ---------------- */
+.vls-notebook { color: var(--vls-ink); font-family: var(--vls-font-hand); }
+.vls-page {
+  position: relative; box-sizing: border-box; padding: 18px 22px 22px 64px; margin: 0 auto 26px; max-width: 760px;
+  background-color: var(--vls-paper); color: var(--vls-ink);
+  background-image:
+    radial-gradient(circle at 84% 12%, transparent 33px, rgba(122,74,30,0.16) 35px, rgba(122,74,30,0.05) 39px, transparent 41px),
+    radial-gradient(circle at 12% 78%, rgba(168,116,58,0.22) 0, rgba(168,116,58,0) 6px),
+    radial-gradient(circle at 63% 41%, rgba(168,116,58,0.16) 0, rgba(168,116,58,0) 4px),
+    radial-gradient(circle at 91% 66%, rgba(168,116,58,0.18) 0, rgba(168,116,58,0) 7px),
+    radial-gradient(circle at 37% 93%, rgba(168,116,58,0.14) 0, rgba(168,116,58,0) 5px),
+    radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(120,80,30,0.28) 100%),
+    linear-gradient(90deg, transparent 47px, rgba(201,106,90,0.55) 47px, rgba(201,106,90,0.55) 48.5px, transparent 48.5px),
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--vls-line) - 1px), rgba(159,179,200,0.5) calc(var(--vls-line) - 1px), rgba(159,179,200,0.5) var(--vls-line));
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 14px;
+  box-shadow: 0 2px 0 var(--vls-paper-shade), 0 4px 0 var(--vls-paper-edge), 0 10px 24px rgba(0,0,0,0.45);
+  border-radius: 2px 6px 6px 2px; line-height: var(--vls-line); font-size: 21px;
+}
+.vls-page h2, .vls-title { font-family: var(--vls-font-script); font-weight: 400; font-size: 40px; line-height: 1.15; margin: 4px 0 6px; color: var(--vls-ink); }
+.vls-page p { margin: 0 0 var(--vls-line) 0; }
+.vls-page .vls-pageno { position: absolute; top: 8px; right: 14px; font-size: 17px; color: var(--vls-ink-faded); }
+.vls-page .vls-date { position: absolute; top: 46px; left: 6px; width: 38px; font-size: 14px; line-height: 15px; color: var(--vls-ink-faded); text-align: center; transform: rotate(-4deg); }
+.vls-page canvas.vls-sketch { display: block; max-width: 100%; height: auto; margin: 6px auto 14px; touch-action: pan-y; }
+.vls-ink-red { color: var(--vls-ink-red); }
+
+/* margin notes and pasted-in slips */
+.vls-note { position: relative; margin: 10px 0 var(--vls-line); padding: 12px 14px 10px; font-size: 19px; line-height: 25px; }
+.vls-page .vls-note p { margin: 0; line-height: inherit; }
+.vls-page .vls-note p + p { margin-top: 6px; }
+.vls-note-label { display: block; font-family: var(--vls-font-engraved); font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 4px; }
+.vls-analogy { background: var(--vls-note-analogy); border: 1px solid rgba(112,66,20,0.35); transform: rotate(-0.8deg); box-shadow: 1px 2px 6px rgba(60,30,5,0.3); }
+.vls-analogy::before { content: ""; position: absolute; top: -9px; left: 38%; width: 70px; height: 18px; background: rgba(235,225,190,0.75); transform: rotate(-3deg); box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+.vls-analogy .vls-note-label { color: var(--vls-ink-blue); }
+.vls-simplification { background: var(--vls-note-simplification); border-left: 3px double var(--vls-ink-red); transform: rotate(0.6deg); box-shadow: 1px 2px 6px rgba(60,30,5,0.25); }
+.vls-simplification .vls-note-label { color: var(--vls-ink-red); }
+.vls-cf { font-size: 17px; line-height: 22px; color: var(--vls-ink-faded); border-top: 1px solid rgba(112,66,20,0.35); padding-top: 6px; margin: 4px 0 0; }
+.vls-cf-mark { font-style: italic; font-weight: 700; }
+.vls-cf a { color: inherit; }
+
+/* plain-text accessibility mode */
+.vls-plain, .vls-plain .vls-page, .vls-plain .vls-note, .vls-plain .vls-cf { font-family: var(--vls-font-plain) !important; }
+.vls-plain .vls-page { font-size: 17px; line-height: 26px; --vls-line: 26px; }
+.vls-plain .vls-page h2, .vls-plain .vls-title { font-family: var(--vls-font-plain); font-size: 26px; font-weight: 700; }
+.vls-plain .vls-note { font-size: 16px; line-height: 23px; transform: none; }
+.vls-plain .vls-cf { font-size: 14px; }
+
+/* B&W theme: ink on white, no ageing */
+[data-theme="bw"] .vls-page { background: #fff; background-image: repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--vls-line) - 1px), #d0d0d0 calc(var(--vls-line) - 1px), #d0d0d0 var(--vls-line)); background-position: 0 14px; color: #000; box-shadow: none; border: 2px solid #fff; outline: 1px solid #000; }
+[data-theme="bw"] .vls-page h2, [data-theme="bw"] .vls-title, [data-theme="bw"] .vls-pageno, [data-theme="bw"] .vls-date, [data-theme="bw"] .vls-cf { color: #000; }
+[data-theme="bw"] .vls-note { background: #fff; border: 1.5px solid #000; box-shadow: none; transform: none; }
+[data-theme="bw"] .vls-simplification { border-left: 5px double #000; }
+[data-theme="bw"] .vls-note-label, [data-theme="bw"] .vls-ink-red { color: #000; }
+[data-theme="bw"] .vls-analogy::before { display: none; }
+
+@media (max-width: 520px) {
+  .vls-page { padding: 14px 12px 18px 58px; font-size: 20px; }
+  .vls-page .vls-date { width: 34px; left: 4px; font-size: 12px; }
+  .vls-page h2, .vls-title { font-size: 32px; }
+}
+@media (prefers-reduced-motion: reduce) { .vls-page { transition: none !important; } }

@@ -1,0 +1,60 @@
+/* Gillund Labs site: apparatus register (wood + brass) for chrome, notebook register for notes. See assets/STYLE-kit.md. */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;color:var(--vls-brass-text);font:18px/1.6 var(--vls-font-serif);
+ background:var(--vls-wood-deep) radial-gradient(ellipse at 50% 0%,var(--vls-wood-light) 0%,var(--vls-wood) 45%,var(--vls-wood-deep) 100%) fixed}
+a{color:var(--vls-brass-bright)}a:hover{color:var(--vls-brass-highlight)}
+:focus-visible{outline:3px solid var(--vls-brass-highlight);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:0;background:var(--vls-paper);color:var(--vls-ink);padding:10px}.skip:focus{left:8px;z-index:9}
+.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 18px;padding:10px 20px;
+ background:var(--vls-brass-gradient);border-bottom:2px solid var(--vls-brass-dark);box-shadow:0 3px 12px rgba(0,0,0,.5)}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--vls-engraving);font:700 24px var(--vls-font-engraved);letter-spacing:.04em;text-shadow:0 1px 0 rgba(255,241,184,.6)}
+.brand img{border-radius:8px;border:1px solid var(--vls-brass-dark)}
+.bar nav{display:flex;flex-wrap:wrap;gap:2px}
+.bar nav a{color:var(--vls-engraving);text-decoration:none;font:600 16px var(--vls-font-engraved);padding:10px 10px;min-height:44px;display:inline-flex;align-items:center;border-radius:4px}
+.bar nav a:hover{background:rgba(42,24,3,.12);color:var(--vls-engraving)}
+main{max-width:1120px;margin:0 auto;padding:24px 18px 40px}
+h1,h2,h3{font-family:var(--vls-font-engraved);color:var(--vls-brass-bright);line-height:1.2}
+h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
+.eyebrow{font-style:italic;color:var(--vls-brass);margin:0;font-size:20px}.eyebrow a{color:inherit}
+.lede{font-size:20px;max-width:46em;color:var(--vls-brass-text)}
+.hero{padding:30px 0 10px;text-align:center}.hero .lede{margin:0 auto 18px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.center,.hero .row{justify-content:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:7px;border:1px solid var(--vls-brass-dark);
+ background:var(--vls-brass-gradient);color:var(--vls-engraving);font:700 17px var(--vls-font-engraved);text-decoration:none;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
+.btn:hover{color:var(--vls-engraving);filter:brightness(1.06)}.btn.big{font-size:21px;min-height:54px;padding:0 26px}
+.btn.ghost{background:transparent;color:var(--vls-brass-bright);border-color:var(--vls-brass-mid)}
+.stores{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.btn.store{font-size:16px;background:#1a0e06;color:var(--vls-brass-text);border-color:var(--vls-brass-mid)}
+.btn.soon{opacity:.85;border-style:dashed;cursor:default}.btn small{margin-left:6px;font-weight:400;font-style:italic;color:var(--vls-brass)}
+.small{font-size:15px;color:var(--vls-brass)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:22px;margin:30px 0}
+.card{background:linear-gradient(180deg,#24140a,#140a04);border:2px solid var(--vls-brass-mid);border-radius:10px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.card .shot img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-bottom:2px solid var(--vls-brass-mid)}
+.cardbody{padding:14px 16px 18px;position:relative}.cardbody .icon{float:right;border-radius:14px;margin:0 0 6px 10px}
+.cardbody h3{margin:4px 0;font-size:24px}.cardbody h3 a{text-decoration:none}
+.gamehead{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;padding-top:12px}.bigicon{border-radius:26px;border:2px solid var(--vls-brass-mid)}
+.gamehead>div{flex:1 1 300px}
+.prose{max-width:46em}.prose p{margin:0 0 1em}
+.plaquebox{background:rgba(0,0,0,.25);border:1px solid var(--vls-brass-mid);border-radius:10px;padding:20px 24px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.gallery figure{margin:0}.gallery img{width:100%;height:auto;display:block;border:2px solid var(--vls-brass-shadow);border-radius:6px;background:#000}
+.foot{text-align:center;padding:24px 16px;border-top:1px solid var(--vls-brass-shadow);color:var(--vls-brass)}.foot p{margin:4px 0}
+/* notebook register */
+.nbteaser{margin:34px auto}.nbhead{max-width:760px;margin:0 auto 18px}
+.vls-notebook .vls-page{font-size:21px;line-height:var(--vls-line)}
+.vls-notebook .vls-page h2{font-family:var(--vls-font-script);font-weight:400;color:var(--vls-ink);font-size:40px;margin:0 0 12px}
+.vls-notebook .vls-page p{margin:0 0 var(--vls-line)}
+.vls-notebook a{color:var(--vls-ink-blue)}
+.vls-notebook img.nb-sketch{display:block;max-width:100%;height:auto;margin:6px auto 14px}
+.vls-notebook .notes-toc span{color:var(--vls-ink-faded)}
+.vls-notebook ul.toc li,.vls-notebook ol li{margin-bottom:6px}
+.glnote{font-size:19px;color:var(--vls-ink-red);transform:rotate(-1deg)}
+.vls-plain .glnote{transform:none}
+.vls-notebook.vls-plain .vls-page,.vls-notebook.vls-plain .vls-page h2{font-family:var(--vls-font-plain)}
+@media (max-width:600px){.vls-notebook .vls-page{padding:16px 14px 18px 50px}.bar{justify-content:center}.brand{font-size:21px}body{font-size:17px}.vls-notebook .vls-page h2{font-size:34px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.vls-notebook .vls-page svg{display:block;max-width:100%;height:auto;margin:6px auto 14px;color:var(--vls-ink-sepia)}
+.vls-notebook .fa-fig{margin:0 0 10px;color:var(--vls-ink-sepia)}.vls-notebook .fa-sketch{width:100%;max-width:460px;display:block;margin:0 auto}
+.vls-notebook .fa-toc{columns:2;padding-left:22px}@media(max-width:560px){.vls-notebook .fa-toc{columns:1}}
+.btn.soon:not(.store){background:#1a0e06;color:var(--vls-brass-text);border:1px dashed var(--vls-brass-mid);box-shadow:none;cursor:default}
