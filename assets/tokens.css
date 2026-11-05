@@ -1,6 +1,7 @@
 /* Victorian Lab Style: CSS tokens and notebook styles. Same names and hex values as tokens.js.
    Fonts are bundled (SIL OFL 1.1, see fonts/OFL-*.txt) so everything works offline and from file://. */
 @font-face { font-family: "VLS Caveat"; src: url("fonts/Caveat-Variable.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: "VLS Engraving CC"; src: url("fonts/EngravingCC.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
 @font-face { font-family: "VLS Pinyon Script"; src: url("fonts/PinyonScript-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 
 :root {
@@ -16,7 +17,7 @@
   --vls-ink: #3b2414; --vls-ink-faded: #6b4a2e; --vls-ink-sepia: #704214; --vls-ink-red: #8e2a1c; --vls-ink-blue: #24375e;
   --vls-note-analogy: #fdf6dc; --vls-note-simplification: #f6e1d3;
   /* type */
-  --vls-font-engraved: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --vls-font-engraved: "VLS Engraving CC", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
   --vls-font-serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
   --vls-font-mono: ui-monospace, Menlo, Consolas, monospace;
   --vls-font-hand: "VLS Caveat", "Segoe Print", "Bradley Hand", Georgia, cursive;

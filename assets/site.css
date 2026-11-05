@@ -225,12 +225,12 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
   background:var(--gl-brass-surface);
   color:var(--vls-engraving);
   font:600 15px/1.25 var(--vls-font-engraved);
-  letter-spacing:.045em;text-transform:uppercase;text-decoration:none;
+  letter-spacing:.015em;text-transform:uppercase;text-decoration:none; /* Engraving CC already wide (765cd83) */
   box-shadow:var(--gl-brass-bevel);
   text-shadow:0 1px 0 rgba(255,230,166,.55);
   cursor:pointer;
   overflow:hidden;
-  white-space:normal;overflow-wrap:anywhere;word-break:normal;
+  white-space:nowrap;overflow-wrap:normal;word-break:keep-all; /* labels stay one line; Engraving CC is wide */
   max-width:100%;
 }
 .btn::before{
@@ -242,7 +242,7 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
   filter:brightness(.94);
   box-shadow:0 1px 0 #130a03, inset 2px 2px 3px rgba(57,37,14,.75), inset -1px -1px 0 #f5d88a, inset 0 0 0 4px #876024;
 }
-.btn.big{font-size:17px;min-height:54px;padding:calc(var(--gl-face-inset) + 4px) calc(var(--gl-face-inset) + 16px);letter-spacing:.05em}
+.btn.big{font-size:17px;min-height:54px;padding:calc(var(--gl-face-inset) + 4px) calc(var(--gl-face-inset) + 16px);letter-spacing:.02em}
 .btn small{
   margin-left:4px;font-weight:500;font-style:normal;font-size:.78em;
   letter-spacing:.04em;text-transform:uppercase;color:var(--vls-engraving);
@@ -306,7 +306,7 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 }
 .cardbody{
   display:flex;flex-direction:column;flex:1 1 auto;
-  padding:16px 18px 18px;
+  padding:16px 12px 18px;
   position:relative;
   background:var(--gl-ivory-surface);
   color:var(--vls-engraving);
@@ -329,11 +329,20 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
   gap:8px;
 }
 .cardbody > .row .btn{
-  flex:0 1 auto;
-  font-size:14px;
-  letter-spacing:.03em;
+  flex:0 0 auto; /* never shrink — Engraving CC labels must not clip */
+  font-size:11px;
+  letter-spacing:0;
   padding-left:calc(var(--gl-face-inset) + 4px);
   padding-right:calc(var(--gl-face-inset) + 4px);
+  white-space:nowrap;
+}
+@media (max-width:600px){
+  .cardbody > .row{flex-wrap:wrap} /* stack if needed on narrow */
+  .cardbody > .row .btn{
+    font-size:13px;
+    padding-left:calc(var(--gl-bevel-ring) + var(--gl-face-inset));
+    padding-right:calc(var(--gl-bevel-ring) + var(--gl-face-inset));
+  }
 }
 
 .gamehead{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;padding-top:12px}
@@ -388,7 +397,7 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 .vls-notebook.vls-plain .vls-page,.vls-notebook.vls-plain .vls-page h2{font-family:var(--vls-font-plain)}
 @media (max-width:600px){
   /* clear-face = distance from glyph box to bevel ring; padding = bevel-ring + clear-face */
-  :root{ --gl-face-inset: 16px; --gl-bevel-ring: 6px; }
+  :root{ --gl-face-inset: 18px; --gl-bevel-ring: 6px; } /* Engraving CC is wider; keep ≥16px clear face */
   .vls-notebook .vls-page{padding:16px 14px 18px 50px}
   .bar{justify-content:center}
   .brand{font-size:21px}
