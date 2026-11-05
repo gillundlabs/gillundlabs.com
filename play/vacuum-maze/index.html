@@ -2424,9 +2424,9 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
  *     (kernelCheck(), test/physics-check.mjs). In this 2D model the wall's flux-weighted speed density is
  *     p(v) ∝ v² exp(−m v²/2kT_w); its mean is √(8kT_w/πm) and ⟨m v²/3k⟩ = T_w.
  *   - wall temperature per level: T_w = κ · m · g_pace · D / k_B, with g_pace = g_body / PACE_SCALE and
- *     PACE_SCALE = 4000. That pins H walls near a quarter of Maxwell's Demon's ~40 nK, so release speeds are about
- *     half Max (~15 mm/s mean on Earth L1; √(2 g_pace D) ≈ 19.8 mm/s for D = 8 cm on Earth). Owner 2026-11-05
- *     t42u: Max-matched pace still felt too fast. The atom still feels the FULL in-plane pull g∥ = g_body · sin θ
+ *     PACE_SCALE = 16000. That pins H walls near a sixteenth of Maxwell's Demon's ~40 nK, so release speeds are about
+ *     a quarter Max (~7.4 mm/s mean on Earth L1; √(2 g_pace D) ≈ 9.9 mm/s for D = 8 cm on Earth). Owner 2026-11-05
+ *     t45u: half-Max pace still felt ~2× too fast. The atom still feels the FULL in-plane pull g∥ = g_body · sin θ
  *     (no fine-tilt stage; pace by temps/walls, not by scaling the tilt). Cold-trap sections are at 77/295 of T_w
  *     (LN₂ : room-temperature), bake-out sections at 443/295 (a 170 °C bake). */
 (function (root, factory) {
@@ -2445,12 +2445,12 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     moon: { id: 'moon', name: 'Moon', g: 1.62, coin: 1.5, note: '0.17 g' },
     arcade: { id: 'arcade', name: 'Arcade', g: null, coin: 0.5, note: 'any g you like (Settings slider)' },
   };
-  // Pace by wall/start temperature, not by scaling the tilt (owner 2026-11-05, t37u / DECISIONS §6; retuned t42u):
+  // Pace by wall/start temperature, not by scaling the tilt (owner 2026-11-05, t37u / DECISIONS §6; retuned t42u, t45u):
   // chamber pull is the full g·sin θ. Wall temperatures use a pace gravity g_pace = g_body / PACE_SCALE so H walls
-  // sit at about a quarter of Maxwell's Demon's ~40 nK (half the release speed). PACE_SCALE = 4000 makes
-  // T_w = κ·m·(g/4000)·D/k_B (10.4 nK on Earth L1 DN40CF κ=1; mean ~14.8 mm/s). createWorld is passed the body's
+  // sit at about a sixteenth of Maxwell's Demon's ~40 nK (quarter the release speed). PACE_SCALE = 16000 makes
+  // T_w = κ·m·(g/16000)·D/k_B (2.6 nK on Earth L1 DN40CF κ=1; mean ~7.4 mm/s). createWorld is passed the body's
   // full g, and wallTempFor divides by PACE_SCALE itself.
-  const PACE_SCALE = 4000;
+  const PACE_SCALE = 16000;
   const paceG = (g) => g / PACE_SCALE;
   const MAX_SUBSTEP_FRAC = 0.4;
   const THERMAL = { plain: 1, cold: 77 / 295, hot: 443 / 295 };   // wall-temperature multipliers by section kind
@@ -2828,7 +2828,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
   // Measured difficulty (tools/sim-times.mjs, 21 bot runs per level and world, Cercignani–Lampis walls,
-  // full g·sin θ with nK walls via PACE_SCALE = 4000). Median bot time per route cell: Earth 0.67 s,
+  // full g·sin θ with nK walls via PACE_SCALE = 16000). Median bot time per route cell: Earth 0.67 s,
   // Mars 0.81 s (×1.21), Moon 0.99 s (×1.48). Weaker gravity is still slower (and a little harder to steer).
   // Arcade (any g) pays half. par: seconds per route cell ≈ 1.56 × the bot median.
   const PAR_PER_CELL = { earth: 1.05, mars: 1.25, moon: 1.55 };
@@ -2936,9 +2936,9 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   add({ id: 'tilt', title: 'Tilting the apparatus', unlock: 'start', group: 'Basics',
     body: ['A phone\'s accelerometer feels gravity. When the screen is tipped by an angle θ from flat, the part of gravity that lies along the screen is g·sin θ.',
       'That is the pull the atom feels: g∥ = g·sin θ, with the phone\'s tilt equal to the chamber\'s. Standing the phone upright (θ = 90°) gives the full 9.81 m/s² on Earth; lying flat (θ = 0) there is no pull at all. Start with the phone near level and the acceleration is gentle, as in a physical tilt maze; tip further and the pull grows with sin θ.'],
-    simplification: 'The game is flat (2D): it keeps only the pull along the chamber and ignores gravity straight down into the screen. At the game\'s tens of nanokelvin a real chamber under full g would hold a hydrogen atom within tens of micrometres of the tube floor (its gravitational scale height k_B·T/m·g is only 5–30 µm in this edition\'s levels), hopping tens of micrometres at a time instead of flying across the tube at one or two cm/s.',
+    simplification: 'The game is flat (2D): it keeps only the pull along the chamber and ignores gravity straight down into the screen. At the game\'s few nanokelvin a real chamber under full g would hold a hydrogen atom within a few micrometres of the tube floor (its gravitational scale height k_B·T/m·g is only 2–7 µm in this edition\'s levels), hopping a few micrometres at a time instead of flying across the tube at several mm/s.',
     analogy: 'Like a marble on a tea tray: tip the tray and the marble rolls downhill, more steeply the more you tip it.',
-    game: 'The real apparatus would not tip with your hand; the game imagines the whole maze lying on your screen. Wall and start temperatures, not a scaled tilt, keep the atom at about half Maxwell\'s Demon\'s pace (see "Why the walls are colder than a microkelvin").',
+    game: 'The real apparatus would not tip with your hand; the game imagines the whole maze lying on your screen. Wall and start temperatures, not a scaled tilt, keep the atom at about a quarter of Maxwell\'s Demon\'s pace (see "Why the walls are colder than a microkelvin").',
     cf: 'W3C, <i>DeviceOrientation Event Specification</i> (devicemotion, accelerationIncludingGravity).',
     sketch(p) { p.line(40, 150, 280, 150, 1.2); p.line(60, 150, 250, 80, 2.2); p.ellipse(60, 150, 40, 40, 1, -0.35, 0); p.label('θ', 116, 144); p.circle(180, 101, 9, 1.6); p.arrow(180, 112, 180, 165, 1.4); p.label('g', 190, 160); p.arrow(180, 112, 152, 122, 1.4); p.label('g·sin θ', 130, 112); p.label('the tray (your screen)', 210, 70); } });
 
@@ -2971,8 +2971,8 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
 
   add({ id: 'walltemp', title: 'Why the walls are colder than a microkelvin', unlock: 'start', group: 'Basics',
     body: ['Real vacuum tubes sit at room temperature, 295 K. A hydrogen atom leaving such a wall moves at about 2.7 km/s (rms). Thrown straight up, it would coast about 370 km before Earth\'s gravity stopped it (about 395 km if you allow for gravity weakening with height), so tilting a tube by a few degrees could never steer it.',
-      'So the game makes its walls fantastically cold — about a quarter of the temperature at which Maxwell\'s Demon releases its atoms, so the atom moves at about half that game\'s pace. Each level\'s wall temperature is T_w = κ·m·g_pace·D / k_B, with g_pace = g / 4000: the energy of falling one bore diameter D under a reference pull of one four-thousandth of the world\'s surface gravity, times a level factor κ (0.98–1.11 in this edition\'s 30 levels; up to 1.56 in later chapters). An atom leaving the wall then moves at a mean speed of √(8κg_pace D/π), about 13% faster than √(2 g_pace D) at κ = 1. In this edition\'s levels that is 15–26 mm/s on Earth, 9–16 mm/s on Mars and 6–11 mm/s on the Moon (11–36, 7–22 and 5–15 mm/s across all 100 planned levels), about half the 31 mm/s at which Maxwell\'s Demon releases its atoms. The chamber pull itself is not scaled: the atom feels the full g·sin θ (see "Tilting the apparatus").',
-      'For hydrogen on Earth that gives 5 nK in a DN16CF tube and 44 nK in a DN160CF tube (at κ = 1); this edition\'s 30 levels span 10–32 nK (6–61 nK across all 100 planned levels), about a quarter of the 40 nK at which Maxwell\'s Demon starts its hydrogen. On the Moon the walls are six times colder still. Heavier atoms get proportionally warmer walls: krypton in a DN63CF tube on Earth needs about 1 µK.'],
+      'So the game makes its walls fantastically cold — about a sixteenth of the temperature at which Maxwell\'s Demon releases its atoms, so the atom moves at about a quarter of that game\'s pace. Each level\'s wall temperature is T_w = κ·m·g_pace·D / k_B, with g_pace = g / 16000: the energy of falling one bore diameter D under a reference pull of one sixteen-thousandth of the world\'s surface gravity, times a level factor κ (0.98–1.11 in this edition\'s 30 levels; up to 1.56 in later chapters). An atom leaving the wall then moves at a mean speed of √(8κg_pace D/π), about 13% faster than √(2 g_pace D) at κ = 1. In this edition\'s levels that is 7–13 mm/s on Earth, 5–8 mm/s on Mars and 3–5 mm/s on the Moon (6–18, 3–11 and 2–7 mm/s across all 100 planned levels), about a quarter of the 31 mm/s at which Maxwell\'s Demon releases its atoms. The chamber pull itself is not scaled: the atom feels the full g·sin θ (see "Tilting the apparatus").',
+      'For hydrogen on Earth that gives 1 nK in a DN16CF tube and 11 nK in a DN160CF tube (at κ = 1); this edition\'s 30 levels span 3–8 nK (2–15 nK across all 100 planned levels), about a sixteenth of the 40 nK at which Maxwell\'s Demon starts its hydrogen. On the Moon the walls are six times colder still. Heavier atoms get proportionally warmer walls: krypton in a DN63CF tube on Earth needs about 371 nK.'],
     analogy: 'Like playing marbles on a tilted table: the walls set how fast the marble leaves each bounce, while the tilt sets how hard gravity pulls between bounces.',
     simplification: 'No real wall is this cold. Dilution refrigerators reach a few millikelvin, and real cold-atom experiments keep their atoms in traps away from the 295 K walls: an atom that touches the wall is lost. Under full Earth gravity the same nanokelvin temperatures give a gravitational scale height of only tens of micrometres, so a real atom would sit on the tube floor; the game is flat and ignores that direction (see "Tilting the apparatus").',
     game: 'Cold traps and bake-out tape arrive with the free-update chapters; there, the real 77/295 and 443/295 temperature ratios are applied to these nanokelvin walls, not to 295 K.',
@@ -2980,7 +2980,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     sketch(p) {} });
   add({ id: 'flight', title: 'Falling in a tube: parabolas between bounces', unlock: 'start', group: 'Basics',
     body: ['Between two wall hits nothing touches the atom except gravity, so it flies on an exact parabola: x = x₀ + vₓt, y = y₀ + v_yt + ½g∥t², where g∥ = g·sin θ is the part of gravity along the chamber for a phone tipped by θ (see "Tilting the apparatus").',
-      'Energy is shared between motion and height: ½mv² + mg∥h stays constant in flight. With the phone upright on Earth (g∥ = 9.81 m/s²), an atom leaving the floor upward at the wall\'s 19.8 mm/s rises only v²/2g∥ = 20 µm (4.0 ms up and down); at the matching wall speed on each world it rises the same 20 µm on Mars (7 ms) and the same 20 µm on the Moon (10 ms).',
+      'Energy is shared between motion and height: ½mv² + mg∥h stays constant in flight. With the phone upright on Earth (g∥ = 9.81 m/s²), an atom leaving the floor upward at the wall\'s 9.9 mm/s rises only v²/2g∥ = 5 µm (2.0 ms up and down); at the matching wall speed on each world it rises the same 5 µm on Mars (3 ms) and the same 5 µm on the Moon (5 ms).',
       'The walls are colder on weaker worlds in proportion to g (see "Why the walls are colder than a microkelvin"), so the hop height stays the same while every hop on the Moon takes √6 ≈ 2.5 times longer: that is why it feels floaty. Tip only a little and g∥ is small, so the same thermal speed reaches much higher — near level, a hop of about one bore.'],
     game: 'The game moves the atom along the exact parabola rather than an approximate step, in sub-steps short enough that it never travels more than 0.4 of its own radius, and checks for wall contact after each one. Energy in flight is conserved to rounding (about 10⁻¹⁴ in the tests) and atoms never tunnel through metal. The game is flat: those micrometre hops are along the maze, not into the floor of a real tube (see "Tilting the apparatus").',
     cf: 'Any mechanics text, e.g. D. Halliday, R. Resnick &amp; J. Walker, <i>Fundamentals of Physics</i>, ch. 4 (projectile motion).',
@@ -3545,20 +3545,20 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // ---- audit pages (Nov 4): µK walls, flight, Clausing, saturation, recoil
   // log temperature scale, 1 µK at the bottom to 1000 K at the top, with the game's walls marked against real temperatures
   SK['walltemp'] = (p) => {
-    const Y = (T) => 182 - (Math.log10(T) + 8) * 15.2;   // 10 nK at the bottom (walls are nK via g_pace = g/4000)
-    p.line(60, Y(1e-8), 60, Y(1000), 1.8);
-    for (let e = -8; e <= 3; e++) { p.line(56, Y(10 ** e), 64, Y(10 ** e), 0.8); }
-    for (const [T, t] of [[1e-8, '10 nK'], [1e-6, '1 µK'], [1e-3, '1 mK'], [1, '1 K'], [1000, '1000 K']]) p.label(t, 50, Y(T) + 4, { size: 10, align: 'end' });
-    p.rect(56, Y(32e-9), 8, Y(10e-9) - Y(32e-9), 1.2); p.hatchPoly([rectPts(56, Y(32e-9), 8, Y(10e-9) - Y(32e-9))], 2.5, Math.PI / 4, 0.6);   // this edition (levels 1–30)
-    p.note('game walls, H on Earth: 10–32 nK', 76, 172, 66, Y(20e-9), { align: 'start' });
-    p.dot(60, Y(1e-6), 2.6); p.note('Kr, DN63: ~1 µK', 76, 140, 64, Y(1e-6), { align: 'start' });
+    const Y = (T) => 182 - (Math.log10(T) + 9) * 14;   // 1 nK at the bottom (walls are nK via g_pace = g/16000)
+    p.line(60, Y(1e-9), 60, Y(1000), 1.8);
+    for (let e = -9; e <= 3; e++) { p.line(56, Y(10 ** e), 64, Y(10 ** e), 0.8); }
+    for (const [T, t] of [[1e-9, '1 nK'], [1e-6, '1 µK'], [1e-3, '1 mK'], [1, '1 K'], [1000, '1000 K']]) p.label(t, 50, Y(T) + 4, { size: 10, align: 'end' });
+    p.rect(56, Y(8e-9), 8, Y(3e-9) - Y(8e-9), 1.2); p.hatchPoly([rectPts(56, Y(8e-9), 8, Y(3e-9) - Y(8e-9))], 2.5, Math.PI / 4, 0.6);   // this edition (levels 1–30)
+    p.note('game walls, H on Earth: 3–8 nK', 76, 172, 66, Y(5e-9), { align: 'start' });
+    p.dot(60, Y(371e-9), 2.6); p.note('Kr, DN63: ~371 nK', 76, 140, 64, Y(371e-9), { align: 'start' });
     p.dot(60, Y(5e-3) - 4, 0.1); p.note('dilution fridge: a few mK', 76, 96, 64, Y(3e-3) - 2, { align: 'start' });
     p.dot(60, Y(77), 2.6); p.note('liquid N₂, 77 K', 76, 42, 64, Y(77), { align: 'start' });
     p.dot(60, Y(295), 2.6); p.note('room, 295 K', 76, 20, 64, Y(295), { align: 'start' });
     // inset: how far each would coast uphill
     p.line(230, 180, 310, 180, 1.4); p.arrow(250, 178, 250, 24, 1.4, 7); p.label('295 K: 2.7 km/s', 252, 14, { size: 10 });
     p.label('→ 370 km up', 316, 40, { size: 10, align: 'end' }); p.label('(off the page)', 316, 52, { size: 9, align: 'end' });
-    p.curve((t) => [282 + 20 * t, 178 - 64 * t * (2 - t) * 0.5], 0, 1, 20, 1.2); p.label('10 nK: ~1.5 cm/s', 316, 116, { size: 10, align: 'end' }); p.label('→ ~1 bore', 316, 128, { size: 10, align: 'end' });
+    p.curve((t) => [282 + 20 * t, 178 - 64 * t * (2 - t) * 0.5], 0, 1, 20, 1.2); p.label('3 nK: ~7 mm/s', 316, 116, { size: 10, align: 'end' }); p.label('→ ~1 bore', 316, 128, { size: 10, align: 'end' });
   };
   // the atom's path between wall hits: exact parabolas, all with the same downward acceleration
   SK['flight'] = (p) => {
