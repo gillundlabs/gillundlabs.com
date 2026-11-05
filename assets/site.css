@@ -2,7 +2,75 @@
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100vh;color:var(--vls-brass-text);font:18px/1.6 var(--vls-font-serif);
- background:var(--vls-wood-deep) radial-gradient(ellipse at 50% 0%,var(--vls-wood-light) 0%,var(--vls-wood) 45%,var(--vls-wood-deep) 100%) fixed}
+ /* OFFLINE PREP: owner-locked panelled walnut, kit b1f686b — Victorian only; B&W stays plain below */
+ background-color:var(--vls-wood-deep);
+ background-image:linear-gradient(180deg,rgba(10,5,2,.32) 0%,rgba(10,5,2,.18) 45%,rgba(10,5,2,.38) 100%),url("img/wood-site-desktop.jpg");
+ background-image:
+  linear-gradient(180deg,rgba(10,5,2,.32) 0%,rgba(10,5,2,.18) 45%,rgba(10,5,2,.38) 100%),
+  image-set(
+    url("img/wood-site-desktop.webp") type("image/webp"),
+    url("img/wood-site-desktop.jpg") type("image/jpeg")
+  );
+ background-size:cover;
+ background-position:center top;
+ background-repeat:no-repeat;
+ background-attachment:fixed}
+/* Narrow / portrait: phone bake so grain scale matches a tall panel */
+@media (max-width:700px), (orientation:portrait) and (max-width:920px){
+ body{
+  background-image:linear-gradient(180deg,rgba(10,5,2,.32) 0%,rgba(10,5,2,.18) 45%,rgba(10,5,2,.38) 100%),url("img/wood-site-phone.jpg");
+  background-image:
+   linear-gradient(180deg,rgba(10,5,2,.32) 0%,rgba(10,5,2,.18) 45%,rgba(10,5,2,.38) 100%),
+   image-set(
+     url("img/wood-site-phone.webp") type("image/webp"),
+     url("img/wood-site-phone.jpg") type("image/jpeg")
+   );
+  background-attachment:fixed; /* locked panel wall remains viewport anchored */
+ }
+}
+/* Black-and-white theme: plain page, no walnut */
+html[data-theme="bw"] body,
+body[data-theme="bw"]{
+ background:#fff;
+ background-image:none;
+ color:#111;
+}
+html[data-theme="bw"] .bar,
+body[data-theme="bw"] .bar{
+ background:#fff;border-bottom:2px solid #000;box-shadow:none;
+}
+html[data-theme="bw"] .brand,
+html[data-theme="bw"] .bar nav a,
+body[data-theme="bw"] .brand,
+body[data-theme="bw"] .bar nav a{color:#000;text-shadow:none}
+html[data-theme="bw"] h1,
+html[data-theme="bw"] h2,
+html[data-theme="bw"] h3,
+html[data-theme="bw"] .eyebrow,
+html[data-theme="bw"] .lede,
+html[data-theme="bw"] .small,
+html[data-theme="bw"] .foot,
+body[data-theme="bw"] h1,
+body[data-theme="bw"] h2,
+body[data-theme="bw"] h3,
+body[data-theme="bw"] .eyebrow,
+body[data-theme="bw"] .lede,
+body[data-theme="bw"] .small,
+body[data-theme="bw"] .foot{color:#000}
+html[data-theme="bw"] a,
+body[data-theme="bw"] a{color:#000}
+html[data-theme="bw"] .btn,
+body[data-theme="bw"] .btn{
+ background:#fff;color:#000;border:2px solid #000;box-shadow:none;filter:none
+}
+html[data-theme="bw"] .btn.ghost,
+body[data-theme="bw"] .btn.ghost{background:transparent}
+html[data-theme="bw"] .card,
+body[data-theme="bw"] .card{
+ background:#fff;border:2px solid #000;box-shadow:none;color:#000
+}
+html[data-theme="bw"] .foot,
+body[data-theme="bw"] .foot{border-top:1px solid #000}
 a{color:var(--vls-brass-bright)}a:hover{color:var(--vls-brass-highlight)}
 :focus-visible{outline:3px solid var(--vls-brass-highlight);outline-offset:2px}
 .skip{position:absolute;left:-999px;top:0;background:var(--vls-paper);color:var(--vls-ink);padding:10px}.skip:focus{left:8px;z-index:9}
@@ -58,3 +126,38 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 .vls-notebook .fa-fig{margin:0 0 10px;color:var(--vls-ink-sepia)}.vls-notebook .fa-sketch{width:100%;max-width:460px;display:block;margin:0 auto}
 .vls-notebook .fa-toc{columns:2;padding-left:22px}@media(max-width:560px){.vls-notebook .fa-toc{columns:1}}
 .btn.soon:not(.store){background:#1a0e06;color:var(--vls-brass-text);border:1px dashed var(--vls-brass-mid);box-shadow:none;cursor:default}
+
+/* Offline walnut preparation: hero sits on a soft parchment plaque so brass/ink stays legible over grain */
+.hero{
+  background:linear-gradient(180deg,rgba(241,227,194,.14),rgba(241,227,194,.06));
+  border:1px solid rgba(217,169,67,.28);
+  border-radius:12px;
+  padding:28px 22px 18px;
+  box-shadow:0 8px 28px rgba(0,0,0,.35);
+  backdrop-filter:blur(1.5px);
+}
+html[data-theme="bw"] .hero,
+body[data-theme="bw"] .hero{
+  background:#fff;border:2px solid #000;box-shadow:none;backdrop-filter:none
+}
+
+/* Offline walnut preparation: game-page intro / prose sit on a dark plaque over the wood */
+.gamehead, main > .prose, main > section > .prose {
+  background:rgba(12,6,2,.55);
+  border:1px solid rgba(154,107,31,.45);
+  border-radius:12px;
+  padding:18px 22px;
+  box-shadow:0 6px 22px rgba(0,0,0,.4);
+}
+.gamehead + .prose, .gamehead + section .prose { margin-top:14px; }
+main > section > h2 {
+  text-shadow:0 1px 2px rgba(0,0,0,.7);
+}
+html[data-theme="bw"] .gamehead,
+html[data-theme="bw"] main > .prose,
+html[data-theme="bw"] main > section > .prose,
+body[data-theme="bw"] .gamehead,
+body[data-theme="bw"] main > .prose,
+body[data-theme="bw"] main > section > .prose{
+  background:#fff;border:2px solid #000;box-shadow:none
+}
