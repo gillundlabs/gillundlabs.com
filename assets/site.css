@@ -325,6 +325,15 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
   margin-top:auto; /* pin buttons to the bottom of equal-height cards */
   padding-top:10px;
   clear:both;
+  flex-wrap:nowrap; /* desktop: PLAY + DETAILS on one row */
+  gap:8px;
+}
+.cardbody > .row .btn{
+  flex:0 1 auto;
+  font-size:14px;
+  letter-spacing:.03em;
+  padding-left:calc(var(--gl-face-inset) + 4px);
+  padding-right:calc(var(--gl-face-inset) + 4px);
 }
 
 .gamehead{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;padding-top:12px}
@@ -363,6 +372,7 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 }
 .gallery figcaption{color:var(--vls-brass-text);font-size:14px;margin-top:6px;font-family:var(--gl-font-book)}
 .foot{text-align:center;padding:24px 16px;border-top:1px solid var(--vls-brass-shadow);color:var(--vls-brass);font-family:var(--gl-font-book)}.foot p{margin:4px 0}
+.foot-links{display:inline-block;white-space:nowrap} /* About · Notebook wrap as one unit */
 
 /* notebook register — handwriting/script stay on kit faces; book face only for site chrome */
 .nbteaser{margin:34px auto}.nbhead{max-width:760px;margin:0 auto 18px}
@@ -393,6 +403,14 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
     padding:calc(var(--gl-bevel-ring) + var(--gl-face-inset) + 2px) calc(var(--gl-bevel-ring) + var(--gl-face-inset) + 6px);
   }
   .btn::before{ inset: var(--gl-bevel-ring); }
+  .foot{padding-left:12px;padding-right:12px}
+  .foot p:first-of-type{font-size:14px;line-height:1.35}
+  /* Prefer one line at 390; if viewport is tighter, .foot-links keeps About·Notebook together */
+  .foot p:first-of-type{white-space:nowrap}
+}
+@media (max-width:360px){
+  /* very narrow: allow wrap, but links stay a nowrap group via .foot-links */
+  .foot p:first-of-type{white-space:normal}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .vls-notebook .vls-page svg{display:block;max-width:100%;height:auto;margin:6px auto 14px;color:var(--vls-ink-sepia)}
