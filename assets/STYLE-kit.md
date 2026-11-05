@@ -41,3 +41,5 @@ Friendly, plain words, a little dry wit. Short paragraphs. Explain one idea per 
 - Soft-gold card chrome is banned across the site (DECISIONS 4e3607b). Use real lacquered **brass** (beveled, brushed), dark **walnut**, **ivory**/enamel faces, and **glass** — never a flat soft-gold sheet or pill.
 - Buttons: beveled brass with the engraver font; labels and engravings stay on the flat face, never on the bevel or past the edge (DECISIONS a10436a / 5b433b5).
 - Long cards and nameplates prefer an ivory enamel face in a brass frame on wood, not a giant soft-gold app card.
+- Ivory surfaces on the site use `--gl-ivory-surface` / `.gl-ivory-surface` (flat cream stand-in). Do not ship a custom ivory texture; the shared kit ivory drops into that variable after the owner signs off.
+
