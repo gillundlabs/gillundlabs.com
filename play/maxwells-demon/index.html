@@ -333,7 +333,7 @@
     <div class="col">
       <button id="b-single"><b>The Demon's Trap (single player, default)</b><span>Guard the open side of a three-walled vacuum chamber with one paddle: drag anywhere on the screen, or use W/S, ↑/↓ or the mouse. An atom that slips past you is lost. Your score is the hottest temperature you reach.</span></button>
       <button id="b-sort"><b>Sorting: Maxwell's original demon <i class="fv-tag" hidden>Full version</i></b><span>A closed box, two chambers, one trapdoor, and a hot gas and a cold gas mixed together. Hold anywhere (or Space) to open the door. Separate them, hot atoms on one side and cold on the other, before collisions blend them, or crowd atoms onto one side. Your score is the entropy you remove from the gas, minus k_B ln 2 for every door opening your memory has to record.</span></button>
-      <label class="inline">Sorting difficulty <select id="m-sortdiff"><option value="apprentice">Apprentice (spread 20, slow)</option><option value="demon">Demon (spread 30, slow, fast door)</option><option value="maxwell">Maxwell (spread 5, fast, warm walls)</option><option value="custom">Custom…</option></select></label>
+      <label class="inline">Sorting difficulty <select id="m-sortdiff"><option value="apprentice">Apprentice (spread 20, slow)</option><option value="demon">Demon (spread 10, default)</option><option value="maxwell">Maxwell (spread 5, fast, warm walls)</option><option value="custom">Custom…</option></select></label>
       <div class="row inline-row" id="m-sortcustom" hidden>
         <label class="inline">Spread T_h/T_c <select id="m-spread"><option value="1">1 (one temperature)</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="20">20</option><option value="30">30</option></select></label>
         <label class="inline">Mean T <select id="m-mean"><option value="0.25">very slow (×¼)</option><option value="0.5">slow (×½)</option><option value="1">standard</option><option value="2">fast (×2)</option><option value="4">very fast (×4)</option></select></label>
@@ -2206,11 +2206,11 @@ root.MDRender = { THEMES, mulberry, woodTexture, brassGrad, brassRect, brassArc,
       body: `<p>Entropy counts the ways. Boltzmann's idea, in Planck's notation S = k<sub>B</sub> ln W, is carved on Boltzmann's grave in Vienna: the more microscopic arrangements W that look the same from outside, the higher the entropy. A gas whose fast and slow atoms are mixed evenly through both chambers has the most ways, so it has the most entropy.</p>
         <p>For an ideal gas, Otto Sackur and Hugo Tetrode (1911–1912) turned this into a formula. In the game's flat world it reads S = N k<sub>B</sub> [ ln(A / (N λ²)) + 2 ], with N atoms in area A and λ = h / √(2π m k<sub>B</sub>T) the thermal de Broglie wavelength. (In three dimensions the 2 becomes 5/2 and A becomes a volume.) For a mixture, each element gets its own term with its own N and λ. Each chamber's temperature comes from its atoms' mean kinetic energy: in 2D, ⟨KE⟩ = k<sub>B</sub>T per atom.</p>
         <p>For hydrogen at the Sorting mode's standard ${GN.tSort} (a 2D temperature, the same speeds as ${GN.tH} in the 3D convention), λ is about ${GN.lamThSort}, and each atom carries about 16 to 18 k<sub>B</sub> of entropy (the chamber's real area, and so this number, depends on your screen; the score only uses differences, which don't). There are two ways to lower the total. <b>Sort by speed:</b> with the energy fixed, a hot chamber plus a cold one has less entropy than two warm ones. Putting the fastest 50 of 100 hydrogen atoms in A and the slowest 50 in B removes about 33 k<sub>B</sub>. <b>Sort by number:</b> crowding atoms onto one side also lowers S. All 100 in one chamber at the same temperature removes N k<sub>B</sub> ln 2 ≈ 69 k<sub>B</sub>. The score counts both.</p>
-        <p><b>A hot gas and a cold one.</b> The Sorting box starts as an even mixture of two gases of the same atoms: half at a cold temperature T<sub>c</sub> and half at a hot T<sub>h</sub>, each with its own Maxwell–Boltzmann spread of speeds. The <i>spread</i> r = T<sub>h</sub>/T<sub>c</sub> is how much order there is to harvest. At fixed N and A the entropy depends on temperature only through N k<sub>B</sub> ln T, so separating them perfectly (hot in one chamber, cold in the other) removes N k<sub>B</sub> ln[(1 + r)/(2√r)]. For 100 hydrogen atoms at r = 10 that is 100 ln(11/2√10) ≈ 55 k<sub>B</sub>; at Demon's spread r = 30 it is about 104 k<sub>B</sub>; at r = 1 it is nothing. The <i>mean</i> temperature only sets how fast everything moves; it drops out of the formula. Collisions slowly merge the two gases into one (watch the speed histograms in each chamber), so the early seconds are worth the most.</p>
+        <p><b>A hot gas and a cold one.</b> The Sorting box starts as an even mixture of two gases of the same atoms: half at a cold temperature T<sub>c</sub> and half at a hot T<sub>h</sub>, each with its own Maxwell–Boltzmann spread of speeds. The <i>spread</i> r = T<sub>h</sub>/T<sub>c</sub> is how much order there is to harvest. At fixed N and A the entropy depends on temperature only through N k<sub>B</sub> ln T, so separating them perfectly (hot in one chamber, cold in the other) removes N k<sub>B</sub> ln[(1 + r)/(2√r)]. For 100 hydrogen atoms at r = 10 that is 100 ln(11/2√10) ≈ 55 k<sub>B</sub>; at r = 1 it is nothing. The <i>mean</i> temperature only sets how fast everything moves; it drops out of the formula. Collisions slowly merge the two gases into one (watch the speed histograms in each chamber), so the early seconds are worth the most.</p>
         <p>With only 100 atoms, a chamber's temperature is a statistical estimate. For 50 atoms it wobbles by about ±14 % (T/√N). Even with no demon and the door left open, ΔS drifts by a k<sub>B</sub> or so (about ±1.4 k<sub>B</sub> in the long run) as atoms wander through at random.</p>
         <p><b>The ledger.</b> Each time you open the door, the demon has made a decision and must record it: one bit. Wiping that bit later costs at least k<sub>B</sub> ln 2 ≈ 0.69 k<sub>B</sub> = 9.57 × 10⁻²⁴ J/K (page 11). Your score is the net: the gas's ΔS minus the ledger. It can go negative.</p>`,
       analogy: 'Tidying a room while writing every move in a notebook. The room ends up neat, but the notebook has to be burned before you can tidy again, and the burning warms the house.',
-      model: 'The score uses a coarse-grained, local-equilibrium entropy: each chamber is scored as if its speeds were already Maxwellian at its mean-KE temperature. The real (fine-grained) entropy of the two-temperature start is lower: about 0.21 k<sub>B</sub> per atom at r = 10, or 21 k<sub>B</sub> for 100 atoms (the footer shows the figure for your setup). Collisions erase that extra order on their own (Boltzmann\'s H-theorem) without moving the score, so the score neither credits nor charges you for it. Real ultracold hydrogen in a box this size would almost never collide; here a touching pair scatters 3 % of the time, so the two gases merge over about a minute. With warm walls, the hot atoms hit the walls more often and shed heat into them early, which costs a k<sub>B</sub> or two even if you do nothing. The ledger charges one bit per door opening. A real demon would have to measure every atom\'s position and speed, which takes far more bits, so this ledger is a generous lower bound. The formula assumes each chamber is in equilibrium (atom–atom collisions help) and uses Stirling\'s approximation for N!, which is about 3 k<sub>B</sub> off for 50 atoms; nearly all of that cancels in ΔS. The Sorting mode uses the 2D temperature ⟨KE⟩ = k<sub>B</sub>T, while the other modes label atoms with the 3D T = mv²/(3k<sub>B</sub>). Atoms are drawn at 0.4 of their usual size so that 200 fit. On Apprentice and Demon, at chamber size ×1, atoms about to reach the trapdoor are ringed to show whether letting them through helps a hot/cold sort toward whichever chamber started hotter at the beginning of the round (higher mean kinetic energy after warm-up; a tie counts as chamber A). That choice is fixed for the round. Victorian rings are green (let through) or red (keep shut); black-and-white uses a solid ring with + or a dashed ring with −. It is a rule of thumb — an atom\'s energy against the gas\'s average — and it ignores crowding, which the score also counts. The preview is off in Custom and whenever the chamber is magnified. "Adiabatic" walls that hand back every atom at exactly its arrival speed are an idealisation; the Maxwell difficulty uses partly accommodating walls held at the starting temperature instead (Maxwell\'s own 1879 wall model: a fraction α of bounces leave at the wall temperature). There the walls trade heat Q with the gas, so the score counts gas plus walls, S<sub>0</sub> − S + Q/T<sub>0</sub>; without the wall term the gas\'s ordinary energy swings with the walls would move the score by ten k<sub>B</sub> or more.',
+      model: 'The score uses a coarse-grained, local-equilibrium entropy: each chamber is scored as if its speeds were already Maxwellian at its mean-KE temperature. The real (fine-grained) entropy of the two-temperature start is lower: about 0.21 k<sub>B</sub> per atom at r = 10, or 21 k<sub>B</sub> for 100 atoms (the footer shows the figure for your setup). Collisions erase that extra order on their own (Boltzmann\'s H-theorem) without moving the score, so the score neither credits nor charges you for it. Real ultracold hydrogen in a box this size would almost never collide; here a touching pair scatters 3 % of the time, so the two gases merge over about a minute. With warm walls, the hot atoms hit the walls more often and shed heat into them early, which costs a k<sub>B</sub> or two even if you do nothing. The ledger charges one bit per door opening. A real demon would have to measure every atom\'s position and speed, which takes far more bits, so this ledger is a generous lower bound. The formula assumes each chamber is in equilibrium (atom–atom collisions help) and uses Stirling\'s approximation for N!, which is about 3 k<sub>B</sub> off for 50 atoms; nearly all of that cancels in ΔS. The Sorting mode uses the 2D temperature ⟨KE⟩ = k<sub>B</sub>T, while the other modes label atoms with the 3D T = mv²/(3k<sub>B</sub>). Atoms are drawn at 0.4 of their usual size so that 200 fit. "Adiabatic" walls that hand back every atom at exactly its arrival speed are an idealisation; the Maxwell difficulty uses partly accommodating walls held at the starting temperature instead (Maxwell\'s own 1879 wall model: a fraction α of bounces leave at the wall temperature). There the walls trade heat Q with the gas, so the score counts gas plus walls, S<sub>0</sub> − S + Q/T<sub>0</sub>; without the wall term the gas\'s ordinary energy swings with the walls would move the score by ten k<sub>B</sub> or more.',
       cf: 'O. Sackur, <i>Ann. Phys.</i> (1911, 1912); H. Tetrode, <i>Ann. Phys.</i> (1912); R. K. Pathria &amp; P. D. Beale, <i>Statistical Mechanics</i>, 3rd ed. (Academic Press, 2011), ch. 3 (ideal gas, Gibbs paradox); this game\'s <code>src/entropy.js</code> (the 2D derivation, step by step).' },
     { id: 'bits', title: "Shannon's bit", date: '1948', sketch: sketchShannon, h: 250, alt: 'Sketch: the entropy H of a coin in bits against the chance of heads p, a hump peaking at 1 bit for a fair coin and 0.47 bit at 90 % heads; beside it a coin and the trapdoor\'s two choices.',
       body: `<p>In 1948 Claude Shannon, at Bell Labs, asked how to measure information. His answer: by surprise. Learning the result of a fair coin toss gives you exactly one <b>bit</b> (binary digit), a word Shannon credited to his colleague John Tukey.</p>
@@ -2693,7 +2693,7 @@ const MEANS = [0.25, 0.5, 1, 2, 4];
 const MEAN_LABEL = { 0.25: 'very slow', 0.5: 'slow', 1: 'standard', 2: 'fast', 4: 'very fast' };
 const DIFFICULTIES = {
   apprentice: { id: 'apprentice', label: 'Apprentice', spread: 20, mean: 0.5, walls: 'adiabatic', alpha: 0, doorTime: 0.08, time: 180 },
-  demon: { id: 'demon', label: 'Demon', spread: 30, mean: 0.5, walls: 'adiabatic', alpha: 0, doorTime: 0.05, time: 120 },
+  demon: { id: 'demon', label: 'Demon', spread: 10, mean: 1, walls: 'adiabatic', alpha: 0, doorTime: 0.2, time: 120 },
   maxwell: { id: 'maxwell', label: 'Maxwell', spread: 5, mean: 2, walls: 'thermal', alpha: 0.05, doorTime: 0.3, time: 120 },
   custom: { id: 'custom', label: 'Custom', spread: 10, mean: 1, walls: 'adiabatic', alpha: 0, doorTime: 0.2, time: 120 },
 };
@@ -2768,7 +2768,6 @@ function create(env) {
     S.N = S.zs.reduce((n, z) => n + S.mix[z], 0);
     const masses = []; for (const z of S.zs) for (let i = 0; i < S.mix[z]; i++) masses.push(P.ELEMENTS[z - 1].mass);
     S.M = P.CHAMBER_MAG;
-    S.previewHot = 0;
     S.Tstd = E.startTemperature(masses, P.START_SPEED / S.M);
     S.T0 = S.Tstd * S.diff.mean;
     const tt = E.twoTemps(S.T0, S.diff.spread); S.Tc = tt.Tc; S.Th = tt.Th;
@@ -2786,7 +2785,6 @@ function create(env) {
     S.time = 0; S.left = S.diff.time; S.ended = false; S.crossings = [0, 0]; S.bestNet = -Infinity; S.qMax = 0; S.qHold = 0; S.a2 = null;
     for (const a of S.atoms) a.side = a.x < PX ? 0 : 1;
     S.E0 = 0; measure(); S.S0 = S.ch[0].S + S.ch[1].S; S.E0 = S.Etot; measure(); histogram(true);
-    lockPreviewHot();
   }
   function makeAtom(z, hot) {
     const e = P.ELEMENTS[z - 1], r = Math.max(4, Math.round(e.radius * RADIUS_FACTOR * 10) / 10);
@@ -2987,73 +2985,6 @@ function create(env) {
     ctx.restore();
   }
 
-  const PREVIEW_H = 1.2;
-  function previewOn() { return (S.diff.id === 'apprentice' || S.diff.id === 'demon') && (S.M || 1) <= 1; }
-  function lockPreviewHot() {
-    let ke0 = 0, n0 = 0, ke1 = 0, n1 = 0;
-    for (const a of S.atoms) {
-      if (a.stuck) continue;
-      if (a.x < PX) { ke0 += ke(a); n0++; } else { ke1 += ke(a); n1++; }
-    }
-    const T0 = n0 ? ke0 / n0 : 0, T1 = n1 ? ke1 / n1 : 0;
-    S.previewHot = T0 >= T1 ? 0 : 1;
-  }
-  function previewMarks() {
-    if (!previewOn() || !S.on) return [];
-    let N = 0, KE = 0; for (const a of S.atoms) if (!a.stuck) { N++; KE += ke(a); }
-    const meanKE = N ? KE / N : 0, hot = S.previewHot | 0;
-    const out = [];
-    for (const a of S.atoms) {
-      if (a.stuck) continue;
-      const from = a.x < PX ? 0 : 1, vx = a.vx, vy = a.vy, r = a.r;
-      if ((from === 0 && vx <= 0) || (from === 1 && vx >= 0)) continue;
-      const face = from === 0 ? XL - r : XR + r;
-      let tIn = (face - a.x) / vx; if (tIn < 0) tIn = 0;
-      const tMid = (PX - a.x) / vx; if (!(tMid > 0) || tMid > PREVIEW_H) continue;
-      const g = S.g / P.METERS_PER_PX;
-      let tw;
-      if (g > 0) {
-        const dF = SB.y + SB.h - r - a.y, dC = a.y - r - SB.y, discC = vy * vy - 2 * g * dC;
-        tw = (-vy + Math.sqrt(vy * vy + 2 * g * Math.max(0, dF))) / g;
-        if (vy < 0 && discC >= 0) tw = Math.min(tw, (-vy - Math.sqrt(discC)) / g);
-      } else tw = vy < 0 ? (a.y - r - SB.y) / -vy : vy > 0 ? (SB.y + SB.h - r - a.y) / vy : Infinity;
-      if (tw < tMid) continue;
-      const yIn = a.y + vy * tIn + 0.5 * g * tIn * tIn, yMid = a.y + vy * tMid + 0.5 * g * tMid * tMid;
-      if (Math.max(yIn, yMid) + r > GY1) continue;
-      if (Math.min(yIn, yMid) - r < GY0) continue;
-      const help = from === hot ? ke(a) < meanKE : ke(a) > meanKE;
-      out.push({ a, help, tMid, hot });
-    }
-    return out;
-  }
-  function drawPreview(ctx, bw) {
-    const marks = previewMarks(); if (!marks.length) return;
-    ctx.save();
-    for (const { a, help } of marks) {
-      const rr = a.r * (bw ? 1.6 : 1.7);
-      ctx.beginPath(); ctx.arc(a.x, a.y, rr, 0, Math.PI * 2);
-      if (bw) {
-        ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.setLineDash(help ? [] : [4.5, 3.5]); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const gy = a.y - rr - 9;
-        if (help) { ctx.font = 'bold 15px ui-monospace, Menlo, monospace'; ctx.fillText('+', a.x, gy); }
-        else {
-          const w = 11, h = 2.8; ctx.fillRect(a.x - w / 2, gy - h / 2, w, h);
-        }
-      } else {
-        ctx.lineWidth = 2.2; ctx.setLineDash([]);
-        ctx.strokeStyle = help ? 'rgba(90,210,130,0.95)' : 'rgba(230,90,80,0.95)';
-        ctx.shadowColor = help ? 'rgba(60,180,100,0.55)' : 'rgba(200,50,40,0.55)'; ctx.shadowBlur = 6;
-        ctx.stroke(); ctx.shadowBlur = 0;
-        const dir = a.x < PX ? 1 : -1, tip = a.x + dir * (rr + 10);
-        ctx.beginPath(); ctx.moveTo(a.x + dir * (rr + 2), a.y); ctx.lineTo(tip, a.y);
-        ctx.moveTo(tip - dir * 4, a.y - 3.5); ctx.lineTo(tip, a.y); ctx.lineTo(tip - dir * 4, a.y + 3.5);
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
-  }
-
   const bg = {};
   function background(theme, dpr) {
     const key = theme + dpr; if (bg[key]) return bg[key];
@@ -3133,7 +3064,6 @@ function create(env) {
     ctx.strokeStyle = bw ? '#fff' : 'rgba(255,214,140,0.55)'; ctx.lineWidth = 0.8; ctx.setLineDash(bw ? [1.5, 2] : []); ctx.beginPath();
     for (const a of S.atoms) if (a.stuck) { ctx.moveTo(a.x + a.r * 0.9, a.y); ctx.arc(a.x, a.y, a.r * 0.9, 0, Math.PI * 2); }
     ctx.stroke(); ctx.setLineDash([]); ctx.restore();
-    drawPreview(ctx, bw);
     if (S.a2) drawA2(ctx, bw, clock);
     if (!bw && root.VLS && root.VLS.demon) {
       const pose = root.VLS.demon.draw(ctx, PX + 40, SB.y - RAIL - 1, { t: clock, pull: S.door, theme, mood: S.demonMood, scale: 1.35, facing: -1 });
@@ -3220,11 +3150,7 @@ function create(env) {
     const net = `${E.formatKB(S.net)}`, netJ = `${S.net >= 0 ? '+' : '−'}${E.formatJK(Math.abs(S.net))}`;
     const sub = `${S.diff.walls === 'thermal' ? 'gas+walls' : 'gas'} ΔS ${E.formatKB(S.gas)} − ledger ${S.opens} bit${S.opens === 1 ? '' : 's'} × k_B ln 2 (${(S.ledger / E.K_B).toFixed(1)} k_B)`;
     const A = chamberLines(0), B = chamberLines(1);
-    const help0 = settings.sortDoorControl === 'toggle' ? 'tap anywhere or Space: open / shut the trapdoor' : 'hold anywhere (or Space) to open the trapdoor';
-    const ringLeg = bw
-      ? 'rings: solid/+ = let through (toward the side that started hotter), dashed/− = keep shut; ignores crowding'
-      : 'rings: green/+ = let through (toward the side that started hotter), red/− = keep shut; ignores crowding';
-    const help = previewOn() ? help0 + ' · ' + ringLeg : help0;
+    const help = settings.sortDoorControl === 'toggle' ? 'tap anywhere or Space: open / shut the trapdoor' : 'hold anywhere (or Space) to open the trapdoor';
     const foot = `${help} · ❚❚/P pause · ${S.diff.label}: T_c ${P.formatT(S.Tc)} + T_h ${P.formatT(S.Th)} (×${+S.diff.spread.toFixed(2)}), mean ${P.formatT(S.T0)} · ${S.diff.walls === 'thermal' ? `thermal walls α ${S.diff.alpha}` : 'adiabatic walls'} · perfect sort ${S.idealKB.toFixed(0)} k_B`;
     const foot2 = S.diff.spread > 1
       ? `Score uses each chamber's local-equilibrium entropy (N, A, mean-KE T); the two-temperature start is really ${S.deficitKB.toFixed(1)} k_B lower, order collisions erase for free.`
@@ -3273,8 +3199,7 @@ function create(env) {
     const depth = SB.h * P.METERS_PER_PX, V = (AREA[0] + AREA[1]) * depth;
     return { p: N ? P.pressure(N, KE / (N * E.K_B), V) : 0, N, depth, V };
   }
-  function previewHelpCount() { return previewMarks().filter((m) => m.help).length; }
-  return { S, SB, PX, XL, XR, GY0, GY1, GH, AREA, HBINS, Q_LIM, Q_HOLD, Q_MIN_N, rescale, pressure, start, step, render, measure, doorDown, doorUp, toggle, setCmd, summary, previewHelpCount, stop: () => { S.on = false; } };
+  return { S, SB, PX, XL, XR, GY0, GY1, GH, AREA, HBINS, Q_LIM, Q_HOLD, Q_MIN_N, rescale, pressure, start, step, render, measure, doorDown, doorUp, toggle, setCmd, summary, stop: () => { S.on = false; } };
 }
 root.MDSorting = Object.freeze({ create, magCap, magLimits, magColdest, RECORD_T, vsRecord, MAG_ABS, MAG_TFLOOR, MAG_SCREEN_EXP, MAG_SCREEN_CURVE, CONTACT_P, DIFFICULTIES, SPREADS, MEANS, MEAN_LABEL, resolve, blurb, RANGE, DEFAULT_N, RADIUS_FACTOR, COLS, QB });
 })(typeof self !== 'undefined' ? self : this);
@@ -3657,12 +3582,7 @@ function startSort(watch) {
   SORT.start({ mix: sortMix(), difficulty: settings.sortDifficulty, custom: sortCustom() });
   document.body.classList.add('sorting');
   if (watch) return startWatchRun();
-  const doorHelp = settings.sortDoorControl === 'toggle' ? 'Tap anywhere (or Space) to open the trapdoor; tap again to shut it.' : 'Hold anywhere (or Space) to open the trapdoor; let go to shut it.';
-  const pv = (settings.sortDifficulty === 'apprentice' || settings.sortDifficulty === 'demon') && sortMag() <= 1;
-  const ringHelp = settings.theme === 'bw'
-    ? 'Solid +: let through (toward the side that started hotter).\nDashed −: keep shut. Rule of thumb — ignores crowding.'
-    : 'Green: let through (toward the side that started hotter).\nRed: keep shut. Rule of thumb — ignores crowding.';
-  toast(pv ? doorHelp + '\n' + ringHelp : doorHelp);
+  toast(settings.sortDoorControl === 'toggle' ? 'Tap anywhere (or Space) to open the trapdoor; tap again to shut it.' : 'Hold anywhere (or Space) to open the trapdoor; let go to shut it.');
   showPanel(null);
 }
 const ORACLE = window.MDOracleDemon;
@@ -4086,30 +4006,8 @@ function render() {
   if (state.toast && state.screen === 'playing') banner(state.toast, theme);
 }
 function banner(text, theme, y0 = CH.y) {
-  const bw = theme === 'bw', boxW = 640, maxW = 600, size = bw ? 13 : 14;
-  const font = bw ? `${size}px ui-monospace, monospace` : `700 ${size}px ${window.VLS ? VLS.tokens.fonts.engraved : 'Georgia, serif'}`;
-  ctx.font = font;
-  const wrap = (s) => {
-    const words = String(s).split(/\s+/).filter(Boolean); const out = []; let cur = '';
-    for (const w of words) {
-      const t = cur ? cur + ' ' + w : w, probe = bw ? t.toUpperCase() : t;
-      if (cur && ctx.measureText(probe).width > maxW) { out.push(cur); cur = w; } else cur = t;
-    }
-    if (cur) out.push(cur); return out.length ? out : [''];
-  };
-  const lines = String(text).split('\n').flatMap(wrap);
-  const lineH = bw ? 17 : 20, padY = bw ? 11 : 14;
-  const boxH = Math.max(bw ? 40 : 52, padY * 2 + lineH * lines.length);
-  const x0 = W / 2 - boxW / 2, yBox = y0 + (bw ? 16 : 10);
-  if (bw) {
-    ctx.fillStyle = '#000'; ctx.fillRect(x0, yBox, boxW, boxH);
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x0, yBox, boxW, boxH);
-    ctx.font = font; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    lines.forEach((ln, i) => ctx.fillText(ln.toUpperCase(), W / 2, yBox + padY + lineH * i + lineH / 2 - 1));
-  } else {
-    R.plaque(ctx, x0, yBox, boxW, boxH, 11);
-    lines.forEach((ln, i) => R.engrave(ctx, ln, W / 2, yBox + padY + lineH * i + size * 0.7, size, 'center', '700'));
-  }
+  if (theme === 'bw') { ctx.fillStyle = '#000'; ctx.fillRect(W / 2 - 320, y0 + 20, 640, 40); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - 320, y0 + 20, 640, 40); ctx.font = '14px ui-monospace, monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text.toUpperCase(), W / 2, y0 + 40); }
+  else { R.plaque(ctx, W / 2 - 320, y0 + 14, 640, 52, 11); R.engrave(ctx, text, W / 2, y0 + 40, 15, 'center', '700'); }
 }
 function hud(theme) {
   const bw = theme === 'bw', single = state.mode === 'single';
@@ -4648,10 +4546,7 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !wind
 
 onRescale = (f) => { for (const a of state.atoms) { a.vx *= f; a.vy *= f; } if (SORT.S.on) SORT.rescale(f); };
 MDS.onChange(() => resizeCanvas());
-window.MDGameLive = {
-  sortMag: () => sortMag(), padSpeed: PAD.speed,
-  sortPreviewHelpCount: () => (state.mode === 'sort' && SORT.S.on && SORT.previewHelpCount ? SORT.previewHelpCount() : 0),
-};
+window.MDGameLive = { sortMag: () => sortMag(), padSpeed: PAD.speed };
 
 STATS.init({ enabled: () => settings.shareStats !== false, context: () => ({ app: C.APP_VERSION || '1.0.0', platform: statsPlatform() }) });
 setQuality(0);
