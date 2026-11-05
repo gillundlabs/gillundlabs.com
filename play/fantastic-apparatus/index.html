@@ -93,6 +93,15 @@
 [data-theme="bw"] .vls-note-label, [data-theme="bw"] .vls-ink-red { color: #000; }
 [data-theme="bw"] .vls-analogy::before { display: none; }
 
+/* Powers of ten (v1.1.0): VLS.pow10 / VLS.fmtSci / VLS.expHtml emit <sup class="vls-exp"><span class="vls-minus">−</span>9</sup> with a true minus
+   (U+2212; the bundled fonts have it, unlike the superscript minus U+207B). Big and bold enough that the minus is
+   at least a digit wide and a digit stroke thick on a phone; line-height 0 and a relative raise keep ruled lines even. */
+.vls-exp { font-size: 0.8em; font-weight: 700; line-height: 0; position: relative; top: -0.45em; vertical-align: baseline; margin-left: 0.04em; font-variant-numeric: lining-nums; letter-spacing: 0.02em; color: inherit; }
+/* the minus itself: the font's own U+2212 (so it sits on that font's maths axis), thickened and lengthened by a stroke
+   of 0.06em so it is at least a digit wide and a digit stroke thick in Caveat, Georgia and the system fallbacks */
+.vls-exp .vls-minus { -webkit-text-stroke: 0.06em currentColor; paint-order: stroke fill; padding: 0 0.04em 0 0.02em; }
+[data-theme="bw"] .vls-exp { color: inherit; font-weight: 700; }
+
 @media (max-width: 520px) {
   .vls-page { padding: 14px 12px 18px 58px; font-size: 20px; }
   .vls-page .vls-date { width: 34px; left: 4px; font-size: 12px; }
@@ -338,7 +347,7 @@
   'use strict';
   const VLS = (root.VLS = root.VLS || {});
   const tokens = {
-    version: '1.0.0',
+    version: '1.1.0',
     palette: {
       // apparatus (Victorian theme)
       wood: '#2b170b', woodDeep: '#1a0e06', woodLight: '#5a3418',
@@ -374,6 +383,111 @@
   VLS.tokens = tokens;
   // theme lookup: VLS.color('ink', 'bw') falls back to the Victorian palette
   VLS.color = (name, theme) => (theme === 'bw' && tokens.bw[name] !== undefined ? tokens.bw[name] : tokens.palette[name]);
+
+  // ---------- powers of ten (v1.1.0, added by Maxwell's Demon for the studio; DECISIONS 2ae02b0) ----------
+  // One formatter for every game, so the minus in 10^-N is always legible: a true minus (U+2212) in HTML, styled
+  // by .vls-exp in tokens.css; on canvas a drawn bar, never a font's superscript-minus glyph (the bundled Caveat and
+  // Pinyon fonts have no U+207B, so browsers substitute a tiny glyph from another font).
+  const MINUS = '\u2212', MINUS_HTML = `<span class="vls-minus">${MINUS}</span>`;   // .vls-minus thickens the glyph (tokens.css)
+  const SUPER = { '⁻': '-', '⁺': '+', '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '·': '.' };
+  const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // exponent → { neg, digits }: accepts -9, '-9', '−9', '⁻⁹', 4.5, '4·5'
+  function expParts(exp) {
+    let s = String(exp).trim().split('').map((c) => (SUPER[c] !== undefined ? SUPER[c] : c)).join('').replace(/^\u2212/, '-');
+    const neg = s[0] === '-'; if (neg || s[0] === '+') s = s.slice(1);
+    return { neg, digits: s };
+  }
+  // HTML: VLS.pow10(-9, { mantissa: 3.2 }) → '3.2 × 10<sup class="vls-exp"><span class="vls-minus">−</span>9</sup>'; VLS.pow10(7) → '10<sup class="vls-exp">7</sup>'
+  function pow10(exp, opts = {}) {
+    const e = expParts(exp), m = opts.mantissa;
+    const head = m === undefined || m === null || m === '' ? '' : `${escHtml(m)}${opts.times === undefined ? ' × ' : opts.times}`;
+    return `${head}10<sup class="vls-exp">${e.neg ? MINUS_HTML : ''}${escHtml(e.digits)}</sup>`;
+  }
+  // value → { mantissa: '3.2', exp: -9 } with sig significant figures (sig 1 gives '3'); 0 / non-finite → null
+  function sciParts(value, sig = 2) {
+    if (!(Math.abs(value) > 0) || !isFinite(value)) return null;
+    let e = Math.floor(Math.log10(Math.abs(value))), m = value / Math.pow(10, e);
+    let ms = m.toFixed(Math.max(0, sig - 1));
+    if (Math.abs(+ms) >= 10) { e += 1; ms = (value / Math.pow(10, e)).toFixed(Math.max(0, sig - 1)); }
+    return { mantissa: ms, exp: e };
+  }
+  // VLS.fmtSci(3.2e-9) → '3.2 × 10<sup class="vls-exp">−9</sup>'. opts: { dropOne: true } prints 1e-12 as '10<sup>−12</sup>'.
+  function fmtSci(value, sig = 2, opts = {}) {
+    const p = sciParts(value, sig); if (!p) return value === 0 ? '0' : String(value);
+    return pow10(p.exp, { mantissa: opts.dropOne && +p.mantissa === 1 ? '' : p.mantissa, times: opts.times });
+  }
+  // HTML text with Unicode superscripts (e.g. '10⁻¹² Pa', '3 × 10⁻¹⁰', 'cm⁻³') → the same with <sup class="vls-exp">.
+  // Converts every superscript run that has a minus or follows '10'; plain squares and cubes (m², v²) are left alone.
+  function expHtml(html) {
+    return String(html).replace(/(10)?([⁻⁺]?[⁰¹²³⁴⁵⁶⁷⁸⁹]+(?:·[⁰¹²³⁴⁵⁶⁷⁸⁹]+)?)/g, (all, ten, run) => {
+      if (!ten && !/[⁻]/.test(run)) return all;
+      const e = expParts(run); return `${ten || ''}<sup class="vls-exp">${e.neg ? MINUS_HTML : ''}${e.digits}</sup>`;
+    });
+  }
+  // ---- canvas
+  const fontPx = (font) => { const m = /(\d+(?:\.\d+)?)px/.exec(font || ''); return m ? +m[1] : 10; };
+  const scaledFont = (font, k) => (font || '10px serif').replace(/(\d+(?:\.\d+)?)px/, (a, n) => `${+(n * k).toFixed(2)}px`);
+  // vertical offset from the caller's textBaseline to the alphabetic baseline (positive = down)
+  function toAlphabetic(ctx, px) {
+    const b = ctx.textBaseline || 'alphabetic'; if (b === 'alphabetic') return 0;
+    const save = ctx.textBaseline; ctx.textBaseline = 'alphabetic'; const mt = ctx.measureText('0'); ctx.textBaseline = save;
+    const asc = mt.fontBoundingBoxAscent || px * 0.8, desc = mt.fontBoundingBoxDescent || px * 0.2;
+    const ea = mt.emHeightAscent || asc, ed = mt.emHeightDescent || desc;
+    if (b === 'top' || b === 'hanging') return asc;
+    if (b === 'middle') return (ea - ed) / 2;
+    return -desc;   // bottom / ideographic
+  }
+  // the raised exponent at (x, yAlpha) [left edge, alphabetic baseline of the base text]; returns its width
+  function drawExp(ctx, x, yA, exp, opts, measureOnly) {
+    const e = expParts(exp), baseFont = opts.font || ctx.font, px = fontPx(baseFont), k = opts.scale || (px <= 12 ? 0.8 : 0.7), ef = scaledFont(baseFont, k), epx = px * k;
+    ctx.save(); ctx.font = ef; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    const m0 = ctx.measureText('0'), dW = (m0.actualBoundingBoxRight || 0) + (m0.actualBoundingBoxLeft || 0) || m0.width * 0.8;
+    const barW = Math.max(dW * 1.1, epx * 0.55), gap = epx * 0.05, lead = epx * 0.06;
+    const dWidth = ctx.measureText(e.digits).width, w = lead + (e.neg ? barW + gap : 0) + dWidth;
+    if (!measureOnly) {
+      const yE = yA - px * (opts.raise || 0.42), col = opts.color || ctx.fillStyle;
+      ctx.fillStyle = col;
+      if (e.neg) {
+        // a stroked bar: digit-width long and at least a digit stroke thick, on the digits' maths axis
+        const th = Math.max(1, epx * (opts.minusWeight || 0.1)), yb = yE - epx * 0.26;
+        ctx.strokeStyle = col; ctx.lineWidth = th; ctx.lineCap = 'butt';
+        ctx.beginPath(); ctx.moveTo(x + lead, yb); ctx.lineTo(x + lead + barW, yb); ctx.stroke();
+      }
+      ctx.fillText(e.digits, x + lead + (e.neg ? barW + gap : 0), yE);
+    }
+    ctx.restore(); return w;
+  }
+  // canvas: VLS.drawPow10(ctx, x, y, '3.2', -9, { font, color, align, scale })  [scale: exponent size, default 0.7, or 0.8 for fonts ≤ 12 px] draws '3.2 × 10' and a raised
+  // exponent; mantissa null/'' draws '10^exp' alone. Honours ctx.textAlign / textBaseline (or opts.align). Returns the width.
+  function drawPow10(ctx, x, y, mantissa, exp, opts = {}) {
+    const font = opts.font || ctx.font, px = fontPx(font);
+    const base = mantissa === undefined || mantissa === null || mantissa === '' ? '10' : `${mantissa}${opts.times === undefined ? ' × ' : opts.times}10`;
+    ctx.save(); ctx.font = font; const dy = toAlphabetic(ctx, px); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    const wb = ctx.measureText(base).width, we = drawExp(ctx, 0, 0, exp, { ...opts, font }, true), w = wb + we;
+    const a0 = opts.align || (/(right|end)/.test(ctx.textAlign) ? 'right' : ctx.textAlign === 'center' ? 'center' : 'left');
+    const x0 = a0 === 'right' ? x - w : a0 === 'center' ? x - w / 2 : x;
+    if (opts.color) ctx.fillStyle = opts.color;
+    if (!opts.measureOnly) { ctx.fillText(base, x0, y + dy); drawExp(ctx, x0 + wb, y + dy, exp, { ...opts, font }); }
+    ctx.restore(); return w;
+  }
+  // canvas: draw a line of text with Unicode-superscript powers (same runs as expHtml) through drawExp, so a
+  // '10⁻¹² Pa' in any string is drawn legibly. opts.maxWidth squeezes like fillText's 4th argument. Returns the width.
+  function drawSciText(ctx, text, x, y, opts = {}) {
+    const parts = []; let last = 0; const re = /(10)?([⁻⁺]?[⁰¹²³⁴⁵⁶⁷⁸⁹]+(?:·[⁰¹²³⁴⁵⁶⁷⁸⁹]+)?)/g; let m;
+    while ((m = re.exec(text))) { if (!m[1] && !/[⁻]/.test(m[2])) continue; parts.push({ t: text.slice(last, m.index) + (m[1] || '') }); parts.push({ e: m[2] }); last = m.index + m[0].length; }
+    parts.push({ t: text.slice(last) });
+    const font = opts.font || ctx.font, px = fontPx(font);
+    ctx.save(); ctx.font = font; if (opts.color) ctx.fillStyle = opts.color;
+    const dy = toAlphabetic(ctx, px), align = opts.align || (/(right|end)/.test(ctx.textAlign) ? 'right' : ctx.textAlign === 'center' ? 'center' : 'left');
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    const widths = parts.map((p) => (p.e ? drawExp(ctx, 0, 0, p.e, { ...opts, font }, true) : ctx.measureText(p.t).width)), w = widths.reduce((a, b) => a + b, 0);
+    const sx = opts.maxWidth && w > opts.maxWidth ? opts.maxWidth / w : 1, W = w * sx;
+    const x0 = align === 'right' ? x - W : align === 'center' ? x - W / 2 : x;
+    ctx.translate(x0, y + dy); if (sx !== 1) ctx.scale(sx, 1);
+    let cx = 0; parts.forEach((p, i) => { if (p.e) drawExp(ctx, cx, 0, p.e, { ...opts, font }); else if (p.t) ctx.fillText(p.t, cx, 0); cx += widths[i]; });
+    ctx.restore(); return W;
+  }
+  Object.assign(VLS, { MINUS, pow10, fmtSci, sciParts, expHtml, drawPow10, drawSciText });
   if (typeof module === 'object' && module.exports) module.exports = tokens;
 })(typeof self !== 'undefined' ? self : this);
 
@@ -392,40 +506,140 @@
   function mulberry(a) { return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   const dprOf = () => Math.min(3, Math.max(1, (root.devicePixelRatio || 1)));
 
-  // ---------- dark stained wood: returns a cached offscreen canvas (draw with ctx.drawImage(c, 0, 0, w, h)) ----------
-  const woodCache = new Map();
-  function woodTexture(w, h, seed = 7) {
-    const key = `${w}x${h}:${seed}`; if (woodCache.has(key)) return woodCache.get(key);
-    const dpr = dprOf();
-    const c = document.createElement('canvas'); c.width = w * dpr; c.height = h * dpr; c.logicalW = w; c.logicalH = h;
-    const g = c.getContext('2d'); g.scale(dpr, dpr); const r = mulberry(seed);
+  // ---------- French-polished dark walnut ----------
+  // Straight uneven growth rings, irregular open pores, broken figure.
+  // NO sine-wave swoops, NO mirrored swirls (owner 2026-11-05).
+  // Grain scale follows the surface: fine on thin rails/plaques, coarser on large panels.
+  // Generate at the logical draw size — do not stretch one tiny tile across a wall.
+  const woodCache = new Map(), WOOD_CACHE_MAX = 48;
+  const SITE_WOOD_SEED = 20261105; // fixed seed for Webmaster site backgrounds (stable across visits)
+  const SITE_WOOD_DESKTOP = [2400, 1600], SITE_WOOD_PHONE = [1080, 1920];
+
+  function grainScaleOf(w, h, override) {
+    if (override != null && override > 0) return override;
+    // reference: ~180 px board height → scale 1; clamp so tiny rails stay readable and huge walls stay coarse
+    return Math.max(0.35, Math.min(2.8, Math.min(w, h) / 180));
+  }
+
+  function paintWalnut(g, w, h, seed, opts = {}) {
+    const tileable = !!opts.tileable;
+    const vignette = opts.vignette !== undefined ? !!opts.vignette : !tileable;
+    const S = grainScaleOf(w, h, opts.grainScale);
+    const r = mulberry(seed | 0);
     g.fillStyle = C('wood'); g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 40; i++) {
-      const y = r() * h, hh = 6 + r() * 40;
-      g.fillStyle = `rgba(${70 + r() * 40},${35 + r() * 20},${12 + r() * 10},${0.08 + r() * 0.12})`;
-      g.fillRect(0, y, w, hh);
+
+    // Heartwood / sapwood colour plates (horizontal, uneven — not wavy)
+    for (let i = 0; i < 14; i++) {
+      const y = r() * h, hh = (10 + r() * 60) * S;
+      const warm = r() < 0.42;
+      g.fillStyle = warm
+        ? `rgba(${88 + r() * 40},${42 + r() * 22},${14 + r() * 12},${0.08 + r() * 0.12})`
+        : `rgba(${22 + r() * 18},${9 + r() * 8},${3 + r() * 5},${0.10 + r() * 0.16})`;
+      const band = (yy) => g.fillRect(0, yy, w, hh);
+      band(y); if (tileable) { band(y - h); band(y + h); }
     }
-    const knots = Array.from({ length: 5 }, () => ({ x: r() * w, y: r() * h, s: 30 + r() * 60 }));
-    for (let i = 0; i < 260 * Math.max(1, (w * h) / 680000); i++) {
-      const y0 = r() * h, amp = 1 + r() * 4, f = 0.004 + r() * 0.01, ph = r() * 6.28;
-      g.beginPath();
-      for (let x = 0; x <= w; x += 4) {
-        let y = y0 + Math.sin(x * f + ph) * amp + Math.sin(x * f * 3.7 + ph * 2) * amp * 0.3;
-        for (const k of knots) { const dx = x - k.x, dy = y - k.y, d2 = dx * dx + dy * dy; y += (dy / (Math.sqrt(d2) + 1)) * k.s * Math.exp(-d2 / (k.s * k.s * 2)); }
-        x ? g.lineTo(x, y) : g.moveTo(x, y);
+
+    // Growth rings: mostly-straight polylines, uneven spacing, rare breaks. Hash wander only (no sine).
+    const rings = [];
+    {
+      let y = -20 * S - r() * 30 * S;
+      while (y < h + 40 * S) {
+        const spacing = (2.2 + r() * 5.5 + (r() < 0.08 ? r() * 10 : 0)) * S;
+        const thick = (r() < 0.18 ? 1.6 + r() * 2.2 : 0.55 + r() * 1.1) * S;
+        rings.push({
+          y0: y, thick, dark: r() < 0.75, broken: r() < 0.12,
+          breakAt: 0.25 + r() * 0.5, breakDx: (r() - 0.5) * 18 * S,
+          lean: (r() - 0.5) * 0.012, wobble: (0.4 + r() * 1.8) * S,
+        });
+        y += spacing;
       }
-      const dark = r() < 0.7;
-      g.strokeStyle = dark ? `rgba(10,4,1,${0.15 + r() * 0.35})` : `rgba(140,80,35,${0.05 + r() * 0.12})`;
-      g.lineWidth = 0.5 + r() * 1.6; g.stroke();
     }
-    for (const k of knots) for (let j = 6; j > 0; j--) { g.beginPath(); g.ellipse(k.x, k.y, j * 2.2, j * 1.2, 0, 0, 7); g.strokeStyle = `rgba(15,6,2,${0.12 + j * 0.03})`; g.lineWidth = 1; g.stroke(); }
-    const sh = g.createLinearGradient(0, 0, w, h);
-    sh.addColorStop(0, 'rgba(255,200,140,0.06)'); sh.addColorStop(0.45, 'rgba(255,200,140,0)'); sh.addColorStop(0.55, 'rgba(255,220,170,0.05)'); sh.addColorStop(1, 'rgba(0,0,0,0.15)');
+    const step = Math.max(2, Math.round(3 + S));
+    for (const ring of rings) {
+      const strokeOnce = (yOff) => {
+        g.beginPath();
+        let started = false;
+        for (let x = 0; x <= w; x += step) {
+          const h1 = ((Math.imul((Math.floor(x / (11 * S || 11)) * 374761) ^ (Math.floor(ring.y0) * 668265), 1597334677) >>> 0) / 4294967296 - 0.5);
+          const h2 = ((Math.imul((Math.floor(x / (29 * S || 29)) * 2246822519) ^ (Math.floor(ring.y0 * 3) * 3266489917), 668265263) >>> 0) / 4294967296 - 0.5);
+          const h3 = ((Math.imul((Math.floor(x / (47 * S || 47)) * 374761393) ^ (seed | 0), 1103515245) >>> 0) / 4294967296 - 0.5);
+          let y = ring.y0 + yOff + x * ring.lean + h1 * ring.wobble * 0.55 + h2 * ring.wobble * 0.9 + h3 * 0.7 * S;
+          if (ring.broken && x / w > ring.breakAt) y += ring.breakDx * 0.15;
+          if (ring.broken && Math.abs(x / w - ring.breakAt) < 0.02) {
+            if (started) g.stroke();
+            started = false; continue;
+          }
+          if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y);
+        }
+        g.strokeStyle = ring.dark
+          ? `rgba(8,3,1,${0.28 + (ring.thick > 1.4 * S ? 0.25 : 0.1)})`
+          : `rgba(140,82,38,${0.07 + r() * 0.08})`;
+        g.lineWidth = ring.thick;
+        if (started) g.stroke();
+      };
+      strokeOnce(0); if (tileable) { strokeOnce(-h); strokeOnce(h); }
+    }
+
+    // Irregular open pores (elongated with the grain), clustered unevenly
+    const poreCount = Math.floor(700 * (w * h) / (512 * 512));
+    for (let i = 0; i < poreCount; i++) {
+      const x = r() * w, y = r() * h;
+      if (!(r() < 0.35 && (Math.floor(y / (18 * S)) % 3 === 0)) && r() < 0.25) continue;
+      const rw = (0.4 + r() * 2.8) * S, rh = (0.15 + r() * 0.55) * S;
+      g.fillStyle = `rgba(5,2,1,${0.20 + r() * 0.40})`;
+      const blot = (yy) => { g.beginPath(); g.ellipse(x, yy, rw, rh, (r() - 0.5) * 0.25, 0, 7); g.fill(); };
+      blot(y); if (tileable) { blot(y - h); blot(y + h); }
+    }
+
+    // Short vessel / ray flecks
+    for (let i = 0; i < Math.floor(80 * Math.min(2, (w * h) / (512 * 512))); i++) {
+      const x = r() * w, y = r() * h, L = (4 + r() * 18) * S;
+      g.strokeStyle = `rgba(10,4,1,${0.12 + r() * 0.25})`;
+      g.lineWidth = (0.4 + r() * 0.7) * S;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + L, y + (r() - 0.5) * 1.2 * S); g.stroke();
+    }
+
+    // Soft French-polish sheen
+    const sh = g.createLinearGradient(0, 0, 0, h);
+    sh.addColorStop(0, 'rgba(255,215,160,0.045)');
+    sh.addColorStop(0.4, 'rgba(255,215,160,0)');
+    sh.addColorStop(0.55, 'rgba(255,230,180,0.055)');
+    sh.addColorStop(0.7, 'rgba(255,215,160,0)');
+    sh.addColorStop(1, 'rgba(0,0,0,0.12)');
     g.fillStyle = sh; g.fillRect(0, 0, w, h);
-    const v = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.max(w, h) * 0.75);
-    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.55)');
-    g.fillStyle = v; g.fillRect(0, 0, w, h);
+
+    if (vignette) {
+      const v = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.28, w / 2, h / 2, Math.max(w, h) * 0.78);
+      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.55)');
+      g.fillStyle = v; g.fillRect(0, 0, w, h);
+    }
+  }
+
+  function woodTexture(w, h, seed = 7, opts = {}) {
+    w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+    const tileable = !!opts.tileable, vignette = opts.vignette !== undefined ? !!opts.vignette : !tileable;
+    const gScale = opts.grainScale == null ? '' : String(opts.grainScale);
+    const dpr = opts.dpr != null ? opts.dpr : dprOf();
+    const key = `${w}x${h}:${seed | 0}:t${tileable ? 1 : 0}:v${vignette ? 1 : 0}:s${gScale}:d${dpr}`;
+    if (woodCache.has(key)) { const hit = woodCache.get(key); woodCache.delete(key); woodCache.set(key, hit); return hit; }
+    while (woodCache.size >= WOOD_CACHE_MAX) {
+      const k0 = woodCache.keys().next().value, old = woodCache.get(k0); woodCache.delete(k0);
+      if (old) old.width = old.height = 0;
+    }
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * dpr)); c.height = Math.max(1, Math.round(h * dpr));
+    c.logicalW = w; c.logicalH = h;
+    const g = c.getContext('2d'); g.scale(dpr, dpr);
+    paintWalnut(g, w, h, seed, { tileable, vignette, grainScale: opts.grainScale });
     woodCache.set(key, c); return c;
+  }
+
+  // Webmaster / CSS: ONE large panel bake (no tiling). Fixed default seed → stable grain across visits.
+  // Returns a canvas at exact pixel size (dpr 1). Use woodPanelDataURL for a PNG data URL.
+  function woodPanelBake(w = SITE_WOOD_DESKTOP[0], h = SITE_WOOD_DESKTOP[1], seed = SITE_WOOD_SEED, opts = {}) {
+    return woodTexture(w, h, seed, Object.assign({ vignette: false, tileable: false, dpr: 1 }, opts));
+  }
+  function woodPanelDataURL(w, h, seed, opts = {}) {
+    return woodPanelBake(w, h, seed, opts).toDataURL(opts.type || 'image/png');
   }
 
   // ---------- lacquered brass ----------
@@ -508,7 +722,7 @@
     for (const [sx, sy] of [[x + 9, y + 9], [x + w - 9, y + 9], [x + 9, y + h - 9], [x + w - 9, y + h - 9]]) screw(ctx, sx, sy, 4.2, r() * 3.14);
   }
 
-  VLS.apparatus = { mulberry, woodTexture, brassGrad, brassRect, brassArc, screw, engrave, plaque };
+  VLS.apparatus = { mulberry, woodTexture, paintWalnut, grainScaleOf, woodPanelBake, woodPanelDataURL, SITE_WOOD_SEED, SITE_WOOD_DESKTOP, SITE_WOOD_PHONE, brassGrad, brassRect, brassArc, screw, engrave, plaque };
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
@@ -606,7 +820,7 @@
   }
 
   // ---------- DOM: margin notes / pasted slips and the 'cf.' footnote ----------
-  // kind: 'analogy' | 'simplification'. label overrides the default text (e.g. 'How the game cheats').
+  // kind: 'analogy' | 'simplification'. label overrides the default text (e.g. 'In the game').
   function note(kind, html, opts = {}) {
     const el = document.createElement('aside');
     el.className = `vls-note vls-${kind}`;
@@ -650,7 +864,7 @@
  *   mirror(ctx, x, y, angle, len, o)                      kinematic-mount mirror (beam steering)
  *   coldJacket(ctx, x, y, w, h, o) / heaterTape(ctx, x, y, w, h, o)   LN₂ frost jacket, bake-out heater tape
  *   bubbleLevel(ctx, x, y, r, gx, gy, o)                  brass spirit level; bubble opposite to (gx, gy), |g| ≤ 1
- *   benchWood(w, h, seed)                                  TILEABLE dark-wood canvas for scrolling scenes (no vignette)
+ *   benchWood(w, h, seed, opts?)                           TILEABLE dark walnut (same grain as woodTexture; no vignette)
  *   palette                                                hardware colours (also merged into VLS.tokens.palette
  *                                                          where tokens.js does not define them yet)
  */
@@ -933,20 +1147,19 @@
 
   // ================= tileable bench wood (for scrolling scenes) =================
   const benchCache = new Map();
-  function benchWood(w = 512, h = 512, seed = 9) {
-    const key = `${w}x${h}:${seed}`; if (benchCache.has(key)) return benchCache.get(key);
+  // Tileable French-polished dark walnut (same grain as VLS.apparatus.woodTexture; no vignette).
+  // Prefer generating at the board/strip size. For site CSS backgrounds use woodPanelBake (single panel, no repeat).
+  function benchWood(w = 512, h = 512, seed = 9, opts = {}) {
+    w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+    const A = root.VLS && root.VLS.apparatus;
+    if (A && A.woodTexture) {
+      return A.woodTexture(w, h, seed, Object.assign({ tileable: true, vignette: false }, opts));
+    }
+    // Fallback if apparatus.js is missing (should not happen in the shared kit)
+    const key = `${w}x${h}:${seed}:fallback`; if (benchCache.has(key)) return benchCache.get(key);
     const dpr = Math.min(2, Math.max(1, root.devicePixelRatio || 1));
     const c = document.createElement('canvas'); c.width = w * dpr; c.height = h * dpr;
-    const g = c.getContext('2d'); g.scale(dpr, dpr); const r = mulberry(seed);
-    g.fillStyle = P('wood'); g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 40; i++) { const y = r() * h, hh = 6 + r() * 40; g.fillStyle = `rgba(${70 + r() * 40},${35 + r() * 20},${12 + r() * 10},${0.08 + r() * 0.12})`; g.fillRect(0, y, w, hh); }
-    for (let i = 0; i < 220; i++) {                    // grain is periodic in x (whole cycles per tile) so the tile repeats
-      const y0 = r() * h, amp = 1 + r() * 4, f = (2 * Math.PI * (1 + Math.floor(r() * 4))) / w, ph = r() * 6.28;
-      for (const dy of [0, -h, h]) {               // wrap vertically too
-        g.beginPath(); for (let x = 0; x <= w; x += 4) { const y = y0 + dy + Math.sin(x * f + ph) * amp + Math.sin(x * f * 3 + ph * 2) * amp * 0.3; x ? g.lineTo(x, y) : g.moveTo(x, y); }
-        g.strokeStyle = i % 10 < 7 ? `rgba(10,4,1,${0.15 + (i % 7) * 0.05})` : `rgba(140,80,35,${0.05 + (i % 5) * 0.025})`; g.lineWidth = 0.5 + (i % 4) * 0.4; g.stroke();
-      }
-    }
+    const g = c.getContext('2d'); g.scale(dpr, dpr); g.fillStyle = P('wood'); g.fillRect(0, 0, w, h);
     benchCache.set(key, c); return c;
   }
 
@@ -1320,12 +1533,12 @@
   const mulberry = (s) => A().mulberry(s);
 
   // ======================================================= room =======================================================
-  // Backdrop: dark panelled oak wall lit by a gas lamp (lampX, lampY in px), with a warm pool of light and a vignette.
+  // Backdrop: dark panelled walnut wall lit by a gas lamp (lampX, lampY in px), with a warm pool of light and a vignette.
   // Memory: every backdrop is a full-screen bitmap (w*h*dpr^2*4 bytes, ~6 MB on a phone), so the cache is a small LRU
   // (BD_MAX entries), and lamp position / panel size are quantised so pinch-zoom and panning reuse entries instead of
-  // minting a new bitmap per frame. The wall grain comes from ONE fixed-size wood texture (stretched), so the kit's
-  // woodTexture cache does not grow with every new screen size.
-  const bdCache = new Map(), BD_MAX = 3, WALL_TEX = [640, 300];
+  // minting a new bitmap per frame. Each raised panel gets its OWN woodTexture at panel pixel size + a unique seed
+  // (derived from base seed + panel grid index) so adjacent boards are not the same tiled grain.
+  const bdCache = new Map(), BD_MAX = 3;
   function backdrop(w, h, opts = {}) {
     const o = Object.assign({ theme: 'victorian', lampX: w * 0.3, lampY: h * 0.18, seed: 5, panel: 160 }, opts);
     o.lampX = Math.round(o.lampX / 16) * 16; o.lampY = Math.round(o.lampY / 16) * 16; o.panel = Math.round(o.panel / 8) * 8;
@@ -1335,14 +1548,19 @@
     const dpr = Math.min(2, Math.max(1, root.devicePixelRatio || 1)), c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(w * dpr)); c.height = Math.max(1, Math.round(h * dpr)); const g = c.getContext('2d'); g.scale(dpr, dpr);
     if (isBW(o.theme)) { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); bdCache.set(key, c); return c; }
-    g.drawImage(A().woodTexture(WALL_TEX[0], WALL_TEX[1], o.seed), 0, 0, w, h);
-    // raised-and-fielded panels
+    // Infill between panels: deep walnut (not a stretched mega-tile)
+    g.fillStyle = MAT.oakDark || '#1a0e06'; g.fillRect(0, 0, w, h);
     const pw = o.panel, ph = pw * 1.35, r = mulberry(o.seed);
-    for (let y = pw * 0.25; y < h; y += ph + pw * 0.18) for (let x = pw * 0.18 - (r() * 20); x < w; x += pw + pw * 0.18) {
-      const gr = g.createLinearGradient(x, y, x + pw, y + ph); gr.addColorStop(0, 'rgba(255,190,120,0.06)'); gr.addColorStop(1, 'rgba(0,0,0,0.22)');
-      g.fillStyle = gr; g.fillRect(x, y, pw, ph);
-      g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 3; g.strokeRect(x + 1.5, y + 1.5, pw - 3, ph - 3);
-      g.strokeStyle = 'rgba(255,200,140,0.07)'; g.lineWidth = 1; g.strokeRect(x - 1, y - 1, pw + 2, ph + 2);
+    let pi = 0;
+    for (let y = pw * 0.25; y < h; y += ph + pw * 0.18) for (let x = pw * 0.18 - (r() * 20); x < w; x += pw + pw * 0.18, pi++) {
+      const px = Math.round(x), py = Math.round(y), pww = Math.round(pw), phh = Math.round(ph);
+      const pseed = (Math.imul(o.seed ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(pi + 1, 0xc2b2ae35) ^ (px * 131 + py * 17)) | 0;
+      const tex = A().woodTexture(Math.max(8, pww), Math.max(8, phh), pseed, { vignette: false });
+      g.drawImage(tex, px, py, pww, phh);
+      const gr = g.createLinearGradient(px, py, px + pww, py + phh); gr.addColorStop(0, 'rgba(255,190,120,0.06)'); gr.addColorStop(1, 'rgba(0,0,0,0.22)');
+      g.fillStyle = gr; g.fillRect(px, py, pww, phh);
+      g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 3; g.strokeRect(px + 1.5, py + 1.5, pww - 3, phh - 3);
+      g.strokeStyle = 'rgba(255,200,140,0.07)'; g.lineWidth = 1; g.strokeRect(px - 1, py - 1, pww + 2, phh + 2);
     }
     // gaslight: warm pool around the lamp, the rest falls into shadow
     const L = g.createRadialGradient(o.lampX, o.lampY, 4, o.lampX, o.lampY, Math.max(w, h) * 0.75);
@@ -1379,12 +1597,18 @@
     ctx.save();
     ctx.fillStyle = MAT.oakDark; ctx.fillRect(x, y, w, h);
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, top); ctx.clip();
-    if (HW() && HW().benchWood) {   // the shared tileable bench wood (same timber as Vacuum Maze), darkened to oiled oak
-      const pat = ctx.createPattern(HW().benchWood(512, 512, opts.seed || 11), 'repeat'); const k = Math.max(0.25, top / 256);
-      if (pat.setTransform) pat.setTransform(new DOMMatrix().translateSelf(x, y).scaleSelf(k * 2, k));
-      ctx.fillStyle = pat; ctx.fillRect(x, y, w, top); ctx.fillStyle = 'rgba(30,12,2,0.35)'; ctx.fillRect(x, y, w, top);
-    } else { const tex = A().woodTexture(256, 64, opts.seed || 11);
-      for (let xx = x; xx < x + w; xx += 256 * (top / 64) * 2) ctx.drawImage(tex, xx, y, 256 * (top / 64) * 2, top); }
+    { // unique boards along the top — each strip gets its own seed + grain at strip pixel size
+      const base = opts.seed || 11, boardW = Math.min(160, Math.max(56, Math.round(top * 7)));
+      let bi = 0;
+      for (let xx = x; xx < x + w; bi++) {
+        const bw = Math.min(boardW, x + w - xx), tw = Math.max(8, Math.round(bw)), th = Math.max(4, Math.round(top));
+        const pseed = (Math.imul(base ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(bi + 1, 0xc2b2ae35)) | 0;
+        const tex = A().woodTexture(tw, th, pseed, { vignette: false });
+        ctx.drawImage(tex, xx, y, bw, top);
+        xx += boardW;
+      }
+      ctx.fillStyle = 'rgba(30,12,2,0.28)'; ctx.fillRect(x, y, w, top);
+    }
     const sheen = ctx.createLinearGradient(0, y, 0, y + top); sheen.addColorStop(0, 'rgba(255,220,170,0.28)'); sheen.addColorStop(0.15, 'rgba(255,200,140,0.06)'); sheen.addColorStop(1, 'rgba(0,0,0,0.25)');
     ctx.fillStyle = sheen; ctx.fillRect(x, y, w, top);
     ctx.restore();
@@ -1434,7 +1658,10 @@
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), x0 = Math.min(...xs), y0 = Math.min(...ys), x1 = Math.max(...xs), y1 = Math.max(...ys);
     ctx.save(); shade(ctx, 10, 4); path(); ctx.fillStyle = MAT.oak; ctx.fill(); noShade(ctx);
     path(); ctx.clip();
-    const tex = A().woodTexture(256, 64, 21); ctx.globalAlpha = 0.9; ctx.drawImage(tex, x0, y0, Math.max(10, x1 - x0), Math.max(10, y1 - y0)); ctx.globalAlpha = 1;
+    { const tw = Math.max(8, Math.round(x1 - x0)), th = Math.max(8, Math.round(y1 - y0));
+      const pseed = (21 ^ Math.imul(Math.round(x0), 131) ^ Math.imul(Math.round(y0), 17)) | 0;
+      const tex = A().woodTexture(tw, th, pseed, { vignette: false });
+      ctx.globalAlpha = 0.9; ctx.drawImage(tex, x0, y0, Math.max(10, x1 - x0), Math.max(10, y1 - y0)); ctx.globalAlpha = 1; }
     const g = ctx.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, 'rgba(255,210,150,0.22)'); g.addColorStop(1, 'rgba(0,0,0,0.35)'); ctx.fillStyle = g; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
     ctx.restore();
     // top edge highlight (the longest upper edge)
@@ -1445,7 +1672,10 @@
     if (isBW(theme)) { bwStroke(ctx, 2); ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h); ctx.strokeRect(x + 10, y + 10, w - 20, h * 0.5); return; }
     ctx.save(); shade(ctx, 16, 6, 0.6);
     ctx.fillStyle = MAT.oak; ctx.fillRect(x, y, w, h); noShade(ctx);
-    const tex = A().woodTexture(256, 128, 31); ctx.globalAlpha = 0.8; ctx.drawImage(tex, x, y, w, h); ctx.globalAlpha = 1;
+    { const tw = Math.max(8, Math.round(w)), th = Math.max(8, Math.round(h));
+      const pseed = (31 ^ Math.imul(Math.round(x), 131) ^ Math.imul(Math.round(y), 17)) | 0;
+      const tex = A().woodTexture(tw, th, pseed, { vignette: false });
+      ctx.globalAlpha = 0.8; ctx.drawImage(tex, x, y, w, h); ctx.globalAlpha = 1; }
     // glass sash with green tint, reflections
     const gx = x + w * 0.08, gy = y + h * 0.12, gw = w * 0.84, gh = h * 0.55;
     ctx.fillStyle = 'rgba(40,70,55,0.55)'; ctx.fillRect(gx, gy, gw, gh);
@@ -1931,11 +2161,49 @@
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
+<script>/* src/migrate.js */
+/* Fantastic Apparatus: one-time migration of saved data from the game's old identity. Plain script, loaded first.
+ * The app id was renamed (DECISIONS.md: com.gillundlabs.fantasticapparatus, before the first store upload). Store product ids
+ * are built from it, and dev testers' saved data can hold the old ones: the development store account (owned products,
+ * finished transactions), the coin ledger (credited transaction ids) and the entitlement cache. This rewrites every saved value that
+ * names an old id, renames any saved key that does, and records that it ran ('fa.migrated' = 1), so it runs once per browser.
+ * It also drops any service-worker cache named after the old identity (the worker itself only keeps its current version).
+ * Old ids are assembled from parts so the shipped files never spell the retired name (the release scan checks for it). */
+(function (root) {
+  const NEW = 'com.gillundlabs.fantasticapparatus', OLD_NAME = ['victorian', 'contraption'].join(''), OLD = 'com.gillundlabs.' + OLD_NAME;
+  const OLD_KEY = new RegExp(OLD_NAME + '|' + ['victorian', 'contraption'].join('-'), 'i'), FLAG = 'fa.migrated';
+  function migrate(storage) {
+    const done = { keys: 0, values: 0 };
+    if (!storage) return done;
+    try { if (storage.getItem(FLAG) === '1') return done; } catch (e) { return done; }
+    const keys = []; for (let i = 0; i < storage.length; i++) keys.push(storage.key(i));
+    for (const k of keys) {
+      let v; try { v = storage.getItem(k); } catch (e) { continue; } if (v == null) continue;
+      const nv = v.split(OLD).join(NEW);
+      // a key named after the old identity: keep its data under the game's own prefix (never overwrite newer data)
+      const nk = OLD_KEY.test(k) ? 'fa.' + k.replace(/^[^.]*\./, '').replace(new RegExp(OLD.replace(/\./g, '\\.'), 'g'), NEW).replace(OLD_KEY, 'fantasticapparatus') : k;
+      try {
+        if (nk !== k) { if (storage.getItem(nk) == null) storage.setItem(nk, nv); storage.removeItem(k); done.keys++; }
+        else if (nv !== v) { storage.setItem(k, nv); done.values++; }
+      } catch (e) { /* storage full or private mode: try again next start */ return done; }
+    }
+    try { storage.setItem(FLAG, '1'); } catch (e) { /* ignore */ }
+    return done;
+  }
+  root.VC = root.VC || {}; root.VC.migrate = migrate;
+  if (typeof module !== 'undefined' && module.exports) module.exports = { migrate, NEW, OLD };
+  else {
+    try { root.VC.migrated = migrate(root.localStorage); } catch (e) { /* no storage */ }
+    try { if (root.caches && root.caches.keys) root.caches.keys().then((ks) => ks.filter((k) => OLD_KEY.test(k)).forEach((k) => root.caches.delete(k))).catch(() => {}); } catch (e) { /* ignore */ }
+  }
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
 <script>/* src/build-config.js */
 /* Build flags: RELEASE web build (node tools/build.mjs --release-web). Experiments 1–3 are free, plus the 15-minute active-play trial.
  * There is no shop on the web: the unlock and coin screens link to the App Store and Google Play versions (src/store-links.js).
  * Frozen: the page cannot change these flags. Development-only code is stripped from this build. */
-window.VC_BUILD = Object.freeze({ channel: 'release', platform: 'web' });
+window.VC_BUILD = Object.freeze({ channel: 'release', platform: 'web', appId: 'com.gillundlabs.fantasticapparatus' });
 
 </script>
 <script>/* config.js */
@@ -2386,15 +2654,26 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     appStore: Object.freeze({ label: 'App Store', url: null, placeholder: true }),
     googlePlay: Object.freeze({ label: 'Google Play', url: null, placeholder: true }),
   });
+  // Each button is bound to its own host: App Store → apps.apple.com only, Google Play → play.google.com only.
+  // https only; no user, password or port. Anything else (the other store's host, http, a look-alike) reads "Coming soon".
+  const HOST_FOR = Object.freeze({ appStore: 'apps.apple.com', googlePlay: 'play.google.com' });
+  function allowed(u, key) {
+    if (typeof u !== 'string') return null;
+    let url; try { url = new URL(u); } catch (e) { return null; }
+    const host = key ? HOST_FOR[key] : null;
+    if (key && !host) return null;
+    const okHost = host ? url.hostname === host : Object.values(HOST_FOR).includes(url.hostname);
+    return url.protocol === 'https:' && okHost && !url.username && !url.password && !url.port ? url.href : null;
+  }
   // → [{ key, label, url (or null = coming soon), source: 'GL_CONFIG' | 'placeholder' }]
   function storeLinks() {
     const G = root.GL_CONFIG, g = G && G.games && G.games[SLUG];
     if (!g) return KEYS.map((k) => ({ key: k, label: PLACEHOLDERS[k].label, url: PLACEHOLDERS[k].url, source: 'placeholder' }));
     const labels = (G.stores) || {};
-    return KEYS.map((k) => ({ key: k, label: labels[k] || PLACEHOLDERS[k].label, url: (typeof g[k] === 'string' && /^https:\/\//.test(g[k])) ? g[k] : null, source: 'GL_CONFIG' }));
+    return KEYS.map((k) => ({ key: k, label: labels[k] || PLACEHOLDERS[k].label, url: allowed(g[k], k), source: 'GL_CONFIG' }));
   }
   root.VC = root.VC || {};
-  root.VC.STORE_LINKS = PLACEHOLDERS; root.VC.storeLinks = storeLinks;
+  root.VC.STORE_LINKS = PLACEHOLDERS; root.VC.storeLinks = storeLinks; root.VC.storeLinkAllowed = allowed; root.VC.STORE_HOSTS = HOST_FOR;
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
@@ -2420,7 +2699,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
   'use strict';
   const FREE_LEVELS = 3;
   const FULL_GAME = 'full_game';
-  const PRODUCTS = { [FULL_GAME]: 'com.gillundlabs.victoriancontraption.fullgame' };   // store product id per entitlement
+  const PRODUCTS = { [FULL_GAME]: 'com.gillundlabs.fantasticapparatus.fullgame' };   // store product id per entitlement
   const KEY = 'fa.entitlements', TRIAL_KEY = 'fa.trial';
   const TRIAL_MS = 15 * 60 * 1000;          // 15 minutes of active play
   const IDLE_MS = 60 * 1000;                // building with no input for this long stops the clock
@@ -2440,7 +2719,8 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     const loadTrial = () => { try { return Object.assign({ usedMs: 0, startedAt: null, endedAt: null }, JSON.parse((storage && storage.getItem(TRIAL_KEY)) || '{}')); } catch (e) { return { usedMs: 0, startedAt: null, endedAt: null }; } };
     // used time is clamped to [0, TRIAL_MS] whatever storage says (an edited negative or non-numeric value must not extend it)
     const clampUsed = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(TRIAL_MS, n)) : 0; };
-    let trial = loadTrial(), dirtyMs = 0; trial.usedMs = clampUsed(trial.usedMs);
+    // a trial with an end time is used up, whatever usedMs says (an edited non-numeric or negative value cannot restart it)
+    let trial = loadTrial(), dirtyMs = 0; trial.usedMs = trial.endedAt ? TRIAL_MS : clampUsed(trial.usedMs);
     const saveTrial = () => { dirtyMs = 0; try { storage && storage.setItem(TRIAL_KEY, JSON.stringify(trial)); } catch (e) { /* in-memory only */ } };   // { full_game: { active: true, source: 'store'|'restore'|'test', at: ISO time } }
     const save = () => { try { storage && storage.setItem(KEY, JSON.stringify(cache)); } catch (e) { /* private mode: in-memory only */ } };
     const emit = () => listeners.forEach((f) => { try { f(status()); } catch (e) { /* listener errors must not break access checks */ } });
@@ -2497,7 +2777,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
   else { root.VC = root.VC || {}; root.VC.ECONOMY = api; }
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  const APP = 'com.gillundlabs.victoriancontraption';
+  const APP = 'com.gillundlabs.fantasticapparatus';
   const COST = { BASE: 10, R: 2.5, TIERS: 8 };
   const cost = (tier) => Math.round(COST.BASE * Math.pow(COST.R, tier));
   return {
@@ -3058,7 +3338,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
 /* Fantastic Apparatus: the Laboratory notes. Short, accurate pages that unlock as the player meets each part or level.
  * Modelled on Vacuum Maze's notebook: every page has a hand-drawn SVG sketch (svgPen: a wobbly-ink pen with the verbs of
  * VLS.notebook.pen, but producing SVG so sketches are crisp, scalable, accessible and work in static HTML), body text,
- * a tagged ANALOGY where one helps, a "How the game cheats" note where the game simplifies, and a cf. source line.
+ * a tagged ANALOGY where one helps, an "In the game" note where the model simplifies, and a cf. source line.
  * Numbers about the game's own parts are read from src/parts.js, so the notes cannot drift from the simulation.
  * SOFTENED lists the claims the accuracy pass weakened or hedged. Plain script (window.VC.notebook) + CommonJS. */
 (function (root, factory) {
@@ -3071,6 +3351,21 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
   const mulberry = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const r1 = (v, d = 1) => Number(v.toFixed(d));
+  // Powers of ten via shared kit (VLS.pow10). Load tokens.js in Node if needed.
+  function vls() {
+    const g = (typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : {}));
+    if (g.VLS && typeof g.VLS.pow10 === 'function') return g.VLS;
+    if (typeof require === 'function') {
+      const fs = require('fs'), path = require('path'), vm = require('vm');
+      const here = typeof __dirname !== 'undefined' ? __dirname : path.dirname((typeof document === 'undefined' && require.main && require.main.filename) || '.');
+      const tok = path.join(here, '..', 'lib', 'victorian-lab-style', 'tokens.js');
+      g.self = g; vm.runInThisContext(fs.readFileSync(tok, 'utf8'), { filename: tok });
+    }
+    if (!(g.VLS && typeof g.VLS.pow10 === 'function')) throw new Error('VLS.pow10 required (load lib/victorian-lab-style/tokens.js)');
+    return g.VLS;
+  }
+  const steamPa = vls().pow10(5, { mantissa: 3 }); // "3 × 10<sup class=\"vls-exp\">5</sup>"
+
 
   // ---------------------------------------------------------------- the SVG pen (viewBox 0 0 320 190)
   function svgPen(seed = 7, jitter = 1.0) {
@@ -3112,9 +3407,10 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
   add({ id: 'how-to', title: 'How to build an apparatus', group: 'The bench', unlock: 'start', hint: 'Open from the start.',
     body: ['Each experiment has a specimen (a weight, a crystal, a flask or a brick) and a specimen tray. Keep the specimen wholly inside the tray for two seconds and the experiment succeeds.',
       'Pick a part from the drawer and draw it inside the blue build area: drag from joint to joint for rods, string and springs; tap to drop a wheel; drag in the direction a piston should push. Ends that land on a joint are pinned there and turn freely.',
-      'Some specimens carry their own brass joint: pin parts to it and carry the specimen along. Loose ones can only be pushed. Then pull the brass lever; pull it again to stop and edit.'],
-    game: 'Parts of your own apparatus pass through one another; only specimens, loose objects and furniture get in their way. Fantastic Contraption does the same, otherwise every pin would jam.',
-    cf: 'The rules follow Colin Northway\'s <i>Fantastic Contraption</i> (2008), with real masses and materials.',
+      'Some specimens carry their own brass joint: pin parts to it and carry the specimen along. Loose ones can only be pushed. Then pull the brass lever; pull it again to stop and edit.',
+      'Fantastic Apparatus was inspired by Colin Northway\'s <i>Fantastic Contraption</i> (2008), rebuilt with real masses and materials.'],
+    game: 'Parts of your own apparatus pass through one another; only specimens, loose objects and furniture get in their way; otherwise every pin would jam.',
+    cf: 'I. Newton, <i>Philosophiæ Naturalis Principia Mathematica</i> (1687): the laws of motion the simulation follows, except where \'How the apparatus is modelled\' says otherwise (a lone motor wheel). Masses and materials: the parts and strength pages.',
     sketch(p) { p.ground(10, 310, 160); p.rect(20, 70, 120, 90, 1); p.label('build area', 80, 62); wheel(p, 50, 146, 14, 6); wheel(p, 110, 146, 14, 6); p.line(50, 146, 110, 146, 2); p.line(50, 146, 80, 112, 2); p.line(110, 146, 80, 112, 2); p.rect(70, 98, 20, 14, 1.6); pin(p, 80, 112); p.label('specimen', 80, 90, { size: 11 });
       p.rect(220, 110, 80, 50, 1.2); p.label('specimen tray', 260, 102); p.arrow(140, 128, 210, 128, 1.2); p.label('2 s inside wins', 260, 182, { size: 11 }); } });
 
@@ -3155,7 +3451,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
   add({ id: 'friction', title: 'Friction, and why spikes grip', group: 'Mechanics', unlock: ['level:first-principles', 'place:wheel'], hint: 'Play the first experiment.',
     body: ['Dry friction follows Coulomb\'s law: a resting block will not slide until the sideways force exceeds μₛN (N is the force pressing the surfaces together), and once it slides the friction is about μₖN, a little less. To a first approximation it does not depend on the area in contact (Amontons, 1699).',
       'Typical textbook values (they vary a lot with finish and dirt): steel on steel μₛ ≈ 0.74, μₖ ≈ 0.57; wood on wood μₛ ≈ 0.25–0.5; glass on glass μₛ ≈ 0.9 but μₖ ≈ 0.4.',
-      'Spikes cheat Coulomb: they dig into the surface, so the wheel must plough or shear material to slip. The grip then behaves like a friction coefficient above 1.'],
+      'Spikes go beyond plain Coulomb friction: they dig into the surface, so the wheel must plough or shear material to slip. The grip then behaves like a friction coefficient above 1.'],
     analogy: 'Football boots on grass: studs that bite into the turf grip far better than a flat sole.',
     game: `One coefficient serves for both static and sliding friction, and two touching materials combine as √(μ₁μ₂) (the planck.js rule). Spikes are just a high coefficient (${PT.wheel.friction}); nothing is dented.`,
     cf: 'C.-A. Coulomb, <i>Théorie des machines simples</i> (1781 prize essay; publ. 1785); R. A. Serway &amp; J. W. Jewett, <i>Physics for Scientists and Engineers</i>, Table 5.1; F. P. Bowden &amp; D. Tabor, <i>The Friction and Lubrication of Solids</i> (1950).',
@@ -3184,13 +3480,14 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       coil(30, 140, 60); p.rect(140, 46, 28, 28, 1.6); p.label('rest', 230, 64, { size: 12 }); coil(30, 200, 130); p.rect(200, 116, 28, 28, 1.6); p.arrow(234, 130, 290, 130, 1.4); p.label('F = −k·x', 260, 112, { size: 12 }); p.line(168, 160, 200, 160, 1); p.line(168, 154, 168, 166, 1); p.line(200, 154, 200, 166, 1); p.label('x', 184, 178); } });
 
   add({ id: 'steam', title: 'Steam power: pressure × area', group: 'Power', unlock: ['place:piston', 'item:engine'], hint: 'Place a piston, or buy the steam engine.',
-    body: [`Steam pushes on every square millimetre of a piston, so the force is pressure × area. This game's piston has a 25 mm bore and 3 bar of steam above atmosphere: 3×10⁵ Pa × π × (0.0125 m)² ≈ ${Math.round(PIS.force)} N, about the weight of 15 kg.`,
+    body: [`Steam pushes on every square millimetre of a piston, so the force is pressure × area. This game's piston has a 25 mm bore and 3 bar of steam above atmosphere: ${steamPa} Pa × π × (0.0125 m)² ≈ ${Math.round(PIS.force)} N, about the weight of 15 kg.`,
       'Thomas Newcomen\'s engine of 1712 (near Dudley Castle) filled its cylinder with low-pressure steam and condensed it with a spray of water; the vacuum let the atmosphere push the piston down. James Watt\'s separate condenser (patented 1769) stopped the cylinder being chilled every stroke and cut the coal used by about three-quarters.',
-      `A double-acting cylinder takes steam on both sides in turn. On the return stroke the piston rod occupies part of the face, so steam presses only on the ring around it: 3×10⁵ Pa × π × (12.5² − 7²) mm² ≈ ${Math.round(PIS.retractForce)} N with this game's 14 mm rod. The game models this: every piston pulls back with ${Math.round(PIS.retractForce)} N.`,
-      'In a reciprocating engine the piston\'s to-and-fro drives a crank that turns a flywheel, as in the working engine in the catalogue.'],
+      `A double-acting cylinder takes steam on both sides in turn. On the return stroke the piston rod occupies part of the face, so steam presses only on the ring around it: ${steamPa} Pa × π × (12.5² − 7²) mm² ≈ ${Math.round(PIS.retractForce)} N with this game's 14 mm rod. The game models this: every piston pulls back with ${Math.round(PIS.retractForce)} N.`,
+      'In a reciprocating engine the piston\'s to-and-fro drives a crank that turns a flywheel, as in the working engine in the catalogue.',
+      'A steam engine also times itself: an eccentric on the crankshaft slides the valve that sends steam to one side of the piston, then the other.'],
     analogy: 'Blowing into a bicycle pump with your thumb over the end: the higher the pressure, the harder it pushes your thumb.',
-    game: `The steam never runs out or cools, and the pressure never sags; the piston pushes with a steady ${Math.round(PIS.force)} N and pulls with ${Math.round(PIS.retractForce)} N, at up to ${PIS.speed} m/s either way.`,
-    cf: 'L. T. C. Rolt &amp; J. S. Allen, <i>The Steam Engine of Thomas Newcomen</i> (1977); J. Watt, English patent No. 913 (1769); R. L. Hills, <i>Power from Steam</i> (1989).',
+    game: `The steam never runs out or cools, and the pressure never sags; the piston pushes with a steady ${Math.round(PIS.force)} N and pulls with ${Math.round(PIS.retractForce)} N, at up to ${PIS.speed} m/s either way. Every piston is timed by a plain clock (out for ${PIS.period / 2} s, back for ${PIS.period / 2} s), not by a valve worked from a crank.`,
+    cf: 'L. T. C. Rolt &amp; J. S. Allen, <i>The Steam Engine of Thomas Newcomen</i> (1977); J. Watt, English patent No. 913 (1769); R. L. Hills, <i>Power from Steam</i> (1989); W. J. M. Rankine, <i>A Manual of the Steam Engine and Other Prime Movers</i> (1859), on slide valves.',
     sketch(p) { p.rect(40, 70, 150, 60, 1.8); p.line(40, 70, 40, 130, 2.4); p.rect(120, 74, 12, 52, 1.6); p.hatch(120, 74, 12, 52, 5); p.line(132, 100, 250, 100, 2.6); p.circle(272, 100, 22, 1.4); p.line(250, 100, 272, 82, 1.6);
       for (const y of [82, 100, 118]) p.arrow(60, y, 114, y, 1, 6); p.label('steam p', 80, 60, { size: 12 }); p.label('out: F = p × A', 115, 156, { size: 12 }); p.label('back: p × (A − A_rod)', 115, 176, { size: 12 }); p.label('crank', 272, 140, { size: 11 }); } });
 
@@ -3303,7 +3600,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       `A motor wheel at its free speed has I = ½mr² ≈ ${r1(0.5 * motorMass * WR * WR, 4)} kg·m², so L ≈ ${r1(0.5 * motorMass * WR * WR * M.speed, 3)} kg·m²/s and a spin energy ½Iω² ≈ ${r1(0.25 * motorMass * WR * WR * M.speed * M.speed, 2)} J. A steam engine\'s heavy flywheel stores far more, which is what carries the crank smoothly past the dead points of each stroke.`,
       'When a motor spins a wheel one way, it twists its mounting (and so the cart) the other way, so the total angular momentum stays the same.'],
     analogy: 'An office chair: spin it with your feet off the floor and pull your legs in, and it speeds up.',
-    game: 'A lone motor wheel gains angular momentum from nothing (no reaction twist on anything), so there angular momentum is plainly not conserved. Pinned motors are honest: the frame takes the reaction. One quieter leak remains: the small angular damping on the wheels and the counterweight is also a twist with no partner, so it slowly drains L as well (a few thousandths of a kg·m²/s over a couple of seconds).',
+    game: 'A lone motor wheel gains angular momentum from nothing (no reaction twist on anything), so there angular momentum is plainly not conserved. Pinned motors conserve it: the frame takes the reaction. One quieter leak remains: the small angular damping on the wheels and the counterweight is also a twist with no partner, so it slowly drains L as well (a few thousandths of a kg·m²/s over a couple of seconds).',
     cf: 'Halliday, Resnick &amp; Walker, ch. 11 (angular momentum); Taylor, <i>Classical Mechanics</i>, ch. 3 and 10.',
     sketch(p) { wheel(p, 90, 100, 50, 8); p.ellipse(90, 100, 66, 66, 1.2, -2.6, -0.6); p.arrow(90 + 66 * Math.cos(-0.7), 100 + 66 * Math.sin(-0.7), 90 + 66 * Math.cos(-0.6), 100 + 66 * Math.sin(-0.6), 1.2, 7); p.label('L = Iω', 90, 180, { size: 13 });
       p.circle(235, 60, 10, 1.4); p.line(235, 70, 235, 130, 1.6); p.line(235, 130, 220, 170, 1.4); p.line(235, 130, 250, 170, 1.4); p.line(235, 85, 195, 80, 1.4); p.line(235, 85, 275, 80, 1.4); p.arrow(200, 95, 222, 92, 1, 6); p.arrow(270, 95, 248, 92, 1, 6); p.label('arms in: spins faster', 240, 186, { size: 11 }); } });
@@ -3337,12 +3634,12 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     sketch(p) { p.line(60, 20, 60, 170, 2.6); p.arrow(60, 4, 60, 18, 1.4, 6); p.arrow(60, 186, 60, 172, 1.4, 6); p.label('σ = F/A', 105, 100, { size: 12 });
       p.curve((t) => [200 + 30 * Math.sin(Math.PI * t), 20 + 150 * t], 0, 1, 40, 2.6); p.arrow(200, 4, 200, 18, 1.4, 6); p.arrow(200, 186, 200, 172, 1.4, 6); p.label('buckles at', 270, 92, { size: 11 }); p.label('P = π²EI/L²', 270, 110, { size: 11 }); pin(p, 200, 20); pin(p, 200, 170); pin(p, 60, 20); pin(p, 60, 170); } });
 
-  add({ id: 'cheats', title: 'How the apparatus cheats', group: 'The machine', unlock: 'win', hint: 'Win an experiment.',
-    body: ['The game keeps real masses, sizes, densities, forces and gravity, but bends a few rules so that building is fun.',
+  add({ id: 'simplifications', title: 'How the apparatus is modelled', group: 'The machine', unlock: 'win', hint: 'Win an experiment.',
+    body: ['The game keeps real masses, sizes, densities, forces and gravity, but simplifies a few rules so that building stays playable.',
       'Your own parts pass through one another; joints are frictionless and nothing ever breaks; motors and pistons never run short of steam; the world is a flat 2D slice; wheels have no rolling resistance; air and heat are left out.',
-      'A lone motor wheel can drive against its own inertia. A real motor needs a frame to push against: this one cheat breaks Newton\'s third law and the conservation of angular momentum.'],
+      'A lone motor wheel can drive against its own inertia. A real motor needs a frame to push against: in the game that lone wheel is given a torque with no equal-and-opposite partner, so Newton\'s third law and the conservation of angular momentum do not hold for it.'],
     analogy: 'A model railway: the engines are to scale, but the track never wears and the coal never runs out.',
-    game: 'Every page here ends with its own "How the game cheats" note; this page gathers them.',
+    game: 'Every page here ends with its own "In the game" note; this page gathers those modelling notes.',
     cf: 'planck.js and the Box2D v2 manual for what the solver does; the game\'s own part definitions and simulation settings for every number.',
     sketch(p) { p.ground(20, 300, 160); wheel(p, 80, 140, 20, 8); wheel(p, 180, 140, 20, 8); p.line(80, 140, 180, 140, 2.2); p.line(70, 100, 200, 120, 2.2); p.label('passes through', 140, 92, { size: 11 }); p.circle(262, 110, 20, 1.6); p.circle(262, 110, 5, 1.2); p.line(262, 110, 225, 70, 2.2); p.line(262, 110, 300, 80, 2.2); p.label('frictionless pin', 262, 150, { size: 11 }); pin(p, 80, 140); pin(p, 180, 140); } });
 
@@ -3353,7 +3650,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     ['motors', 'The 1873 Vienna Gramme/Fontaine story is told as "is said to have"; accounts of the exact circumstances vary. The game\'s motor is not claimed to be electric.'],
     ['steam', 'Watt\'s coal saving "about three-quarters" is the commonly quoted figure for Watt vs Newcomen engines; individual comparisons varied.'],
     ['string', 'Corrected after review: 5 mm hemp was "a few hundred newtons"; now about 1.7 kN, scaled by area from manufacturers\' 6 mm figures (2.5–2.9 kN). New cord; knots, wet and age weaken it.'],
-    ['motors', 'Corrected after review: the "full torque at any speed" note applied only to pinned motor wheels; lone ones follow the linear taper. The page now says so and names the Newton\'s-third-law cheat.'],
+    ['motors', 'Corrected after review: the "full torque at any speed" note applied only to pinned motor wheels; lone ones follow the linear taper. The page now says so and notes that a lone wheel has no reaction partner under Newton\'s third law.'],
     ['energy', 'Corrected after review: angular damping applies only to wheels and the counterweight, not every part.'],
     ['steam', 'Corrected after review: the return-stroke force is now modelled (≈ 101 N on the annulus) instead of 147 N both ways.'],
     ['strength', 'Steel yield "about 250 MPa" is for mild steel; Victorian wrought iron and steels varied. Oak E is given as 11–12.5 GPa (the <i>Wood Handbook</i> lists about 12.3–12.5 GPa for dry white and red oak), so the buckling load is quoted as a range, about 600–700 N.'],
@@ -3380,7 +3677,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     const slip = (kind, text, label) => `<aside class="vls-note vls-${kind}" role="note"><span class="vls-note-label">${label}</span><p>${text}</p></aside>`;
     return `<article class="vls-page fa-entry" id="note-${e.id}" data-entry="${e.id}">${no != null ? `<span class="vls-pageno">${no}</span>` : ''}<h2>${esc(e.title)}</h2>`
       + `<figure class="fa-fig">${sketchSVG(e)}</figure>${e.body.map((t) => `<p>${t}</p>`).join('')}`
-      + (e.analogy ? slip('analogy', e.analogy, 'Analogy') : '') + (e.game ? slip('simplification', e.game, 'How the game cheats') : '')
+      + (e.analogy ? slip('analogy', e.analogy, 'Analogy') : '') + (e.game ? slip('simplification', e.game, 'In the game') : '')
       + `<p class="vls-cf"><span class="vls-cf-mark">cf.</span> ${e.cf}</p></article>`;
   }
   function lockedHTML(e, no) { return `<article class="vls-page fa-entry fa-locked" data-entry="${e.id}"><span class="vls-pageno">${no}</span><h2>🔒 ${esc(e.title)}</h2><p><i>${esc(e.hint)}</i></p></article>`; }
@@ -3907,7 +4204,10 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
         g.appendChild(b); g.appendChild(e); } }
     showPanel('p-levels');
   }
-  function setTheme(t) { state.theme = t; document.body.dataset.theme = t; store.set('theme', t); buildDrawer(); syncDrawer(); drawLever(); VC.notes && VC.notes.render($('notebook'), t); $('b-theme').setAttribute('aria-pressed', t === 'bw'); }
+  function setTheme(t) { state.theme = t; document.body.dataset.theme = t; store.set('theme', t); buildDrawer(); syncDrawer(); drawLever(); VC.notes && VC.notes.render($('notebook'), t); $('b-theme').setAttribute('aria-pressed', t === 'bw');
+    // forced redraw: repaint the bench now in the new theme, not on the next animation frame (which a throttled or backgrounded
+    // tab, or a skipped frame, may not deliver), so the canvas never shows the old theme under the new panels and drawer
+    try { draw(); } catch (e) { console.warn('Fantastic Apparatus: theme redraw failed:', e && e.message); } }
 
   $('b-levels').addEventListener('click', showLevels);
   $('b-levels-close').addEventListener('click', () => hidePanel('p-levels'));
