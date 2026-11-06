@@ -414,8 +414,7 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
   /* clear-face = distance from glyph box to bevel ring; padding = bevel-ring + clear-face */
   :root{ --gl-face-inset: 18px; --gl-bevel-ring: 6px; } /* Engraving CC is wider; keep ≥16px clear face */
   .vls-notebook .vls-page{padding:16px 14px 18px 50px}
-  /* bar layout: see phone nav scroller below */
-  .brand{font-size:21px}
+  /* bar/brand layout: see phone nav block below */
   body{font-size:17px}
   .vls-notebook .vls-page h2{font-size:34px}
   .btn{
@@ -442,29 +441,44 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 .vls-notebook .fa-toc{columns:2;padding-left:22px}@media(max-width:560px){.vls-notebook .fa-toc{columns:1}}
 
 
-/* Phone nav: one tidy horizontal scroller with walnut fade + brass end-cap hints */
+/* Phone nav: brand on its own row (never truncate studio name); nav scrolls sideways */
 @media (max-width:600px){
   .bar{
-    flex-wrap:nowrap;
-    align-items:center;
+    flex-wrap:wrap; /* brand row, then nav row */
+    align-items:stretch;
     justify-content:flex-start;
-    gap:8px;
-    padding:10px 0 12px; /* rail still via ::after */
+    gap:2px 0;
+    padding:8px 0 10px; /* rail still via ::after */
   }
-  .brand{flex:0 0 auto;padding-left:12px;padding-right:4px;font-size:14px;max-width:132px;gap:6px}
-  .brand img{width:32px;height:32px}
-  .brand span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:78px}
+  .brand{
+    flex:1 0 100%; /* own row above nav */
+    max-width:none;
+    box-sizing:border-box;
+    padding:2px 14px 4px;
+    font-size:18px;
+    gap:8px;
+    white-space:nowrap;
+  }
+  .brand img{width:34px;height:34px;flex:0 0 auto}
+  .brand span{
+    overflow:visible;
+    text-overflow:clip;
+    white-space:nowrap;
+    max-width:none;
+  }
   .bar nav{
-    flex:1 1 auto;
-    min-width:0; /* allow shrink so overflow-x scroll works in a flex row */
+    flex:1 0 100%; /* full-width row under brand */
+    width:100%;
+    min-width:0;
     flex-wrap:nowrap;
     overflow-x:auto;
     overflow-y:hidden;
     -webkit-overflow-scrolling:touch;
     overscroll-behavior-x:contain;
     gap:0;
-    padding:0 28px 0 8px; /* room for end fades */
+    padding:0 28px 0 10px; /* room for end fades */
     scrollbar-width:none; /* tidy — no scrollbar chrome */
+    position:relative;
     mask-image:linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 22px), transparent 100%);
     -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 22px), transparent 100%);
   }
@@ -476,9 +490,9 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
     padding:10px 10px;
     letter-spacing:.04em;
   }
-  /* Brass end-cap hints at scroll edges of the walnut case */
-  .bar::before{
-    content:"";position:absolute;top:0;bottom:3px;right:0;width:22px;pointer-events:none;z-index:2;
+  /* Brass end-cap hint on the nav row only (not over the brand) */
+  .bar nav::after{
+    content:"";position:absolute;top:0;bottom:0;right:0;width:22px;pointer-events:none;z-index:2;
     background:linear-gradient(90deg, transparent, rgba(26,14,6,.92) 55%, #1a0e06 100%);
     border-right:2px solid #3d2706;
     box-shadow:inset -1px 0 0 rgba(196,155,78,.35);
