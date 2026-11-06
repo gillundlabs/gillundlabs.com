@@ -1057,3 +1057,44 @@ body[data-theme="bw"] .feedback-status--error{color:#000!important;text-decorati
   .feedback-plaque{max-width:100%}
   .feedback-field input,.feedback-field select,.feedback-field textarea{font-size:16px}
 }
+
+/* Privacy policy (draft, noindex) */
+
+.privacy-wrap{max-width:680px;width:100%;margin:0 auto 28px}
+.privacy-plaque{max-width:680px;width:100%;margin:0 auto 22px;text-align:left}
+.privacy-plaque .vls-plaque__label{text-align:left}
+.privacy-plaque h1{font-family:var(--vls-font-ivory);font-size:clamp(26px,4vw,34px);margin:0 0 12px;line-height:1.2}
+.privacy-plaque h2{font-family:var(--vls-font-ivory);font-size:1.35rem;margin:1.6rem 0 .6rem;line-height:1.3}
+.privacy-plaque h3{font-family:var(--vls-font-ivory);font-size:1.1rem;margin:1.2rem 0 .45rem}
+.privacy-plaque p,.privacy-plaque li{font-family:var(--vls-font-ivory);font-size:17px;line-height:1.55;margin:0 0 .85em}
+.privacy-plaque a{color:#4a300a;text-underline-offset:.16em}
+.privacy-plaque .draft-banner{border:1.5px solid var(--vls-brass-dark,#3d2706);background:rgba(217,169,67,.12);padding:.75rem 1rem;margin:0 0 1.1rem}
+.privacy-plaque .draft-banner p{margin:0}
+.privacy-plaque nav.toc{border-block:1px solid rgba(61,39,6,.25);padding-block:.85rem;margin-block:1rem}
+.privacy-plaque nav.toc summary{cursor:pointer;font-weight:700;font-family:var(--vls-font-ivory)}
+.privacy-plaque nav.toc ol{columns:2;column-gap:1.5rem;padding-left:1.25rem}
+.privacy-plaque nav.toc li{break-inside:avoid;font-size:.95rem;margin:.3rem 0}
+.privacy-plaque .editorial{margin-top:2rem;border:2px dashed rgba(61,39,6,.45);padding:1rem;background:rgba(241,236,223,.55)}
+.privacy-plaque .editorial > summary{cursor:pointer;font-weight:700}
+.privacy-plaque hr{border:0;border-top:1px solid rgba(61,39,6,.25);margin:1.6rem 0}
+.privacy-plaque code{font-family:var(--vls-font-mono);font-size:.88em;background:rgba(42,24,3,.06);padding:.1em .28em}
+html[data-theme="bw"] .privacy-plaque,
+html[data-theme="bw"] .privacy-plaque h1,
+html[data-theme="bw"] .privacy-plaque h2,
+html[data-theme="bw"] .privacy-plaque h3,
+html[data-theme="bw"] .privacy-plaque p,
+html[data-theme="bw"] .privacy-plaque li,
+html[data-theme="bw"] .privacy-plaque summary,
+body[data-theme="bw"] .privacy-plaque,
+body[data-theme="bw"] .privacy-plaque h1,
+body[data-theme="bw"] .privacy-plaque h2,
+body[data-theme="bw"] .privacy-plaque h3,
+body[data-theme="bw"] .privacy-plaque p,
+body[data-theme="bw"] .privacy-plaque li,
+body[data-theme="bw"] .privacy-plaque summary{font-family:var(--vls-font-sans)!important;color:#000!important}
+html[data-theme="bw"] .privacy-plaque a,body[data-theme="bw"] .privacy-plaque a{color:#000!important}
+html[data-theme="bw"] .privacy-plaque .draft-banner,body[data-theme="bw"] .privacy-plaque .draft-banner{background:#f0f0f0;border-color:#000}
+@media (max-width:420px){
+  .privacy-wrap,.privacy-plaque{max-width:100%}
+  .privacy-plaque nav.toc ol{columns:1}
+}
