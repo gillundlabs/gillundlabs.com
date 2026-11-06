@@ -478,11 +478,10 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
     -webkit-overflow-scrolling:touch;
     overscroll-behavior-x:contain;
     gap:0;
-    /* right pad so glyphs soft-end under the cue fade (continuing, not hard-chopped) */
-    padding:0 56px 0 10px;
-    scrollbar-width:none; /* tidy — no scrollbar chrome */
+    /* room for fade+cap so glyphs soft-end under the fade */
+    padding:0 88px 0 10px;
+    scrollbar-width:none;
     position:relative;
-    /* fade lives on .bar-nav-cue overlay — mask would also fade the brass cap */
   }
   .bar nav::-webkit-scrollbar{display:none}
   .bar nav a{
@@ -492,50 +491,74 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
     padding:10px 10px;
     letter-spacing:.04em;
   }
-  /* Strong walnut fade + stepped brass end-cap + engraved more-arrow (nav row only) */
+  /*
+   * Scroll cue: seamless walnut fade (no hard edge) under a lacquered-brass
+   * stop plate with kit-style incised arrow (dark cut + light lower lip).
+   */
   .bar-nav-cue{
     display:block;
     position:absolute;
     right:0;
-    bottom:3px; /* sit on nav row, above brass rail (::after on .bar) */
+    bottom:3px; /* nav row, above brass rail */
     height:44px;
-    width:56px;
+    width:88px;
     pointer-events:none;
     z-index:3;
     opacity:1;
     transition:opacity .18s ease;
-    background:
-      linear-gradient(90deg,
-        rgba(26,14,6,0) 0%,
-        rgba(26,14,6,.55) 22%,
-        rgba(18,9,3,.88) 48%,
-        rgba(12,6,2,.97) 72%,
-        #0e0703 100%);
-    /* stepped brass bevel on the right edge with light falloff */
-    box-shadow:
-      inset -1px 0 0 rgba(255,241,184,.55),
-      inset -2px 0 0 #e0c070,
-      inset -3px 0 0 #c49b4e,
-      inset -5px 0 0 #8a6320,
-      inset -7px 0 0 #4a300a,
-      inset -9px 0 0 #1a0e06,
-      -1px 0 0 #0e0703;
-    border-right:2px solid #3d2706;
+    background:none;
+    border:none;
+    box-shadow:none;
   }
-  .bar-nav-cue-arrow{
+  /* Fade spans full cue incl. under the plate — no seam where plate begins */
+  .bar-nav-fade{
     position:absolute;
-    right:7px;
-    top:50%;
-    transform:translateY(-54%);
-    font:700 17px/1 var(--vls-font-engraved);
-    color:var(--vls-brass-text);
-    text-shadow:
-      0 1px 0 #0e0703,
-      0 -1px 0 rgba(255,241,184,.4),
-      1px 0 0 rgba(61,39,6,.5);
-    letter-spacing:0;
+    inset:0;
+    border:none;
+    box-shadow:none;
+    outline:none;
+    /* same hue at 0 alpha — avoid transparent→black interpolation seam */
+    background:linear-gradient(to right, rgba(26,14,6,0) 0%, rgba(26,14,6,.45) 48%, rgba(26,14,6,.82) 72%, rgba(26,14,6,.95) 100%);
   }
-  /* Hide cue when scrolled to the end (or when nothing to scroll) */
+  /* Lacquered-brass stop plate (~34px) with stepped bevel + light falloff */
+  .bar-nav-cap{
+    position:absolute;
+    right:5px;
+    top:50%;
+    transform:translateY(-50%);
+    width:32px;
+    height:34px;
+    border-radius:3px;
+    border:1px solid #1a0e06;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:1;
+    /* mid lacquered brass — avoid soft-gold flat fill */
+    background:
+      radial-gradient(120% 90% at 28% 20%, rgba(255,230,166,.28), transparent 55%),
+      linear-gradient(160deg, #5a3c12 0%, #8a6320 28%, #a87622 48%, #6b4a14 72%, #3d2706 100%);
+    box-shadow:
+      0 2px 3px rgba(0,0,0,.55),
+      0 0 0 1px #0e0703,
+      inset 1px 1px 0 rgba(245,216,138,.4),
+      inset -1px -1px 0 rgba(26,14,6,.65),
+      inset 0 0 0 2px #4a300a,
+      inset 0 0 0 3px #8a6320,
+      inset 0 2px 3px rgba(255,230,166,.18),
+      inset 0 -3px 5px rgba(14,7,3,.5);
+  }
+  /* Kit engraved look: dark cut + light lower-lip highlight */
+  .bar-nav-cue-arrow{
+    position:relative;
+    font:700 15px/1 var(--vls-font-engraved);
+    color:var(--vls-engraving); /* #2a1803 */
+    text-shadow:
+      0 1px 0 rgba(255,241,184,.55),
+      0 -.5px 0 rgba(26,14,6,.35);
+    letter-spacing:0;
+    transform:translateY(-1px);
+  }
   .bar.nav-at-end .bar-nav-cue{opacity:0}
 }
 

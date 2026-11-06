@@ -37,7 +37,7 @@ window.GL_CONFIG = {
       cue = document.createElement('span');
       cue.className = 'bar-nav-cue';
       cue.setAttribute('aria-hidden', 'true');
-      cue.innerHTML = '<span class="bar-nav-cue-arrow" aria-hidden="true">\u25B8</span>';
+      cue.innerHTML = '<span class="bar-nav-fade"></span><span class="bar-nav-cap"><span class="bar-nav-cue-arrow" aria-hidden="true">\u25B8</span></span>';
       bar.appendChild(cue);
     }
     function update() {
