@@ -1,4 +1,4 @@
-/* gl-plaque-kit-18923d3 fix1-readable */
+/* gl-plaque-kit-18923d3 fix2-bw-fa */
 /* Gillund Labs site: apparatus register (wood + brass + ivory + glass) for chrome,
    notebook register for notes. Soft-gold card chrome banned (DECISIONS 4e3607b);
    beveled brass / engravers font (5b433b5); labels stay on button face (a10436a);
@@ -151,8 +151,57 @@ body[data-theme="bw"] .card{
 }
 html[data-theme="bw"] .cardbody,
 body[data-theme="bw"] .cardbody{background:#fff;color:#000;border:none;box-shadow:none}
+html[data-theme="bw"] .cardbody p,
+html[data-theme="bw"] .cardbody h3,
+html[data-theme="bw"] .cardbody h3 a,
+html[data-theme="bw"] .cardbody .small,
+html[data-theme="bw"] .cardbody .vls-plaque__label,
+body[data-theme="bw"] .cardbody p,
+body[data-theme="bw"] .cardbody h3,
+body[data-theme="bw"] .cardbody h3 a,
+body[data-theme="bw"] .cardbody .small,
+body[data-theme="bw"] .cardbody .vls-plaque__label{color:#000 !important}
 html[data-theme="bw"] .foot,
-body[data-theme="bw"] .foot{background:#fff;border:2px solid #000;box-shadow:none;color:#000}
+html[data-theme="bw"] .foot.vls-plaque,
+body[data-theme="bw"] .foot,
+body[data-theme="bw"] .foot.vls-plaque{background:#fff !important;border:2px solid #000 !important;box-shadow:none !important;color:#000 !important}
+html[data-theme="bw"] .foot p,
+html[data-theme="bw"] .foot a,
+html[data-theme="bw"] .foot .small,
+html[data-theme="bw"] .foot .vls-plaque__label,
+body[data-theme="bw"] .foot p,
+body[data-theme="bw"] .foot a,
+body[data-theme="bw"] .foot .small,
+body[data-theme="bw"] .foot .vls-plaque__label{color:#000 !important}
+/* Catch residual brown/sepia under B&W (plaque labels, lede, prose) */
+html[data-theme="bw"] .hero,
+html[data-theme="bw"] .hero *,
+html[data-theme="bw"] .lede,
+html[data-theme="bw"] .eyebrow,
+html[data-theme="bw"] .prose,
+html[data-theme="bw"] .prose *,
+html[data-theme="bw"] .gamehead,
+html[data-theme="bw"] .gamehead *,
+html[data-theme="bw"] .plaquebox,
+html[data-theme="bw"] .plaquebox *,
+html[data-theme="bw"] .vls-plaque__label,
+html[data-theme="bw"] .nbteaser,
+html[data-theme="bw"] .nbteaser a,
+html[data-theme="bw"] .gallery figcaption,
+body[data-theme="bw"] .hero,
+body[data-theme="bw"] .hero *,
+body[data-theme="bw"] .lede,
+body[data-theme="bw"] .eyebrow,
+body[data-theme="bw"] .prose,
+body[data-theme="bw"] .prose *,
+body[data-theme="bw"] .gamehead,
+body[data-theme="bw"] .gamehead *,
+body[data-theme="bw"] .plaquebox,
+body[data-theme="bw"] .plaquebox *,
+body[data-theme="bw"] .vls-plaque__label,
+body[data-theme="bw"] .nbteaser,
+body[data-theme="bw"] .nbteaser a,
+body[data-theme="bw"] .gallery figcaption{color:#000 !important}
 html[data-theme="bw"] .gallery figcaption,
 body[data-theme="bw"] .gallery figcaption{background:#fff;border:1px solid #000;box-shadow:none;color:#000}
 html[data-theme="bw"] main > section > h2,
@@ -593,14 +642,12 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
     padding:calc(var(--gl-bevel-ring) + var(--gl-face-inset) + 2px) calc(var(--gl-bevel-ring) + var(--gl-face-inset) + 6px);
   }
   .btn::before{ inset: var(--gl-bevel-ring); }
-  .foot{padding-left:12px;padding-right:12px}
-  .foot p:first-of-type{font-size:14px;line-height:1.35}
-  /* Prefer one line at 390; if viewport is tighter, .foot-links keeps About·Notebook together */
-  .foot p:first-of-type{white-space:nowrap}
+  .foot{padding-left:12px;padding-right:12px;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+  .foot p:first-of-type{font-size:14px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;word-break:normal}
+  /* .foot-links keeps About · Notebook as one unit when the line wraps */
 }
 @media (max-width:360px){
-  /* very narrow: allow wrap, but links stay a nowrap group via .foot-links */
-  .foot p:first-of-type{white-space:normal}
+  .foot p:first-of-type{white-space:normal;overflow-wrap:anywhere}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .vls-notebook .vls-page svg{display:block;max-width:100%;height:auto;margin:6px auto 14px;color:var(--vls-ink-sepia)}
@@ -858,7 +905,13 @@ body[data-theme="bw"] .bar-nav-cap{
   border:1.5px solid #000 !important;
   box-shadow:none !important;
 }
+html[data-theme="bw"] .bar-nav-cue,
+html[data-theme="bw"] .bar-nav-fade,
+html[data-theme="bw"] .bar-nav-cap,
 html[data-theme="bw"] .bar-nav-cue-arrow,
+body[data-theme="bw"] .bar-nav-cue,
+body[data-theme="bw"] .bar-nav-fade,
+body[data-theme="bw"] .bar-nav-cap,
 body[data-theme="bw"] .bar-nav-cue-arrow{
   color:#000 !important;
   text-shadow:none !important;
@@ -883,4 +936,30 @@ html[data-theme="bw"] body,
 body[data-theme="bw"]{
   overflow-x:hidden;
   max-width:100%;
+}
+
+/* fix2-bw-text-lock: every B&W text colour is pure black/grey (no brown/sepia leftover) */
+html[data-theme="bw"] .cardbody,
+html[data-theme="bw"] .cardbody.vls-plaque,
+html[data-theme="bw"] .cardbody.vls-plaque--ivory,
+html[data-theme="bw"] .bar,
+html[data-theme="bw"] .bar nav,
+html[data-theme="bw"] .hero,
+html[data-theme="bw"] .hero.vls-plaque,
+html[data-theme="bw"] .gamehead,
+html[data-theme="bw"] .plaquebox,
+html[data-theme="bw"] .prose,
+html[data-theme="bw"] .vls-plaque--ivory,
+body[data-theme="bw"] .cardbody,
+body[data-theme="bw"] .cardbody.vls-plaque,
+body[data-theme="bw"] .cardbody.vls-plaque--ivory,
+body[data-theme="bw"] .bar,
+body[data-theme="bw"] .bar nav,
+body[data-theme="bw"] .hero,
+body[data-theme="bw"] .hero.vls-plaque,
+body[data-theme="bw"] .gamehead,
+body[data-theme="bw"] .plaquebox,
+body[data-theme="bw"] .prose,
+body[data-theme="bw"] .vls-plaque--ivory{
+  color:#000 !important;
 }
