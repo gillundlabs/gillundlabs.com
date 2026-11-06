@@ -19,6 +19,10 @@
 
 
 
+
+
+
+
 :root {
   /* apparatus */
   --vls-wood: #2b170b; --vls-wood-deep: #1a0e06; --vls-wood-light: #5a3418;
@@ -32,14 +36,25 @@
   --vls-ink: #3b2414; --vls-ink-faded: #6b4a2e; --vls-ink-sepia: #704214; --vls-ink-red: #8e2a1c; --vls-ink-blue: #24375e;
   --vls-note-analogy: #fdf6dc; --vls-note-simplification: #f6e1d3;
   /* type */
-  --vls-font-engraved: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
-  --vls-font-serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --vls-font-engraved: "VLS Engraving CC", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --vls-font-ivory: "VLS Old Standard TT", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --vls-font-sans: "VLS Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* B&W mode only */
+  --vls-font-serif: var(--vls-font-ivory); /* three-font system: typeset text is Old Standard TT */
   --vls-font-mono: ui-monospace, Menlo, Consolas, monospace;
   --vls-font-hand: "VLS Caveat", "Segoe Print", "Bradley Hand", Georgia, cursive;
-  --vls-font-script: "VLS Pinyon Script", "Snell Roundhand", "Apple Chancery", Georgia, cursive;
-  --vls-font-plain: Georgia, "Times New Roman", serif;
+  --vls-font-script: var(--vls-font-hand); /* retired copperplate; alias kept so old references fall through to the hand */
+  --vls-font-title-weight: 700;
+  --vls-font-title-size: 46px;
+  --vls-font-plain: var(--vls-font-ivory);
   --vls-line: 30px;         /* ruled line pitch: body text sits on the rules */
   --vls-min-touch: 44px;
+  /* shared plaque (owner 2026-11-05): screw offset = corner radius; inset of engraved rule */
+  --vls-plaque-screw: 14px;   /* s: screw centre from corner; plate corner radius */
+  --vls-plaque-inset: 5px;    /* d: rule inset from edge (= clearance to screw head) */
+  --vls-plaque-shadow-x: 4px; /* cast shadow BEYOND edge, bottom-right only */
+  --vls-plaque-shadow-y: 4px;
+  --vls-plaque-shadow-blur: 8px;
+  --vls-plaque-shadow-color: rgba(0, 0, 0, 0.48);
 }
 
 /* ---------------- notebook ---------------- */
@@ -60,7 +75,7 @@
   box-shadow: 0 2px 0 var(--vls-paper-shade), 0 4px 0 var(--vls-paper-edge), 0 10px 24px rgba(0,0,0,0.45);
   border-radius: 2px 6px 6px 2px; line-height: var(--vls-line); font-size: 21px;
 }
-.vls-page h2, .vls-title { font-family: var(--vls-font-script); font-weight: 400; font-size: 40px; line-height: 1.15; margin: 4px 0 6px; color: var(--vls-ink); }
+.vls-page h2, .vls-title { font-family: var(--vls-font-hand); font-weight: var(--vls-font-title-weight); font-size: var(--vls-font-title-size); line-height: 1.15; margin: 4px 0 6px; color: var(--vls-ink); }
 .vls-page p { margin: 0 0 var(--vls-line) 0; }
 .vls-page .vls-pageno { position: absolute; top: 8px; right: 14px; font-size: 17px; color: var(--vls-ink-faded); }
 .vls-page .vls-date { position: absolute; top: 46px; left: 6px; width: 38px; font-size: 14px; line-height: 15px; color: var(--vls-ink-faded); text-align: center; transform: rotate(-4deg); }
@@ -71,7 +86,7 @@
 .vls-note { position: relative; margin: 10px 0 var(--vls-line); padding: 12px 14px 10px; font-size: 19px; line-height: 25px; }
 .vls-page .vls-note p { margin: 0; line-height: inherit; }
 .vls-page .vls-note p + p { margin-top: 6px; }
-.vls-note-label { display: block; font-family: var(--vls-font-engraved); font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 4px; }
+.vls-note-label { display: block; font-family: var(--vls-font-hand); font-size: 17px; font-weight: 700; letter-spacing: 0.02em; margin-bottom: 4px; }
 .vls-analogy { background: var(--vls-note-analogy); border: 1px solid rgba(112,66,20,0.35); transform: rotate(-0.8deg); box-shadow: 1px 2px 6px rgba(60,30,5,0.3); }
 .vls-analogy::before { content: ""; position: absolute; top: -9px; left: 38%; width: 70px; height: 18px; background: rgba(235,225,190,0.75); transform: rotate(-3deg); box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
 .vls-analogy .vls-note-label { color: var(--vls-ink-blue); }
@@ -89,12 +104,174 @@
 .vls-plain .vls-cf { font-size: 14px; }
 
 /* B&W theme: ink on white, no ageing */
+/* B&W mode: one sans for all text (owner, 2026-11-05). Every font token resolves to Inter inside a bw theme. */
+[data-theme="bw"], [data-theme="bw"] * {
+  --vls-font-engraved: var(--vls-font-sans); --vls-font-ivory: var(--vls-font-sans); --vls-font-serif: var(--vls-font-sans);
+  --vls-font-hand: var(--vls-font-sans); --vls-font-script: var(--vls-font-sans); --vls-font-plain: var(--vls-font-sans); --vls-font-mono: var(--vls-font-sans);
+}
+[data-theme="bw"] { font-family: var(--vls-font-sans); }
 [data-theme="bw"] .vls-page { background: #fff; background-image: repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--vls-line) - 1px), #d0d0d0 calc(var(--vls-line) - 1px), #d0d0d0 var(--vls-line)); background-position: 0 14px; color: #000; box-shadow: none; border: 2px solid #fff; outline: 1px solid #000; }
 [data-theme="bw"] .vls-page h2, [data-theme="bw"] .vls-title, [data-theme="bw"] .vls-pageno, [data-theme="bw"] .vls-date, [data-theme="bw"] .vls-cf { color: #000; }
 [data-theme="bw"] .vls-note { background: #fff; border: 1.5px solid #000; box-shadow: none; transform: none; }
 [data-theme="bw"] .vls-simplification { border-left: 5px double #000; }
 [data-theme="bw"] .vls-note-label, [data-theme="bw"] .vls-ink-red { color: #000; }
 [data-theme="bw"] .vls-analogy::before { display: none; }
+
+
+/* ---------------- shared plaque (extends VLS.apparatus.plaque) ----------------
+   Geometry: screw at (s,s) from each corner; plate corner-radius = s; engraved rule
+   inset d; concave quarter-arcs of radius (s-d) centred on each screw. Cast shadow
+   lies BEYOND the plate on the bottom and right only — never inside the edge
+   (owner: "Shadow lies beyond edge, not within it."). overflow:visible so the
+   shadow is not clipped; leave margin around the plate for it to land on. */
+.vls-plaque {
+  /* On short plates, shrink s so 2s fits; keep d/s ratio (~5/14). */
+  --_s: min(var(--vls-plaque-screw), calc(50% - 1px));
+  --_d: min(var(--vls-plaque-inset), calc(var(--_s) * 0.36));
+  --_r: max(1.2px, calc(var(--_s) - 2 * var(--_d))); /* screw-head radius; arc R = s - d */
+  position: relative;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: var(--_s);
+  padding: calc(var(--_d) + var(--_r) + 4px) calc(var(--_d) + var(--_r) + 8px);
+  overflow: visible; /* do not clip the beyond-edge cast shadow */
+  isolation: isolate;
+  box-shadow: var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color);
+  /* no inset / inner shadow */
+}
+.vls-plaque__label {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  max-width: 100%;
+  line-height: 1.2;
+  pointer-events: none;
+}
+/* SVG overlay: rule + screws; sized to the plate, arcs stay circular via user units set at paint time
+   or via the percentage viewBox paired with non-scaling corner marks. Default markup uses a
+   preserveAspectRatio=none viewBox matched to the element box and circular corners drawn in
+   a nested <svg> per corner so circles never squash. */
+.vls-plaque__chrome {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+  border-radius: inherit;
+}
+.vls-plaque__corner {
+  position: absolute;
+  width: calc(var(--_s) + var(--_d));
+  height: calc(var(--_s) + var(--_d));
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+.vls-plaque__corner--tl { top: 0; left: 0; }
+.vls-plaque__corner--tr { top: 0; right: 0; transform: scaleX(-1); }
+.vls-plaque__corner--bl { bottom: 0; left: 0; transform: scaleY(-1); }
+.vls-plaque__corner--br { bottom: 0; right: 0; transform: scale(-1); }
+/* Straight rule segments between corner arcs */
+.vls-plaque__rule-h, .vls-plaque__rule-v {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  background: transparent;
+  box-shadow: none;
+}
+.vls-plaque__rule-h {
+  left: var(--_s);
+  right: var(--_s);
+  height: 0;
+  border-top: 1.55px solid var(--vls-plaque-rule);
+  /* light lip on the lower side of the groove */
+  border-bottom: 1px solid var(--vls-plaque-rule-lip);
+  top: calc(var(--_d) - 0.5px);
+}
+.vls-plaque__rule-h--bottom {
+  top: auto;
+  bottom: calc(var(--_d) - 0.5px);
+  border-top: 1px solid var(--vls-plaque-rule-lip);
+  border-bottom: 1.55px solid var(--vls-plaque-rule);
+}
+.vls-plaque__rule-v {
+  top: var(--_s);
+  bottom: var(--_s);
+  width: 0;
+  border-left: 1.55px solid var(--vls-plaque-rule);
+  border-right: 1px solid var(--vls-plaque-rule-lip);
+  left: calc(var(--_d) - 0.5px);
+}
+.vls-plaque__rule-v--right {
+  left: auto;
+  right: calc(var(--_d) - 0.5px);
+  border-left: 1px solid var(--vls-plaque-rule-lip);
+  border-right: 1.55px solid var(--vls-plaque-rule);
+}
+
+.vls-plaque--brass {
+  /* Aged brass (no lemon hot-stripe): mid/warm only, soft TL wash */
+  background:
+    radial-gradient(ellipse 70% 55% at 20% 20%, rgba(200,160,70,0.07), transparent 55%),
+    linear-gradient(180deg, #3a2508 0%, #6b4a14 20%, #8f6a28 45%, #6b4a14 70%, #2a1803 100%);
+  color: var(--vls-engraving);
+  font-family: var(--vls-font-engraved);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  --vls-plaque-rule: rgba(30, 16, 2, 0.95);
+  --vls-plaque-rule-lip: rgba(255, 241, 184, 0.7);
+  box-shadow:
+    var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color),
+    inset 0 1px 0 rgba(255, 241, 184, 0.2);
+}
+.vls-plaque--brass .vls-plaque__label {
+  text-shadow: 0 1px 0 rgba(255, 240, 190, 0.45);
+}
+
+.vls-plaque--ivory {
+  background-color: #f1ecdf;
+  background-image:
+    linear-gradient(130deg, rgba(255,253,246,0.45), rgba(255,253,246,0) 42%, rgba(87,55,20,0.06)),
+    repeating-linear-gradient(90deg, transparent 0, transparent 2px, rgba(138,106,58,0.045) 2px, rgba(138,106,58,0.045) 3px);
+  color: #2b2015;
+  font-family: var(--vls-font-ivory);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  --vls-plaque-rule: rgba(43, 32, 21, 0.78);
+  --vls-plaque-rule-lip: rgba(255, 252, 240, 0.65);
+  box-shadow:
+    var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color),
+    inset 0 1px 1px rgba(255, 254, 249, 0.55);
+}
+
+/* B&W: black/white/grey line plaque, Inter text (font tokens already remap under [data-theme=bw]) */
+.vls-plaque--bw,
+[data-theme="bw"] .vls-plaque,
+[data-theme="bw"] .vls-plaque--brass,
+[data-theme="bw"] .vls-plaque--ivory {
+  background: #fff !important;
+  background-image: none !important;
+  color: #000 !important;
+  font-family: var(--vls-font-sans) !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: none !important;
+  box-shadow: none !important; /* no soft shadow in B&W; outline carries the plate */
+  outline: 1.5px solid #000;
+  outline-offset: 0;
+  --vls-plaque-rule: #000;
+  --vls-plaque-rule-lip: transparent;
+}
+[data-theme="bw"] .vls-plaque__label,
+.vls-plaque--bw .vls-plaque__label {
+  text-shadow: none;
+  color: #000;
+}
 
 /* Powers of ten (v1.1.0): VLS.pow10 / VLS.fmtSci / VLS.expHtml emit <sup class="vls-exp"><span class="vls-minus">−</span>9</sup> with a true minus
    (U+2212; the bundled fonts have it, unlike the superscript minus U+207B). Big and bold enough that the minus is
@@ -114,7 +291,7 @@
 
 </style>
 <style>
-  /* Layout for Vacuum Maze; the panel/button/theme rules below are copied from Maxwell's Demon so both games look the same. */
+  /* Vacuum Maze layout; material source is the owner-locked shared kit and DECISIONS. */
   :root { color-scheme: dark;
     --sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); --sar: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
     --sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); --sal: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
@@ -189,25 +366,76 @@
   .stat b { text-align: right; }
   .muted { opacity: .7; }
 
-  /* ---- Victorian apparatus ---- */
-  body[data-theme="victorian"] { background: radial-gradient(ellipse at center, #2a170b, #0e0703); font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; }
-  body[data-theme="victorian"] .panel, body[data-theme="victorian"] button {
-    color: #2a1803; letter-spacing: .03em;
-    background: linear-gradient(180deg, #8a5d17 0%, #d9a943 22%, #fff1b8 38%, #e8bb55 50%, #b07c25 78%, #5a3c0e 100%);
-    border: 3px solid #3d2706; border-radius: 8px; box-shadow: 0 0 0 6px #2b170b, 0 10px 40px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,230,.6);
-    text-shadow: 0 1px 0 rgba(255,240,190,.55);
+  /* ---- Victorian apparatus (period plates: lacquered brass + ivory enamel on dark wood; no soft-gold pills) ---- */
+  body[data-theme="victorian"] { background: var(--vls-wood-deep); font-family: var(--vls-font-serif); }
+  /* Ivory face; walnut + dark brass rim carry the frame (no soft-gold outer strip).
+     Phone only has ~8px margin outside the panel, so a wide brass lip was clipping to a flat gold edge. */
+  body[data-theme="victorian"] .panel {
+    color: var(--vls-engraving); background: #f1ecdf; letter-spacing: .02em;
+    border: 2px solid var(--vls-brass-dark); border-radius: 2px;
+    /* Walnut/brass frame rings + cast shadow BEYOND the plate (bottom/right); no inset face darkening. */
+    box-shadow:
+      0 0 0 3px var(--vls-wood),
+      0 0 0 5px var(--vls-wood-deep),
+      0 0 0 6px #100803,
+      var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color);
+    text-shadow: none;
   }
-  body[data-theme="victorian"] .panel { background: linear-gradient(180deg, #c99a3e 0%, #f3d98f 18%, #e5c06a 60%, #b4822c 100%); }
-  body[data-theme="victorian"] button { box-shadow: 0 2px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,230,.6); padding: 6px 14px; font: 600 14px Georgia, serif; cursor: pointer; }
-  body[data-theme="victorian"] button:disabled { filter: saturate(.3) brightness(.8); cursor: default; }
-  body[data-theme="victorian"] .panel h1, body[data-theme="victorian"] .panel h2 { font-variant: small-caps; letter-spacing: .12em; border-bottom: 1px solid rgba(60,35,5,.6); padding-bottom: 6px; }
-  body[data-theme="victorian"] select, body[data-theme="victorian"] input { accent-color: #1b2a40; font-family: Georgia, serif; background: #f6ecd0; color: #2a1803; border: 1px solid #3d2706; }
-  body[data-theme="victorian"] #shop-list th { background: #e9c874; border-bottom: 1px solid #3d2706; }
-  body[data-theme="victorian"] #shop-list tr:nth-child(even) td { background: rgba(80,50,10,.08); }
-  body[data-theme="victorian"] #shop-list tr.sel td { background: rgba(35,80,184,.18); }
+  /* The flat brass face is separate from its stepped bevel: clipping never hides a spill in the fit test. */
+  body[data-theme="victorian"] button {
+    --vm-face-bevel: 7px; color: var(--vls-engraving); border: 1px solid var(--vls-brass-dark); border-radius: 2px;
+    background: repeating-linear-gradient(0deg, #00000009 0 1px, transparent 1px 3px),
+      linear-gradient(116deg, transparent 20%, #ffffff24 38%, transparent 56%),
+      linear-gradient(180deg, var(--vls-brass-bright), var(--vls-brass) 46%, var(--vls-brass-mid));
+    box-shadow: 0 3px 0 var(--vls-wood-deep), 0 4px 7px #0009,
+      inset 2px 2px 0 var(--vls-brass-highlight), inset -2px -2px 0 var(--vls-brass-shadow),
+      inset 0 0 0 4px var(--vls-brass-mid), inset 0 0 0 5px var(--vls-brass-bright);
+    text-shadow: 0 1px 0 #ffffff66; font: 500 14px var(--vls-font-engraved); cursor: pointer; position: relative;
+  }
+  body[data-theme="victorian"] button::after { content: ""; position: absolute; inset: 6px; border: 1px solid var(--vls-brass-shadow); pointer-events: none; }
+  body[data-theme="victorian"] button :is(b,span,small), body[data-theme="victorian"] button {
+    font-family: var(--vls-font-engraved); font-weight: 500; letter-spacing: .045em; text-transform: uppercase;
+  }
+  body[data-theme="victorian"] button:disabled { filter: saturate(.35) brightness(.85); cursor: default; }
+  body[data-theme="victorian"] button:focus-visible { outline: 3px solid var(--vls-ink-blue); outline-offset: 3px; }
+  /* DECISIONS 50fea0f / 0b95716: three fonts — engraved (brass), ivory/Old Standard (typeset), hand (notes). */
+  body[data-theme="victorian"] .panel:not(.ledger) {
+    font-family: var(--vls-font-ivory);
+  }
+  body[data-theme="victorian"] .panel h1, body[data-theme="victorian"] .panel h2 {
+    font-family: var(--vls-font-ivory); font-variant: small-caps; letter-spacing: .04em;
+    border-bottom: 1px solid var(--vls-paper-edge); padding-bottom: 8px;
+  }
+  /* Title uses the shared stepped brass bezel; only padding differs (no soft-gold ridge). */
+  body[data-theme="victorian"] #p-title { padding: 20px 22px; }
+  body[data-theme="victorian"] select, body[data-theme="victorian"] input, body[data-theme="victorian"] textarea {
+    accent-color: var(--vls-brass-mid); font-family: var(--vls-font-ivory); background: var(--vls-paper-light);
+    color: var(--vls-engraving); border: 2px solid var(--vls-brass-mid); border-radius: 0;
+  }
+  /* Select *values* are data → body serif at full length. Engraver stays on labels/buttons only. */
+  body[data-theme="victorian"] select { appearance: none; -webkit-appearance: none;
+    border: 3px solid var(--vls-brass-dark); padding: 8px 34px 8px 10px;
+    font: 400 14px/1.3 var(--vls-font-ivory); letter-spacing: normal; text-transform: none;
+    background-color: var(--vls-paper-light);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1h10L6 7z' fill='%232a1803'/%3E%3Cpath d='M2 1h8' stroke='%23fff1b8'/%3E%3C/svg%3E"),
+      linear-gradient(90deg, transparent calc(100% - 28px), var(--vls-brass-mid) calc(100% - 28px), var(--vls-brass-shadow));
+    background-position: right 8px center, 0 0; background-size: 12px 8px, 100% 100%; background-repeat: no-repeat;
+    box-shadow: inset 0 0 0 1px var(--vls-paper-edge),
+      inset 1px 1px 0 var(--vls-brass-shadow), inset -1px -1px 0 #8a6320,
+      0 1px 1px var(--vls-wood-deep);
+  }
+  body[data-theme="victorian"] .panel label, body[data-theme="victorian"] .stepper {
+    font-family: var(--vls-font-ivory); font-variant: small-caps; letter-spacing: .03em;
+  }
+  body[data-theme="victorian"] .panel label small { font-family: var(--vls-font-ivory); font-variant: normal; letter-spacing: normal; }
+  body[data-theme="victorian"] :is(select,input,textarea):focus-visible { outline: 2px solid var(--vls-ink-blue); outline-offset: 3px; }
+  body[data-theme="victorian"] #shop-list th { background: var(--vls-paper-shade); border-bottom: 1px solid var(--vls-brass-dark); }
+  body[data-theme="victorian"] #shop-list tr:nth-child(even) td { background: #50320a0d; }
+  body[data-theme="victorian"] #shop-list tr.sel td { background: #24375e18; }
 
   /* ---- Pure black & white ---- */
-  body[data-theme="bw"] { background: #000; font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace; }
+  /* DECISIONS 56dc2d2: B&W type is Inter via kit --vls-font-sans (do not force mono). */
+  body[data-theme="bw"] { background: #000; }
   body[data-theme="bw"] .panel, body[data-theme="bw"] button, body[data-theme="bw"] select, body[data-theme="bw"] input {
     background: #000; color: #fff; border: 2px solid #fff; border-radius: 0; font-family: inherit; filter: grayscale(1);
   }
@@ -233,7 +461,7 @@
   #arcade-row { display: none; } #arcade-row.show { display: grid; }
   .coins { text-align: center; font-weight: 700; margin: 4px 0; }
   .ledger { background: repeating-linear-gradient(180deg, #f4e8c8 0, #f4e8c8 27px, #b9c8d6 27px, #b9c8d6 28px) !important; color: #2a1803 !important;
-    border: 3px double #5a3c0e !important; font-family: Georgia, serif; }
+    border: 3px double #5a3c0e !important; font-family: var(--vls-font-ivory); }
   body[data-theme="bw"] .ledger { background: #000 !important; color: #fff !important; border: 2px solid #fff !important; }
   .ledger h2 { font-variant: small-caps; } .ledger .entry { display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; margin: 10px 0; font-size: 15px; }
   .ledger .entry span:nth-child(even) { text-align: right; font-weight: 700; }
@@ -246,10 +474,19 @@
   #p-notebook { width: min(820px, calc(100vw - var(--sal) - var(--sar) - 16px)); }
   .nb-toc { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; margin: 8px 0; }
   .nb-toc button { text-align: left; font-size: 13px !important; padding: 6px 10px !important; }
-  .nb-toc button.new::after { content: ' •new'; color: #8a1c10; font-weight: 700; }
+  .nb-toc .vm-new-label { display: block; color: var(--vls-ink-red); font-weight: 700; }
   .nb-toc h4 { grid-column: 1 / -1; margin: 8px 0 0; font-variant: small-caps; }
   .vm-entry { color: #3a2410; } .vm-fig { margin: 0 0 10px; color: #4a2c12; } .vm-sketch { width: 100%; max-width: 420px; display: block; margin: 0 auto; font-family: var(--vls-font-hand); }
   .vm-sketch, .vm-sketch text { letter-spacing: 0; }   /* sketch labels are laid out from measured Caveat widths; the panel's .03em tracking would push them into line art */
+  /* Kit .vls-note-label is --vls-font-hand (DECISIONS 0b95716); no Vac override.
+     SVG sketch labels: kit does not set font-family on <text>; pin hand so they track the token. */
+  #p-notebook .vls-notebook .vm-sketch text,
+  #nb-body .vm-sketch text {
+    font-family: var(--vls-font-hand);
+  }
+  #p-notebook.vls-plain .vm-sketch text {
+    font-family: var(--vls-font-plain) !important;
+  }
   body[data-theme="bw"] .vm-entry, body[data-theme="bw"] .vm-fig { color: #000; }
   /* N3 (review vm-5b795ff561): the kit's coffee ring (first .vls-page layer, top-right at 84% 12%) sat on the sketches'
      top-right labels. Vacuum Maze only: the same ring, moved into the bottom-left margin corner (left of the red margin
@@ -267,10 +504,11 @@
   }
   .nb-uncertain li { font-size: 14px; margin: 4px 0; }
   #hint-plaque { position: fixed; z-index: 6; left: 50%; bottom: calc(var(--sab) + 18px); transform: translateX(-50%); padding: 10px 18px; display: none; pointer-events: none;
-    font: 700 15px Georgia, serif; color: #2a1803; border: 3px solid #3d2706; border-radius: 8px; box-shadow: 0 0 0 4px #2b170b, 0 6px 20px rgba(0,0,0,.6);
-    background: linear-gradient(180deg, #8a5d17 0%, #d9a943 22%, #fff1b8 38%, #e8bb55 50%, #b07c25 78%, #5a3c0e 100%); text-align: center; max-width: 86vw; }
+    font: 500 14px var(--vls-font-ivory); color: var(--vls-engraving); border: 4px ridge var(--vls-brass-mid); border-radius: var(--vls-plaque-screw);
+    box-shadow: 0 0 0 3px var(--vls-wood), var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color);
+    background: #f1ecdf; text-align: center; max-width: 86vw; box-sizing: border-box; overflow: visible; }
   #hint-plaque.show { display: block; }
-  body[data-theme="bw"] #hint-plaque { background: #000; color: #fff; border: 2px solid #fff; box-shadow: none; font-family: ui-monospace, monospace; }
+  body[data-theme="bw"] #hint-plaque { background: #000; color: #fff; border: 2px solid #fff; box-shadow: none; }
   #shop-list td.lines { white-space: normal; font-size: 12px; }
   @media (max-width: 520px) { #shop-list th, #shop-list td { padding: 3px 3px; } #shop-list td:first-child, #shop-list td:nth-child(3) { white-space: normal; } #shop-list td button { padding: 2px 6px; } }
   /* ---- level editor, My mazes, coin packs ---- */
@@ -282,7 +520,7 @@
   .ed-drawer button { display: grid; text-align: left; font-size: 13px !important; padding: 4px 10px !important; line-height: 1.15; }
   .ed-drawer button small { font-weight: normal; font-size: 11px; }
   .ed-drawer button.sel { outline: 3px solid #1b2a40; outline-offset: 1px; } body[data-theme="bw"] .ed-drawer button.sel { background: #fff; color: #000; }
-  #ed-code-row { display: none; } #ed-code-row.show { display: flex; } #ed-code, #mm-code { width: 100%; box-sizing: border-box; font: 12px ui-monospace, monospace; }
+  #ed-code-row { display: none; } #ed-code-row.show { display: flex; } #ed-code, #mm-code { width: 100%; box-sizing: border-box; font: 12px var(--vls-font-mono); }
   .mm-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(60,35,5,.35); }
   .mm-row span:nth-child(2) { font-size: 13px; } .mm-row .row { grid-column: 1 / -1; justify-content: flex-start; }
   .shop-h { margin: 12px 0 2px; font-variant: small-caps; text-align: center; }
@@ -290,13 +528,87 @@
   .packs button, .packs div { display: grid; text-align: left; font-size: 13px; padding: 6px 10px; line-height: 1.2; }
   .packs div { border: 1px solid rgba(60,35,5,.5); border-radius: 6px; } body[data-theme="bw"] .packs div { border-color: #fff; }
   .packs small { font-weight: normal; font-size: 11px; }
+  /* a10436a: a real inner face for every DOM button, static or dynamically populated. */
+  body[data-theme] button { box-sizing: border-box; min-width: 44px; max-width: 100%; white-space: normal;
+    overflow-wrap: anywhere; line-height: 1.3; padding: 10px 14px !important; }
+  .vm-button-face { display: block; min-width: 0; max-width: 100%; clip-path: inset(0); overflow-wrap: anywhere; }
+  .vm-button-face > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+  body[data-theme] .levels button { display: block; }
+  .levels button > .vm-button-face { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 10px; align-items: center; }
+  body[data-theme] #controls button { height: auto !important; padding: 10px 8px !important; }
+  body[data-theme] #controls { max-height: calc(var(--vh) - var(--sat) - var(--sab) - 16px); overflow: auto; }
+  body[data-theme] .stepper button { padding: 10px 8px !important; flex-shrink: 0; }
+  body[data-theme] .bodies button, body[data-theme] .ed-drawer button { display: block; }
+  .bodies .vm-button-face, .ed-drawer .vm-button-face, .packs button .vm-button-face { display: grid; gap: 3px; }
+  .bodies small, .ed-drawer small { display: block; }
+  .ed-head > *, .panel label > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+  body[data-theme] .ed-head .ed-name { flex-wrap: wrap; }
+  body[data-theme] #ed-name { max-width: 100%; }
+  body[data-theme] .ed-tier { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(142px,100%),1fr)); gap: 9px; }
+  .vm-control-engraving { display: block; width: 28px; height: 28px; margin: auto; }
+  body[data-theme="victorian"] .levels button > .vm-button-face { background: var(--vls-paper-light);
+    border: 1px solid var(--vls-paper-edge); padding: 5px 6px; text-shadow: none;
+    font-family: var(--vls-font-ivory); letter-spacing: normal; text-transform: none; }
+  body[data-theme="victorian"] .levels button > .vm-button-face :is(b,span,small) {
+    font-family: var(--vls-font-ivory); letter-spacing: normal; text-transform: none; font-weight: inherit; }
+  .vm-part-engraving { display: none; }
+  body[data-theme="victorian"] .vm-part-engraving { display: block; width: 52px; height: 30px; margin: 0 auto 3px; color: var(--vls-engraving); }
+  body[data-theme="victorian"] .ed-head, body[data-theme="victorian"] #ed-blurb {
+    background: var(--vls-paper-light); padding: 10px; border: 2px solid var(--vls-brass-mid);
+    font-family: var(--vls-font-ivory);
+  }
+  body[data-theme="victorian"] .ed-drawer { background: var(--vls-wood); color: var(--vls-paper-light);
+    padding: 12px; border: 4px ridge var(--vls-brass-mid); box-shadow: inset 0 3px 8px #0009; }
+  body[data-theme="victorian"] .ed-drawer h4 { font-family: var(--vls-font-engraved); font-weight: 500;
+    letter-spacing: .07em; border-bottom: 1px solid var(--vls-brass-mid); padding: 7px 0; margin: 8px 0; }
+  body[data-theme="victorian"] .ed-wrap { background: var(--vls-wood-deep); border: 4px ridge var(--vls-brass-mid);
+    padding: 6px; box-shadow: inset 0 2px 8px #000b; }
+  body[data-theme="victorian"] .ed-drawer button.sel, body[data-theme="victorian"] .bodies button.sel {
+    outline: 2px solid var(--vls-ink-blue); outline-offset: 2px;
+  }
+  body[data-theme="victorian"] .packs div { background: var(--vls-paper-light); border: 1px solid var(--vls-paper-edge); border-radius: 0; font-family: var(--vls-font-ivory); }
+  body[data-theme="victorian"] .store-links a { font-family: var(--vls-font-ivory); font-weight: 500; letter-spacing: normal; text-transform: none; background: var(--vls-paper-light); border: 3px double var(--vls-brass-mid); border-radius: 1px;
+    padding: 10px 14px; box-sizing: border-box; max-width: 100%; overflow-wrap: anywhere; }
+  body[data-theme="victorian"] #pc-canvas { border: 2px solid var(--vls-brass-mid); box-sizing: border-box; border-radius: 0; }
+  body[data-theme="victorian"] #rotate-hint { color: var(--vls-paper-light); }
+  body[data-theme="victorian"] #hint-plaque { overflow-wrap: anywhere; }
+  /* Kit cream ivory fallback (DECISIONS 18923d3): flat #f1ecdf until owner locks procedural ivory. No Vac-local grain. */
+  body[data-theme="victorian"] :is(.panel:not(.ledger), .ed-head, #ed-blurb, #hint-plaque, .store-links a, .levels button > .vm-button-face) {
+    background-color: #f1ecdf;
+    background-image: none;
+  }
+  body[data-theme="victorian"] select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1h10L6 7z' fill='%232a1803'/%3E%3Cpath d='M2 1h8' stroke='%23fff1b8'/%3E%3C/svg%3E"),
+      linear-gradient(90deg, transparent calc(100% - 28px), var(--vls-brass-mid) calc(100% - 28px), var(--vls-brass-shadow));
+    background-position: right 8px center, 0 0; background-size: 12px 8px, 100% 100%;
+    background-repeat: no-repeat, no-repeat;
+    background-color: #f1ecdf;
+  }
+  /* Native form semantics, material skin: ruled brass rails and knurled slide knobs. */
+  body[data-theme="victorian"] input[type=range] { appearance: none; -webkit-appearance: none; background: transparent; border: 0; }
+  body[data-theme="victorian"] input[type=range]::-webkit-slider-runnable-track { height: 9px; border: 1px solid var(--vls-brass-dark);
+    background: repeating-linear-gradient(90deg, transparent 0 9px, #3d270680 9px 10px), var(--vls-brass-gradient); }
+  body[data-theme="victorian"] input[type=range]::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 26px; height: 28px; margin-top: -11px;
+    border: 3px ridge var(--vls-brass-mid); border-radius: 2px; background: repeating-linear-gradient(90deg, #4a300a80 0 1px, transparent 1px 3px), var(--vls-brass-bright);
+    box-shadow: 0 2px 2px var(--vls-wood-deep); }
+  body[data-theme="victorian"] input[type=range]::-moz-range-track { height: 7px; border: 1px solid var(--vls-brass-dark);
+    background: repeating-linear-gradient(90deg, transparent 0 9px, #3d270680 9px 10px), var(--vls-brass-gradient); }
+  body[data-theme="victorian"] input[type=range]::-moz-range-thumb { width: 20px; height: 22px; border: 3px ridge var(--vls-brass-mid); border-radius: 2px;
+    background: repeating-linear-gradient(90deg, #4a300a80 0 1px, transparent 1px 3px), var(--vls-brass-bright); }
+  body[data-theme="victorian"] input[type=checkbox] { appearance: none; -webkit-appearance: none; display: grid; place-content: center; width: 30px; height: 30px;
+    border: 3px ridge var(--vls-brass-mid); background: #f1ecdf; }
+  body[data-theme="victorian"] input[type=checkbox]:checked::before { content: ""; width: 12px; height: 6px; border: solid var(--vls-engraving); border-width: 0 0 3px 3px; transform: rotate(-45deg) translateY(-2px); }
+  @media (max-width: 600px) { .panel label { grid-template-columns: minmax(0,1fr); gap: 4px; }
+    body[data-theme="victorian"] #p-title { padding: 14px 16px; }
+    .panel h1 { font-size: clamp(22px,7vw,30px) !important; }
+  }
 </style>
 </head>
 <body data-theme="victorian">
 <canvas id="game"></canvas>
 <div id="safe"></div>
 <div id="controls">
-  <button id="b-pausebtn" aria-label="Pause">❚❚</button>
+  <button id="b-pausebtn" aria-label="Pause"><svg class="vm-control-engraving" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M10 7v18M22 7v18" fill="none" stroke="currentColor" stroke-width="5"/></svg></button>
   <button id="b-level" aria-label="Set the current tilt as level" title="Set the current tilt as level (L)">◎</button>
 </div>
 <div id="hint-plaque" role="status" aria-live="polite"></div>
@@ -397,7 +709,7 @@
     <label><span>Residence time<small>Mean time the atom stays stuck to a wall (real: far shorter)</small></span><span><input id="s-res" type="range" min="0" max="1.5" step="0.01"><small id="l-res"></small></span></label>
     <label><span>Wall scattering model<small>How a hit is drawn</small></span><select id="s-kernel"><option value="cl">Cercignani–Lampis kernel (default)</option><option value="maxwell">Maxwell: diffuse or mirror</option></select></label>
     <label><span>Sensor smoothing<small>Low-pass time constant on the accelerometer</small></span><span><input id="s-smooth" type="range" min="0" max="0.3" step="0.01"><small id="l-smooth"></small></span></label>
-    <label><span>Level reference<small>Play seated: treat the way you hold the phone now as level</small></span><span class="row" style="margin:0;justify-content:flex-start"><button id="s-zero" type="button">Set current tilt as level</button><button id="s-truelevel" type="button">True level</button></span></label>
+    <label><span>Level reference<small>Play seated: treat the way you hold the phone now as level</small></span><span class="row" style="margin:0;justify-content:flex-start"><button id="s-zero" type="button">Set level here</button><button id="s-truelevel" type="button">True level</button></span></label>
     <label><span>Hold tilt<small>Mouse / keys: keep the apparatus tipped when you let go</small></span><input id="s-hold" type="checkbox" style="justify-self:start"></label>
     <label><span>Haptics<small>A tap on each wall contact, stronger for harder hits</small></span><input id="s-haptics" type="checkbox" style="justify-self:start"></label>
     <label>Breadcrumb map <input id="s-map" type="checkbox" style="justify-self:start"></label>
@@ -452,15 +764,20 @@
       noteAnalogy: '#ffffff', noteSimplification: '#ffffff',
     },
     fonts: {
-      engraved: '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif',
-      serif: 'Georgia, "Iowan Old Style", "Times New Roman", serif',
+      sans: '"VLS Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', // B&W mode: the only font
+      ivory: '"VLS Old Standard TT", "Iowan Old Style", Georgia, "Times New Roman", serif',
+      engraved: '"VLS Engraving CC", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif',
+      serif: '"VLS Old Standard TT", "Iowan Old Style", Georgia, "Times New Roman", serif',
       mono: 'ui-monospace, Menlo, Consolas, monospace',
       hand: '"VLS Caveat", "Segoe Print", "Bradley Hand", Georgia, cursive',        // body handwriting (OFL, bundled)
-      script: '"VLS Pinyon Script", "Snell Roundhand", "Apple Chancery", Georgia, cursive', // copperplate headings (OFL, bundled)
-      plain: 'Georgia, "Times New Roman", serif',                                     // 'plain text' accessibility mode
+      script: '"VLS Caveat", "Segoe Print", "Bradley Hand", Georgia, cursive', // retired copperplate; alias of hand. Notebook titles: hand at weight 700, 46px
+      plain: '"VLS Old Standard TT", "Iowan Old Style", Georgia, "Times New Roman", serif',                                     // 'plain text' accessibility mode
     },
-    fontFiles: { hand: 'fonts/Caveat-Variable.woff2', script: 'fonts/PinyonScript-Regular.woff2' },
+    fontFiles: { sans: 'fonts/Inter-Variable.woff2', ivory: ['fonts/OldStandardTT-Regular.woff2', 'fonts/OldStandardTT-Italic.woff2', 'fonts/OldStandardTT-Bold.woff2'], engraved: 'fonts/EngravingCC.woff2', hand: 'fonts/Caveat-Variable.woff2' },
     sizes: { handBody: 21, handSmall: 17, scriptTitle: 40, minTouch: 44 },
+    // Shared plaque geometry (owner 2026-11-05). s = screw offset = corner radius;
+    // d = rule inset; screw-head radius = s - 2d so arc clearance equals edge clearance.
+    plaque: { screw: 14, inset: 5, shadowX: 4, shadowY: 4, shadowBlur: 8 },
     labels: { analogy: 'Analogy', simplification: 'Simplification', cf: 'cf.' },
   };
   VLS.tokens = tokens;
@@ -570,7 +887,127 @@
     let cx = 0; parts.forEach((p, i) => { if (p.e) drawExp(ctx, cx, 0, p.e, { ...opts, font }); else if (p.t) ctx.fillText(p.t, cx, 0); cx += widths[i]; });
     ctx.restore(); return W;
   }
-  Object.assign(VLS, { MINUS, pow10, fmtSci, sciParts, expHtml, drawPow10, drawSciText });
+
+  // ---------- shared plaque DOM chrome (mirrors VLS.apparatus.plaque geometry) ----------
+  // Builds the four corner SVGs (concave rule arc + slotted brass/BW screw) and the
+  // straight rule segments inside a .vls-plaque. Idempotent. Shadow is CSS box-shadow
+  // on the plate (beyond-edge, bottom-right only) — never drawn inside the chrome.
+  function plaqueChrome(el, opts = {}) {
+    if (!el || el.nodeType !== 1) return el;
+    if (el.querySelector(':scope > .vls-plaque__chrome-built')) return el;
+    const cs = getComputedStyle(el);
+    let s = parseFloat(opts.s != null ? opts.s : (cs.getPropertyValue('--vls-plaque-screw') || tokens.plaque.screw));
+    let d = parseFloat(opts.d != null ? opts.d : (cs.getPropertyValue('--vls-plaque-inset') || tokens.plaque.inset));
+    const box = el.getBoundingClientRect();
+    const sMax = Math.max(5, Math.min(box.width || 100, box.height || 40) * 0.5 - 0.5);
+    if (s > sMax) { const k = sMax / s; s = sMax; d = Math.max(1.5, d * k); }
+    if (d >= s * 0.45) d = Math.max(1.2, s * 0.35);
+    const R = s - d, rHead = Math.max(1.2, s - 2 * d);
+    el.style.setProperty('--_s', s + 'px');
+    el.style.setProperty('--_d', d + 'px');
+    const bw = el.classList.contains('vls-plaque--bw') || (el.closest('[data-theme="bw"]') != null);
+    const NS = 'http://www.w3.org/2000/svg';
+    const wrap = document.createElement('div');
+    wrap.className = 'vls-plaque__chrome-built';
+    wrap.setAttribute('aria-hidden', 'true');
+    wrap.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:1;overflow:visible;border-radius:inherit;';
+
+    // straight rule segments
+    [['vls-plaque__rule-h', ''], ['vls-plaque__rule-h vls-plaque__rule-h--bottom', ''],
+     ['vls-plaque__rule-v', ''], ['vls-plaque__rule-v vls-plaque__rule-v--right', '']].forEach(([cls]) => {
+      const n = document.createElement('div'); n.className = cls; wrap.appendChild(n);
+    });
+
+    // one TL corner SVG, mirrored for the other three
+    function cornerSvg(slotAngle) {
+      const size = s + rHead + 2;
+      const svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+      svg.setAttribute('width', String(size));
+      svg.setAttribute('height', String(size));
+      svg.style.overflow = 'visible';
+      // arc from (s,d) to (d,s), centred on (s,s), radius R — toward the corner
+      const path = document.createElementNS(NS, 'path');
+      // A: arc flags — sweep 1 goes the short quarter through the corner
+      path.setAttribute('d', `M ${s} ${d} A ${R} ${R} 0 0 0 ${d} ${s}`);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', bw ? '#000' : 'currentColor');
+      path.setAttribute('stroke-width', bw ? '1.5' : '1.55');
+      path.style.color = 'var(--vls-plaque-rule)';
+      if (!bw) {
+        const lip = document.createElementNS(NS, 'path');
+        lip.setAttribute('d', `M ${s + 0.55} ${d + 0.55} A ${R} ${R} 0 0 0 ${d + 0.55} ${s + 0.55}`);
+        lip.setAttribute('fill', 'none');
+        lip.setAttribute('stroke', 'var(--vls-plaque-rule-lip)');
+        lip.setAttribute('stroke-width', '1.2');
+        svg.appendChild(lip);
+      }
+      svg.appendChild(path);
+      // screw
+      const cx = s, cy = s;
+      if (bw) {
+        const ring = document.createElementNS(NS, 'circle');
+        ring.setAttribute('cx', cx); ring.setAttribute('cy', cy); ring.setAttribute('r', rHead);
+        ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', '#000'); ring.setAttribute('stroke-width', '1.2');
+        svg.appendChild(ring);
+        const slot = document.createElementNS(NS, 'line');
+        const a = slotAngle, c = Math.cos(a), sn = Math.sin(a), L = rHead * 0.75;
+        slot.setAttribute('x1', cx - c * L); slot.setAttribute('y1', cy - sn * L);
+        slot.setAttribute('x2', cx + c * L); slot.setAttribute('y2', cy + sn * L);
+        slot.setAttribute('stroke', '#000'); slot.setAttribute('stroke-width', String(Math.max(1, rHead * 0.22)));
+        svg.appendChild(slot);
+      } else {
+        // brass screw: layered circles + slot
+        const shadow = document.createElementNS(NS, 'circle');
+        shadow.setAttribute('cx', cx + 0.5); shadow.setAttribute('cy', cy + 0.9); shadow.setAttribute('r', rHead + 1);
+        shadow.setAttribute('fill', 'rgba(0,0,0,0.4)'); svg.appendChild(shadow);
+        const defs = document.createElementNS(NS, 'defs');
+        const grad = document.createElementNS(NS, 'radialGradient');
+        const gid = `vls-scr-${Math.random().toString(36).slice(2, 8)}`;
+        grad.setAttribute('id', gid);
+        grad.setAttribute('cx', '35%'); grad.setAttribute('cy', '30%'); grad.setAttribute('r', '70%');
+        [['0%', '#fff1b8'], ['40%', '#d9a943'], ['100%', '#3d2706']].forEach(([o, c]) => {
+          const stop = document.createElementNS(NS, 'stop'); stop.setAttribute('offset', o); stop.setAttribute('stop-color', c); grad.appendChild(stop);
+        });
+        defs.appendChild(grad); svg.appendChild(defs);
+        const head = document.createElementNS(NS, 'circle');
+        head.setAttribute('cx', cx); head.setAttribute('cy', cy); head.setAttribute('r', rHead);
+        head.setAttribute('fill', `url(#${gid})`); head.setAttribute('stroke', 'rgba(40,24,4,0.85)'); head.setAttribute('stroke-width', '0.8');
+        svg.appendChild(head);
+        const g = document.createElementNS(NS, 'g');
+        g.setAttribute('transform', `translate(${cx} ${cy}) rotate(${(slotAngle * 180) / Math.PI})`);
+        const slot = document.createElementNS(NS, 'rect');
+        slot.setAttribute('x', -rHead * 0.78); slot.setAttribute('y', -rHead * 0.12);
+        slot.setAttribute('width', rHead * 1.56); slot.setAttribute('height', rHead * 0.24);
+        slot.setAttribute('fill', 'rgba(30,18,4,0.92)');
+        g.appendChild(slot); svg.appendChild(g);
+      }
+      return svg;
+    }
+    const angles = [0.4, 1.1, 2.3, 0.85];
+    ['tl', 'tr', 'bl', 'br'].forEach((name, i) => {
+      const box = document.createElement('div');
+      box.className = `vls-plaque__corner vls-plaque__corner--${name}`;
+      box.appendChild(cornerSvg(angles[i]));
+      wrap.appendChild(box);
+    });
+
+    // Ensure label is wrapped
+    let label = el.querySelector(':scope > .vls-plaque__label');
+    if (!label) {
+      label = document.createElement('span');
+      label.className = 'vls-plaque__label';
+      while (el.firstChild) label.appendChild(el.firstChild);
+      el.appendChild(label);
+    }
+    el.insertBefore(wrap, el.firstChild);
+    return el;
+  }
+  function plaqueMount(root) {
+    const scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('.vls-plaque').forEach((el) => plaqueChrome(el));
+  }
+  Object.assign(VLS, { MINUS, pow10, fmtSci, sciParts, expHtml, drawPow10, drawSciText, plaqueChrome, plaqueMount });
   if (typeof module === 'object' && module.exports) module.exports = tokens;
 })(typeof self !== 'undefined' ? self : this);
 
@@ -1233,6 +1670,14 @@
   }
 
   // ---------- engraved lettering and brass plaques ----------
+  // Shared plaque geometry (owner 2026-11-05): screw offset s from each corner; plate
+  // corner radius = s (centred on the screw); engraved rule inset d from each edge;
+  // at corners the rule is a concave quarter-circle of radius (s - d) centred on the
+  // screw so rule-to-screw-head clearance equals rule-to-edge (= d). Defaults:
+  // s=14, d=5 → screw-head radius r = s - 2d = 4. Light from top-left; cast shadow
+  // lies BEYOND the plate on the bottom and right only (never inside the edge).
+  const PLAQUE_S = 14, PLAQUE_D = 5; // also exposed as --vls-plaque-screw / --vls-plaque-inset
+
   function engrave(ctx, text, x, y, size, align = 'center', weight = '600') {
     ctx.save();
     ctx.font = `${weight} ${size}px ${VLS.tokens.fonts.engraved}`;
@@ -1242,15 +1687,285 @@
     ctx.fillStyle = C('engraving'); ctx.fillText(text, x, y);
     ctx.restore();
   }
-  function plaque(ctx, x, y, w, h, seed = 1) {
-    brassRect(ctx, x, y, w, h, false, 6);
-    ctx.strokeStyle = 'rgba(60,35,5,0.7)'; ctx.lineWidth = 1;
-    ctx.strokeRect(x + 7.5, y + 7.5, w - 15, h - 15);
-    const r = mulberry(seed);
-    for (const [sx, sy] of [[x + 9, y + 9], [x + w - 9, y + 9], [x + 9, y + h - 9], [x + w - 9, y + h - 9]]) screw(ctx, sx, sy, 4.2, r() * 3.14);
+
+  // Brass cheese-head slotted screw for plaques (period; kit `screw` stays blued-steel for rails).
+  function screwBrass(ctx, x, y, r, angle = 0) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x + 0.6, y + 1.1, r + 1.2, 0, 7); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fill();
+    const rim = ctx.createRadialGradient(x - r * 0.3, y - r * 0.4, r * 0.05, x, y, r);
+    rim.addColorStop(0, C('brassHighlight')); rim.addColorStop(0.35, C('brassBright'));
+    rim.addColorStop(0.7, C('brassMid')); rim.addColorStop(1, C('brassDark'));
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = rim; ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, r * 0.92, 0, 7);
+    ctx.strokeStyle = 'rgba(40,24,4,0.85)'; ctx.lineWidth = Math.max(0.6, r * 0.12); ctx.stroke();
+    const face = ctx.createRadialGradient(x - r * 0.35, y - r * 0.45, r * 0.08, x, y, r * 0.85);
+    face.addColorStop(0, '#fff1b8'); face.addColorStop(0.4, C('brass')); face.addColorStop(1, C('brassWarm'));
+    ctx.beginPath(); ctx.arc(x, y - 0.15, r * 0.78, 0, 7); ctx.fillStyle = face; ctx.fill();
+    ctx.translate(x, y - 0.15); ctx.rotate(angle);
+    ctx.fillStyle = 'rgba(30,18,4,0.92)'; ctx.fillRect(-r * 0.78, -r * 0.12, r * 1.56, r * 0.24);
+    ctx.fillStyle = 'rgba(255,240,190,0.35)'; ctx.fillRect(-r * 0.78, r * 0.12, r * 1.56, Math.max(0.5, r * 0.06));
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(x - r * 0.32, y - r * 0.42, r * 0.14, 0, 7); ctx.fillStyle = 'rgba(255,250,230,0.7)'; ctx.fill();
   }
 
-  VLS.apparatus = { mulberry, woodTexture, paintWalnut, paintPanelling, grainScaleOf, grainAlongLong, woodPanelBake, woodPanelDataURL, woodPanellingBake, woodPanellingDataURL, SITE_WOOD_SEED, SITE_WOOD_DESKTOP, SITE_WOOD_PHONE, brassGrad, brassRect, brassArc, screw, engrave, plaque };
+  // Path for the engraved rule: straight sides at inset d, concave quarter-arcs of radius (s-d) at screws.
+  function plaqueRulePath(ctx, x, y, w, h, s, d) {
+    const R = s - d; // arc radius (= screw-head r + d)
+    ctx.beginPath();
+    // start at top edge, just after the TL arc
+    ctx.moveTo(x + s, y + d);
+    ctx.lineTo(x + w - s, y + d);
+    // TR arc: from north to east around screw (x+w-s, y+s), bulging toward the corner
+    ctx.arc(x + w - s, y + s, R, -Math.PI / 2, 0, false);
+    ctx.lineTo(x + w - d, y + h - s);
+    // BR
+    ctx.arc(x + w - s, y + h - s, R, 0, Math.PI / 2, false);
+    ctx.lineTo(x + s, y + h - d);
+    // BL
+    ctx.arc(x + s, y + h - s, R, Math.PI / 2, Math.PI, false);
+    ctx.lineTo(x + d, y + s);
+    // TL
+    ctx.arc(x + s, y + s, R, Math.PI, (3 * Math.PI) / 2, false);
+    ctx.closePath();
+  }
+
+  function plaqueIvoryFill(ctx, x, y, w, h, s) {
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, s); ctx.clip();
+    const base = '#f1ecdf';
+    ctx.fillStyle = base; ctx.fillRect(x, y, w, h);
+    const wash = ctx.createLinearGradient(x, y, x + w, y + h);
+    wash.addColorStop(0, 'rgba(255,253,246,0.55)'); wash.addColorStop(0.45, 'rgba(255,253,246,0)');
+    wash.addColorStop(1, 'rgba(89,65,31,0.10)');
+    ctx.fillStyle = wash; ctx.fillRect(x, y, w, h);
+    // faint long-axis fibre suggestion (fallback until procedural ivory is locked)
+    ctx.globalAlpha = 0.06; ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 1;
+    const horiz = w >= h;
+    if (horiz) {
+      for (let yy = y + 3; yy < y + h; yy += 3.5) {
+        ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy + ((yy * 13) % 5) * 0.15 - 0.3); ctx.stroke();
+      }
+    } else {
+      for (let xx = x + 3; xx < x + w; xx += 3.5) {
+        ctx.beginPath(); ctx.moveTo(xx, y); ctx.lineTo(xx + ((xx * 13) % 5) * 0.15 - 0.3, y + h); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function plaqueBwFill(ctx, x, y, w, h, s) {
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, s);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+  }
+
+  // plaque(ctx, x, y, w, h, seed=1)
+  // plaque(ctx, x, y, w, h, seed, opts)  or  plaque(ctx, x, y, w, h, opts)
+  // opts: { material: 'brass'|'ivory'|'bw', s, d, seed, label, labelSize, theme }
+  // Existing 5-arg callers keep working (brass, seed as 5th). Screw positions move from the
+  // old fixed 9px inset to s (=14 by default); corner radius becomes s. Callers that assumed
+  // a sharp 6px brassRect radius or a rectangular inset stroke will see the new geometry.
+  function plaque(ctx, x, y, w, h, seed = 1, opts) {
+    if (seed && typeof seed === 'object') { opts = seed; seed = opts.seed != null ? opts.seed : 1; }
+    opts = opts || {};
+    let s = opts.s != null ? opts.s : (VLS.tokens.plaque && VLS.tokens.plaque.screw) || PLAQUE_S;
+    let d = opts.d != null ? opts.d : (VLS.tokens.plaque && VLS.tokens.plaque.inset) || PLAQUE_D;
+    // Scale geometry down on small plates so 2s fits inside min(w,h) and ratios hold.
+    const sMax = Math.max(5, Math.min(w, h) * 0.5 - 0.5);
+    if (s > sMax) { const k = sMax / s; s = sMax; d = Math.max(1.5, d * k); }
+    if (d >= s * 0.45) d = Math.max(1.2, s * 0.35); // keep screw-head r = s - 2d visible
+    const rHead = Math.max(1.2, s - 2 * d); // keeps arc clearance ≈ d
+    let material = opts.material || 'brass';
+    if (opts.theme === 'bw' || material === 'bw') material = 'bw';
+    const rnd = mulberry(seed | 0);
+
+    // Cast shadow BEYOND the plate, bottom + right only (owner: "Shadow lies beyond edge, not within it.").
+    if (material !== 'bw') {
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.48)';
+      ctx.shadowBlur = Math.max(4, Math.min(w, h) * 0.04);
+      ctx.shadowOffsetX = Math.max(2.5, s * 0.28);
+      ctx.shadowOffsetY = Math.max(2.5, s * 0.28);
+      ctx.fillStyle = material === 'ivory' ? '#f1ecdf' : C('brass');
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, s); ctx.fill();
+      ctx.restore();
+    }
+
+    if (material === 'brass') {
+      // Aged brass: kit mid/warm only (no bright #d9a943 peak, no hot specular stripe).
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, s); ctx.clip();
+      const aged = ctx.createLinearGradient(0, y, 0, y + h);
+      aged.addColorStop(0, '#3a2508');
+      aged.addColorStop(0.2, '#6b4a14');
+      aged.addColorStop(0.45, '#8f6a28');  // muted mid — no lemon
+      aged.addColorStop(0.7, '#6b4a14');
+      aged.addColorStop(1, '#2a1803');
+      ctx.fillStyle = aged; ctx.fillRect(x, y, w, h);
+      ctx.globalAlpha = 0.035; ctx.strokeStyle = '#1a0e04';
+      for (let xx = x; xx < x + w; xx += 4.5) { ctx.beginPath(); ctx.moveTo(xx, y); ctx.lineTo(xx + 0.25, y + h); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+      const sheen = ctx.createRadialGradient(x + w * 0.2, y + h * 0.2, 0, x + w * 0.2, y + h * 0.2, Math.max(w, h) * 0.7);
+      sheen.addColorStop(0, 'rgba(200,160,70,0.07)');
+      sheen.addColorStop(0.5, 'rgba(0,0,0,0)');
+      sheen.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sheen; ctx.fillRect(x, y, w, h);
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(40,24,4,0.9)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(x + 0.5, y + 0.5, w - 1, h - 1, s); ctx.stroke();
+    } else if (material === 'ivory') {
+      plaqueIvoryFill(ctx, x, y, w, h, s);
+      ctx.strokeStyle = 'rgba(89,65,31,0.35)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(x + 0.5, y + 0.5, w - 1, h - 1, s); ctx.stroke();
+    } else {
+      plaqueBwFill(ctx, x, y, w, h, s);
+    }
+
+    // Engraved rule: dark incision + light lip on the lower-right of the groove (readable at normal size).
+    const lineW = material === 'bw' ? 1.7 : 1.85;
+    if (material === 'bw') {
+      ctx.strokeStyle = '#000'; ctx.lineWidth = lineW;
+      plaqueRulePath(ctx, x, y, w, h, s, d); ctx.stroke();
+    } else {
+      ctx.save();
+      ctx.translate(1.0, 1.0);
+      ctx.strokeStyle = material === 'ivory' ? 'rgba(255,252,240,0.95)' : 'rgba(255,236,170,0.85)';
+      ctx.lineWidth = lineW + 0.35;
+      plaqueRulePath(ctx, x, y, w, h, s, d); ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = material === 'ivory' ? 'rgba(30,20,12,0.95)' : 'rgba(20,10,2,0.98)';
+      ctx.lineWidth = lineW;
+      plaqueRulePath(ctx, x, y, w, h, s, d); ctx.stroke();
+    }
+
+    // Four corner screws, varied slot angles. Brass on colour plaques; simple rings in B&W.
+    const corners = [[x + s, y + s], [x + w - s, y + s], [x + s, y + h - s], [x + w - s, y + h - s]];
+    corners.forEach(([sx, sy], i) => {
+      const ang = (rnd() * 0.9 + i * 0.55 + seed * 0.17) % Math.PI; // visibly varied slots
+      if (material === 'bw') {
+        ctx.beginPath(); ctx.arc(sx, sy, rHead, 0, 7);
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 1.2; ctx.stroke();
+        ctx.save(); ctx.translate(sx, sy); ctx.rotate(ang);
+        ctx.beginPath(); ctx.moveTo(-rHead * 0.75, 0); ctx.lineTo(rHead * 0.75, 0);
+        ctx.strokeStyle = '#000'; ctx.lineWidth = Math.max(1, rHead * 0.22); ctx.stroke();
+        ctx.restore();
+      } else {
+        screwBrass(ctx, sx, sy, rHead, ang + i * 0.15);
+      }
+    });
+
+    if (opts.label) {
+      // Face-only: label fills ~60–75% of the inner field (height or width, whichever binds).
+      const margin = Math.max(3.5, d * 0.55 + 2);
+      const innerW = Math.max(8, w - 2 * (d + margin));
+      const innerH = Math.max(8, h - 2 * (d + margin));
+      const fontFamily = material === 'bw' ? VLS.tokens.fonts.sans
+        : material === 'ivory' ? VLS.tokens.fonts.ivory
+        : VLS.tokens.fonts.engraved;
+      const weight = material === 'ivory' ? '400' : '600';
+      const tracking = material === 'brass';
+      const text = String(opts.label);
+      ctx.save();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+      // Offscreen ink scan — Engraving CC's advance width lies; measure real pixels after font load.
+      const inkOf = (sz, ls) => {
+        const font = `${weight} ${sz}px ${fontFamily}`;
+        const probe = inkOf._c || (inkOf._c = document.createElement('canvas'));
+        const p = probe.getContext('2d', { willReadFrequently: true });
+        p.font = font;
+        try { p.letterSpacing = ls ? `${ls}px` : '0px'; } catch (e) {}
+        const adv = p.measureText(text).width || text.length * sz;
+        const pad = Math.ceil(sz * 0.5) + 4;
+        const pw = Math.max(8, Math.ceil(adv + sz * 2) + pad * 2);
+        const ph = Math.max(8, Math.ceil(sz * 2.4) + pad * 2);
+        if (probe.width !== pw || probe.height !== ph) { probe.width = pw; probe.height = ph; }
+        else p.clearRect(0, 0, pw, ph);
+        p.font = font;
+        try { p.letterSpacing = ls ? `${ls}px` : '0px'; } catch (e2) {}
+        p.textAlign = 'left'; p.textBaseline = 'alphabetic';
+        p.fillStyle = '#000';
+        p.fillText(text, pad, pad + sz);
+        let img;
+        try { img = p.getImageData(0, 0, pw, ph).data; } catch (e3) {
+          return { w: adv, h: sz * 0.9, ls };
+        }
+        let minX = pw, minY = ph, maxX = -1, maxY = -1;
+        for (let i = 0, y = 0; y < ph; y++) {
+          for (let x0 = 0; x0 < pw; x0++, i += 4) {
+            if (img[i + 3] > 40) {
+              if (x0 < minX) minX = x0; if (x0 > maxX) maxX = x0;
+              if (y < minY) minY = y; if (y > maxY) maxY = y;
+            }
+          }
+        }
+        if (maxX < 0) return { w: adv, h: sz * 0.9, ls };
+        return { w: maxX - minX + 1, h: maxY - minY + 1, ls };
+      };
+
+      // Ink scan matches painted advance once the face is loaded — no inflation.
+      const maxFill = 0.70, targetFill = 0.66, minFill = 0.60;
+      // Cap-height ≈ 0.72em for Engraving CC / Old Standard; start tall enough to hit target ink height.
+      let size = opts.labelSize != null ? opts.labelSize : Math.max(8, (innerH * targetFill) / 0.72);
+      let ls = tracking ? Math.max(0.3, size * 0.03) : 0;
+      let ink = inkOf(size, ls);
+      const fits = (i) => i.w <= innerW * maxFill && i.h <= innerH * maxFill;
+      for (let guard = 0; guard < 100 && size > 7; guard++, size -= 0.5) {
+        ls = tracking ? Math.max(0.3, size * 0.03) : 0;
+        ink = inkOf(size, ls);
+        if (fits(ink)) break;
+      }
+      // Grow short labels up to target fill on the binding axis.
+      if (opts.labelSize == null) {
+        const shy = () => ink.w < innerW * targetFill && ink.h < innerH * targetFill;
+        while (shy()) {
+          const next = size + 0.5;
+          const nls = tracking ? Math.max(0.3, next * 0.03) : 0;
+          const nink = inkOf(next, nls);
+          if (!fits(nink)) break;
+          size = next; ls = nls; ink = nink;
+          if (ink.h >= innerH * targetFill || ink.w >= innerW * targetFill) break;
+          if (size > Math.max(innerW, innerH)) break;
+        }
+      }
+
+      const clipPad = d + Math.max(2, margin * 0.5);
+      ctx.beginPath();
+      ctx.roundRect(x + clipPad, y + clipPad, w - 2 * clipPad, h - 2 * clipPad, Math.max(1, s - clipPad));
+      ctx.clip();
+      ctx.font = `${weight} ${size}px ${fontFamily}`;
+      try { ctx.letterSpacing = ls ? `${ls}px` : '0px'; } catch (e) {}
+      if (material === 'bw') {
+        ctx.fillStyle = '#000'; ctx.fillText(text, x + w / 2, y + h / 2);
+      } else if (material === 'ivory') {
+        ctx.fillStyle = '#2b2015'; ctx.fillText(text, x + w / 2, y + h / 2);
+      } else {
+        ctx.fillStyle = 'rgba(255,240,190,0.22)'; ctx.fillText(text, x + w / 2, y + h / 2 + 0.5);
+        ctx.fillStyle = C('engraving'); ctx.fillText(text, x + w / 2, y + h / 2);
+      }
+      ctx.restore();
+      // Re-strike the rule on top of the label so edge kisses lose to the incision (face-only).
+      const rw = material === 'bw' ? 1.7 : 1.85;
+      if (material === 'bw') {
+        ctx.strokeStyle = '#000'; ctx.lineWidth = rw;
+        plaqueRulePath(ctx, x, y, w, h, s, d); ctx.stroke();
+      } else {
+        ctx.save();
+        ctx.translate(1.0, 1.0);
+        ctx.strokeStyle = material === 'ivory' ? 'rgba(255,252,240,0.9)' : 'rgba(255,236,170,0.8)';
+        ctx.lineWidth = rw + 0.35;
+        plaqueRulePath(ctx, x, y, w, h, s, d); ctx.stroke();
+        ctx.restore();
+        ctx.strokeStyle = material === 'ivory' ? 'rgba(30,20,12,0.95)' : 'rgba(20,10,2,0.98)';
+        ctx.lineWidth = rw;
+        plaqueRulePath(ctx, x, y, w, h, s, d); ctx.stroke();
+      }
+    }
+  }
+
+  VLS.apparatus = { mulberry, woodTexture, paintWalnut, paintPanelling, grainScaleOf, grainAlongLong, woodPanelBake, woodPanelDataURL, woodPanellingBake, woodPanellingDataURL, SITE_WOOD_SEED, SITE_WOOD_DESKTOP, SITE_WOOD_PHONE, brassGrad, brassRect, brassArc, screw, screwBrass, engrave, plaque, plaqueRulePath, PLAQUE_S, PLAQUE_D };
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
@@ -2894,6 +3609,100 @@
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
+<script>/* src/chrome.js */
+/* App-side apparatus typography. Owner a10436a: all lettering stays within the flat face.
+ * Canvas fitting adapted from Maxwell's Demon; no changes to the owner-locked kit. */
+(function(root){
+'use strict';
+const VA=root.VLS.apparatus, activeFaces=new WeakMap();
+// Flat text faces are app-side layout, not a modification of the owner-locked material kit.
+const faces = new WeakMap();
+function setFaces(ctx, rects = []) { faces.set(ctx, rects.map(r => ({ ...r, inset: r.inset === undefined ? 12 : r.inset }))); }
+function getFaces(ctx) { return faces.get(ctx) || []; }
+function faceAt(ctx, x, y) { return [...getFaces(ctx)].reverse().find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); }
+function plaque(ctx, x, y, w, h, seed) {
+  VA.plaque(ctx, x, y, w, h, seed);
+  const keep = getFaces(ctx).filter(r => !(r.x === x && r.y === y && r.w === w && r.h === h));
+  faces.set(ctx, [...keep.slice(-15), { x, y, w, h, inset: Math.min(12, Math.max(3, (h - 12) / 2)) }]);
+}
+function faceText(ctx, text, x, y, size, options = {}) {
+  text = String(text); const rect = options.face || faceAt(ctx, x, y);
+  const align = options.align || 'center', weight = options.weight || '600';
+  const font = options.font || root.VLS.tokens.fonts.engraved, min = Math.min(size, options.minSize || 10);
+  const engraved = options.engraved !== false;
+  if (!rect) {
+    if (engraved) VA.engrave(ctx, text, x, y, size, align, weight);
+    else { ctx.save(); ctx.font = `${weight} ${size}px ${font}`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = options.color || '#fff'; ctx.fillText(text, x, y); ctx.restore(); }
+    return null;
+  }
+  const inset = rect.inset === undefined ? 12 : rect.inset;
+  const f = { x: rect.x + inset, y: rect.y + inset, w: Math.max(1, rect.w - 2 * inset), h: Math.max(1, rect.h - 2 * inset) };
+  ctx.save(); ctx.textAlign = align; ctx.textBaseline = 'middle';
+  const prepare = s => { ctx.font = `${weight} ${s}px ${font}`; ctx.letterSpacing = `${engraved ? Math.max(.5, s * .08) : 0}px`; };
+  const metrics = s => ctx.measureText(s), width = s => { const m = metrics(s); return Math.max(m.width, m.actualBoundingBoxLeft + m.actualBoundingBoxRight); };
+  const available = align === 'left' ? f.x + f.w - Math.max(f.x, x) : align === 'right' ? Math.min(f.x + f.w, x) - f.x : 2 * Math.min(x - f.x, f.x + f.w - x);
+  const maxW = Math.max(1, Math.min(f.w, available));
+  let px = size; prepare(px);
+  while (px > min && (width(text) > maxW || metrics(text).actualBoundingBoxAscent + metrics(text).actualBoundingBoxDescent + (engraved ? 1 : 0) > f.h)) { px = Math.max(min, px - .5); prepare(px); }
+  let lines = [text];
+  if (width(text) > maxW) {
+    lines = []; let line = '';
+    // Word wrapping with a grapheme-sized fallback for translated or numeric strings without spaces.
+    const pieces = text.match(/\S+\s*/gu) || [''];
+    for (const piece of pieces) {
+      if (line && width((line + piece).trimEnd()) > maxW) { lines.push(line.trimEnd()); line = ''; }
+      const graphemes = typeof Intl.Segmenter === 'function' ? [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(piece)].map(s => s.segment) : Array.from(piece);
+      for (const ch of graphemes) {
+        if (line && width((line + ch).trimEnd()) > maxW) { lines.push(line.trimEnd()); line = ''; }
+        line += ch;
+      }
+    }
+    if (line || !lines.length) lines.push(line.trimEnd());
+  }
+  const lh = px * 1.25, maxLines = Math.max(1, Math.floor(f.h / lh));
+  let elided = false;
+  if (lines.length > maxLines) {
+    // An unbounded external label cannot fit a finite plate at a legible minimum. Keep the complete label
+    // accessible, with a final ellipsis rather than spilling into the bevel. Normal game values do not hit this.
+    elided = true; lines = lines.slice(0, maxLines); let last = lines[lines.length - 1];
+    while (last && width(last + '…') > maxW) last = last.slice(0, -1);
+    lines[lines.length - 1] = last + '…';
+    if (ctx.canvas.setAttribute) ctx.canvas.setAttribute('aria-label', text);
+  }
+  let y0 = y - (lines.length - 1) * lh / 2;
+  const ms = lines.map(metrics), top = Math.min(...ms.map((m,i) => y0 + i * lh - m.actualBoundingBoxAscent)), bottom = Math.max(...ms.map((m,i) => y0 + i * lh + m.actualBoundingBoxDescent + (engraved ? 1 : 0)));
+  y0 += Math.max(0, f.y - top); if (bottom + Math.max(0, f.y - top) > f.y + f.h) y0 -= bottom + Math.max(0, f.y - top) - (f.y + f.h);
+  const bounds = [];
+  ctx.beginPath(); ctx.rect(f.x, f.y, f.w, f.h); ctx.clip();
+  activeFaces.set(ctx, f);
+  lines.forEach((line, i) => {
+    const m = ms[i], xx = Math.max(f.x + m.actualBoundingBoxLeft, Math.min(f.x + f.w - m.actualBoundingBoxRight, x)), yy = y0 + i * lh;
+    bounds.push({ left: xx - m.actualBoundingBoxLeft, right: xx + m.actualBoundingBoxRight, top: yy - m.actualBoundingBoxAscent, bottom: yy + m.actualBoundingBoxDescent + (engraved ? 1 : 0) });
+    if (engraved) VA.engrave(ctx, line, xx, yy, px, align, weight);
+    else { ctx.fillStyle = options.color || '#fff'; ctx.fillText(line, xx, yy); }
+  });
+  activeFaces.delete(ctx);
+  ctx.restore(); return { face: f, bounds, size: px, lines, elided };
+}
+function engrave(ctx, text, x, y, size, align = 'center', weight = '600') { return faceText(ctx, text, x, y, size, { align, weight }); }
+
+// Wrap static and newly generated button contents without replacing native buttons, labels or click handlers.
+// The independent range test measures original ink bounds: clip-path is a safety net, not the fit strategy.
+function buttonFaces() {
+  for (const b of document.querySelectorAll('button')) {
+    if (b.children.length===1 && b.firstElementChild.classList.contains('vm-button-face')) continue;
+    const face=document.createElement('span'); face.className='vm-button-face';
+    while(b.firstChild)face.appendChild(b.firstChild);
+    b.appendChild(face);
+  }
+}
+buttonFaces();
+const observer=new MutationObserver(buttonFaces);
+observer.observe(document.getElementById('panels'),{childList:true,subtree:true});
+root.VMChrome={plaque,engrave,faceText,setFaces,getFaces,getActiveFace:ctx=>activeFaces.get(ctx),buttonFaces};
+})(window);
+
+</script>
 <script>/* src/physics.js */
 /* Physics core for Maxwell's Demon. Plain script (no ES modules) so the game runs
  * from file://. In the browser it defines window.MDPhysics; in Node it is a
@@ -3145,7 +3954,7 @@ function drawHistogram(ctx, x, y, w, h, counts, theme, opts = {}) {
     for (let i = 0; i <= 100; i++) { const t = -Math.PI / 2 + (Math.PI * i) / 100; const X = px(t), Y = py(EXIT_LAWS[law].pdf(t)); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
     ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]); };
   curve('cos', [], theme === 'bw' ? '#fff' : '#9fe0ff'); curve('cos2', [4, 4], theme === 'bw' ? '#fff' : '#ff8a6a');
-  ctx.font = theme === 'bw' ? `11px ${fonts.mono}` : `italic 12px ${fonts.serif}`;
+  ctx.font = theme === 'bw' ? `11px ${fonts.sans || fonts.mono}` : `italic 12px ${fonts.serif}`;
   ctx.fillStyle = ink; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(opts.title || `exit angle θ (n=${n})`, x + 6, y + 4);
   ctx.textAlign = 'right'; ctx.fillText('— cos  - - cos²', x + w - 6, y + 4);
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
@@ -3286,7 +4095,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       const bx = ec.cx + d.dx * HC, by = ec.cy + d.dy * HC;
       for (const s of [-1, 1]) {
         const ax = bx + px * s * H, ay = by + py * s * H;
-        ec.walls.push({ type: 'seg', ax, ay, bx: ax + d.dx * HC, by: ay + d.dy * HC, nx: -px * s, ny: -py * s });
+        ec.walls.push({ type: 'seg', ax, ay, bx: ax + d.dx * HC, by: ay + d.dy * HC, nx: -px * s, ny: -py * s, exitStub: true });
       }
       ec.stubWalls = (ec.stubWalls || 0) + 2;
     }
@@ -3569,6 +4378,22 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     return { x: (e.i + 0.5) * C + d.dx * HC, y: (e.j + 0.5) * C + d.dy * HC, ax: d.dx, ay: d.dy, exit: e };
   }
   const exitPlanes = (L) => L.exits.map((e) => exitPlane(L, e));
+  // Shared by the extraction presentation and renderer. Kit local +y points into the pump;
+  // the adapter ends INSIDE the cutaway cavity, not at an assumed outer housing radius.
+  const PUMP_R = 92, PUMP_NECK = 48;
+  const PUMP_PORTS = {
+    turbo: [-1, 0.60], holweck: [-0.95, 0.60], ion: [-0.68, 0.58], tsp: [-1, 0.50],
+    neg: [-1, 0.50], cryo: [-0.96, 0.55], diffusion: [-1, 0.44], scroll: [-0.72, 0.25],
+    rotary: [-0.64, 0.25], sorption: [-0.88, 0.32], roots: [-0.55, 0.42], piston: [-0.90, 0.18],
+  };
+  function pumpLayout(ep) {
+    const r = PUMP_R, d = PUMP_NECK + r, [portY, portHalf] = PUMP_PORTS[ep.exit.pump] || PUMP_PORTS.turbo;
+    return { ...ep, r, d, x: ep.x + ep.ax * d, y: ep.y + ep.ay * d,
+      inlet: d + portY * r, half: portHalf * r, portY };
+  }
+  function pumpPoint(pump, x, y) {   // kit-local units → world px (same rotation as HW.pumpCutaway)
+    return { x: pump.x + pump.r * (pump.ay * x + pump.ax * y), y: pump.y + pump.r * (-pump.ax * x + pump.ay * y) };
+  }
   // shortest-path next cell from (i,j) toward the exit (used by the demo autopilot and tests)
   function nextToward(L, i, j) {
     const k = j * L.cols + i, here = L.dist[k];
@@ -3582,7 +4407,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   }
 
   return { C, D, H, HC, WALL_T, BIT, DIRS, SIDE_DIR, LEVELS, DEAD_END_PARTS, CROSS_S0, mulberry, generate, fromLayout, assemble, bfs, bfsMulti, buildCell, nearestWall, wallDistance,
-    insideBore, cellAt, connected, exitPlane, exitPlanes, nextToward, gateClosed, PLATE_T, setLevels: (l) => { LEVELS.length = 0; LEVELS.push(...l); } };
+    insideBore, cellAt, connected, exitPlane, exitPlanes, PUMP_R, PUMP_NECK, PUMP_PORTS, pumpLayout, pumpPoint, nextToward, gateClosed, PLATE_T, setLevels: (l) => { LEVELS.length = 0; LEVELS.push(...l); } };
 });
 
 </script>
@@ -3761,7 +4586,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     const o = { residenceMean: 0.12, accommodation: DEFAULT_ACC, kernel: 'cl', rand: Math.random, lasersOn: true, g: 9.81, ...opts };
     if (o.wallT == null) o.wallT = wallTempFor(level, atom.m, o.g);
     const w = { level, atom, scale, g: { x: 0, y: 0 }, opts: o, exitPlanes: M.exitPlanes(level),
-      stats: { contacts: 0, desorbs: 0, time: 0, maxSubsteps: 0, photons: 0 }, hist: new Array(36).fill(0), won: false, wonExit: null, visited: new Set(), seen: new Set() };
+      stats: { contacts: 0, desorbs: 0, time: 0, maxSubsteps: 0, photons: 0 }, hist: new Array(36).fill(0), won: false, wonExit: null, extraction: null, visited: new Set(), seen: new Set() };
     // release: the source emits the atom at the wall temperature, in a random direction
     const ang = o.rand() * 2 * Math.PI, v = sampleWallSpeed(o.wallT, atom.m, o.rand) / scale;
     atom.vx = v * Math.cos(ang); atom.vy = v * Math.sin(ang); atom.T = kinT(atom, scale);
@@ -3860,9 +4685,58 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     return true;
   }
 
+  // After capture the timed/scored maze simulation is finished. This is a cutaway presentation of
+  // extraction, NOT an extra force or a change to wall/start temperatures. Preserve the measured
+  // velocity, temperature, contacts and finish time while moving the visible atom through the pump.
+  const EXTRACTION_INTAKE = 0.65, EXTRACTION_DURATION = 1.9;
+  // Kit-local routes follow the working region: swept pocket, spiral, blade stack or capture surface.
+  const PUMP_ROUTES = {
+    rotary: [[-0.36, -0.56], [-0.53, -0.24], [-0.52, 0.12], [-0.30, 0.40], [0.10, 0.43], [0.48, 0.19], [0.58, -0.16], [0.78, -0.52]],
+    scroll: [[-0.48, -0.52], [-0.65, -0.08], [-0.42, 0.45], [0.18, 0.54], [0.48, 0.08], [0.15, -0.30], [-0.22, -0.10], [-0.08, 0.14], [0, 0]],
+    turbo: [[0.28, -0.86], [-0.28, -0.69], [0.28, -0.52], [-0.28, -0.35], [0.28, -0.18], [-0.28, 0.02], [0.40, 0.23], [0.91, 0.39]],
+    holweck: [[-0.56, -0.73], [0.56, -0.48], [-0.56, -0.23], [0.56, 0.02], [-0.56, 0.27], [0.56, 0.49], [0.94, 0.53]],
+    ion: [[-0.15, -0.40], [0.15, -0.04], [-0.15, 0.32], [-0.52, 0.32], [-0.70, 0.30]],
+    tsp: [[-0.30, -0.55], [-0.36, -0.10], [-0.44, 0.28], [-0.51, 0.48]],
+    neg: [[0.24, -0.72], [0.32, -0.48], [0.25, -0.24], [0.32, 0.02], [0.33, 0.14]],
+    cryo: [[0.40, -0.76], [0.49, -0.58], [0.45, -0.28], [0.28, 0.04], [0.15, 0.14]],
+    diffusion: [[0.30, -0.68], [0.43, -0.38], [0.32, -0.18], [0.44, 0.05], [0.44, 0.37], [0.78, 0.38]],
+    sorption: [[-0.20, -0.60], [0.20, -0.38], [-0.20, -0.12], [0.20, 0.16], [0.15, 0.44]],
+    roots: [[-0.62, -0.45], [-0.76, -0.12], [-0.68, 0.27], [-0.32, 0.46], [0, 0.53]],
+    piston: [[0, -0.60], [-0.42, -0.44], [-0.42, -0.23], [-0.42, -0.44], [0.42, -0.44], [0.42, -0.22]],
+  };
+  const smooth = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+  function beginExtraction(w, ep) {
+    const a = w.atom, pump = M.pumpLayout(ep);
+    a.T = kinT(a, w.scale); a.stuck = null;
+    w.extraction = { pump, elapsed: 0, duration: EXTRACTION_DURATION, start: { x: a.x, y: a.y }, temperature: a.T };
+  }
+  function extractionPose(w) {
+    const e = w.extraction; if (!e) return null;
+    const pump = e.pump, t = e.elapsed, inlet = M.pumpPoint(pump, 0, pump.portY);
+    let x, y;
+    if (t < EXTRACTION_INTAKE) {
+      const q = smooth(t / EXTRACTION_INTAKE);
+      x = e.start.x + (inlet.x - e.start.x) * q; y = e.start.y + (inlet.y - e.start.y) * q;
+    } else {
+      const route = [[0, pump.portY], ...(PUMP_ROUTES[pump.exit.pump] || PUMP_ROUTES.turbo)];
+      const u = Math.min(1, (t - EXTRACTION_INTAKE) / (EXTRACTION_DURATION - EXTRACTION_INTAKE)) * (route.length - 1);
+      const i = Math.min(route.length - 2, Math.floor(u)), f = smooth(u - i);
+      const p = M.pumpPoint(pump, route[i][0] + (route[i + 1][0] - route[i][0]) * f, route[i][1] + (route[i + 1][1] - route[i][1]) * f);
+      x = p.x; y = p.y;
+    }
+    // The cutaway magnification changes at capture; fade only at the terminal exhaust/capture site.
+    const scale = 1 + (Math.min(1, pump.half * 0.65 / w.atom.r, 12 / w.atom.r) - 1) * smooth(t / EXTRACTION_INTAKE);
+    return { x, y, scale, alpha: 1 - smooth((t - (EXTRACTION_DURATION - 0.22)) / 0.22), phase: t < EXTRACTION_INTAKE ? 'intake' : t < EXTRACTION_DURATION ? 'internal' : 'complete' };
+  }
+  function advanceExtraction(w, dt) {
+    if (!w.extraction) return;
+    w.extraction.elapsed = Math.min(EXTRACTION_DURATION, w.extraction.elapsed + Math.max(0, dt));
+    const p = extractionPose(w); w.atom.x = p.x; w.atom.y = p.y;
+  }
+
   function step(w, dt) {
     const a = w.atom, L = w.level, gx = w.g.x / w.scale, gy = w.g.y / w.scale;   // w.g in m/s²
-    if (w.won) return;
+    if (w.won) { advanceExtraction(w, dt); return; }
     let t = 0, sub = 0;
     while (t < dt - 1e-12) {
       if (a.stuck) {
@@ -3892,7 +4766,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       t += h; sub++;
       // exits: past any pump flange plane by one radius
       for (const ep of w.exitPlanes) if ((a.x - ep.x) * ep.ax + (a.y - ep.y) * ep.ay > a.r && Math.abs((a.x - ep.x) * -ep.ay + (a.y - ep.y) * ep.ax) < M.H) {
-        w.won = true; w.wonExit = ep.exit; w.stats.time += t; return;
+        w.won = true; w.wonExit = ep.exit; w.stats.time += t; beginExtraction(w, ep); return;
       }
       const now = w.stats.time + t;
       if (gateSweep(w, a, now)) continue;
@@ -3913,7 +4787,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   }
 
   return { K_B, G_EARTH, BODIES, PACE_SCALE, paceG, THERMAL, MAX_SUBSTEP_FRAC, BORE_PX, scaleFor, wallTempFor, makeAtom, createWorld, step, adsorb, desorb,
-    kinT, sampleWallSpeed, wallTempAt, beamsAt, DEFAULT_ACC, accOf, scatterCL, scatterMaxwell, scatter, wallFluxSample, kernelCheck };
+    EXTRACTION_INTAKE, EXTRACTION_DURATION, PUMP_ROUTES, extractionPose, advanceExtraction, kinT, sampleWallSpeed, wallTempAt, beamsAt, DEFAULT_ACC, accOf, scatterCL, scatterMaxwell, scatter, wallFluxSample, kernelCheck };
 });
 
 </script>
@@ -4262,6 +5136,10 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   const mulberry = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+  // Hand stack for SVG <text>: same as VLS.tokens.fonts.hand / --vls-font-hand (SVG attrs cannot use CSS vars).
+  // Prefer live kit token when VLS is loaded so an owner-picked hand swap tracks automatically.
+  const HAND_FONT = (typeof VLS !== 'undefined' && VLS.tokens && VLS.tokens.fonts && VLS.tokens.fonts.hand)
+    || '"VLS Caveat", "Segoe Print", "Bradley Hand", Georgia, cursive';
   // advance widths of the handwriting font (VLS Caveat), in ems, measured in Chrome for every character the sketches use;
   // note() uses them to start each leader right at the end of its label (unknown characters: 0.45 em)
   const CAVEAT_ADV = {"0":0.45,"1":0.45,"2":0.45,"3":0.45,"4":0.45,"5":0.45,"6":0.45,"7":0.45,"8":0.45,"9":0.45,"θ":0.48,"g":0.35,"·":0.19,"s":0.34,"i":0.19,"n":0.45," ":0.24,"t":0.33,"h":0.46,"e":0.32,"r":0.36,"a":0.44,"y":0.34,"(":0.33,"o":0.35,"u":0.37,"c":0.35,")":0.33,"E":0.53,".":0.2,"m":0.56,"/":0.33,"²":0.32,"M":0.72,"l":0.17,"∝":0.71,"w":0.52,"T":0.46,"_":0.45,"f":0.29,",":0.2,"d":0.39,"→":1,"µ":0.37,"K":0.5,"H":0.56,":":0.2,"–":0.45,"D":0.58,"N":0.6,"~":0.45,"q":0.38,"₂":0.32,"k":0.36,"p":0.38,"b":0.43,"v":0.33,"=":0.45,"∥":0.5,"x":0.34,"₀":0.32,"+":0.45,"ₓ":0.29,"−":0.45,"½":0.8,"L":0.43,"W":0.72,"≈":0.45,"τ":0.4,"^":0.45,"-":0.33,"C":0.47,"F":0.45,"¾":0.8,"O":0.5,"°":0.28,"ħ":0.5,"I":0.4,"R":0.54,"Γ":0.58,"≪":1.05,"%":0.6,"ρ":0.5,"α":0.52,"U":0.48,"V":0.49,"z":0.31,"S":0.49,"B":0.52,"j":0.2,"⁻":0.3,"!":0.21,"\"":0.24,"#":0.56,"$":0.45,"&":0.56,"'":0.12,"*":0.36,";":0.2,"<":0.45,">":0.45,"?":0.37,"@":0.64,"A":0.5,"G":0.49,"J":0.31,"P":0.46,"Q":0.5,"X":0.52,"Y":0.5,"Z":0.52,"[":0.33,"\\":0.33,"]":0.33,"`":0.35,"{":0.33,"|":0.33,"}":0.33};
@@ -4283,7 +5161,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       arrow(x0, y0, x1, y1, w = 1.4, head = 8) { p.line(x0, y0, x1, y1, w); const a = Math.atan2(y1 - y0, x1 - x0); for (const s of [-1, 1]) p.line(x1, y1, x1 - head * Math.cos(a + s * 0.42), y1 - head * Math.sin(a + s * 0.42), w); return p; },
       dot(x, y, rr = 2.2) { out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rr}" fill="currentColor" stroke="none"/>`); return p; },
       hatch(x, y, w, h, gap = 6, ang = 1) { for (let k = -h; k < w; k += gap) { const x0 = Math.max(x, x + k), y0 = x0 === x ? y - k * ang : y, x1 = Math.min(x + w, x + k + h), y1 = y + (x1 - (x + k)); stroke(seg(x0, y0 + (x0 - x - Math.max(0, k)) * 0, x1, y1), 0.7); } return p; },
-      label(text, x, y, o = {}) { const rot = o.rotate == null ? (r() - 0.5) * 3 : o.rotate; out.push(`<text data-k="${nText++}" x="${x}" y="${y}" font-size="${o.size || 13}" text-anchor="${o.align || 'middle'}" transform="rotate(${rot.toFixed(1)} ${x} ${y})" fill="currentColor" stroke="none">${esc(text)}</text>`); return p; },
+      label(text, x, y, o = {}) { const rot = o.rotate == null ? (r() - 0.5) * 3 : o.rotate; out.push(`<text data-k="${nText++}" x="${x}" y="${y}" font-size="${o.size || 13}" font-family='${HAND_FONT}' text-anchor="${o.align || 'middle'}" transform="rotate(${rot.toFixed(1)} ${x} ${y})" fill="currentColor" stroke="none">${esc(text)}</text>`); return p; },
       // hatch the inside of one or more closed polygons (even-odd rule, so a ring = outer + inner polygon), at angle ang
       hatchPoly(rings, gap = 6, ang = Math.PI / 4, w = 0.7) {
         const ca = Math.cos(-ang), sa = Math.sin(-ang), rot = ([x, y]) => [x * ca - y * sa, x * sa + y * ca], back = ([x, y]) => [x * ca + y * sa, -x * sa + y * ca];
@@ -5518,11 +6396,37 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
  *            releasedThrough()  // official levels shipped; gates which catalogue parts appear (DECISIONS dbf8d25 / 657c839) } */
 (function (root) {
   'use strict';
+  const PAL = root.VLS.tokens.palette, AP = root.VLS.apparatus, FONTS = root.VLS.tokens.fonts;
   const CFG = root.VMEconomyConfig, EC = root.VMEditorCore, ED = CFG.EDITOR, CAT = CFG.byId;
   const ABBR = { blank: 'BLANK', bellows: 'BELLOWS', pirani: 'PIRANI', valve: 'VALVE', viewport: 'VIEW', capacitance: 'CM', ionGauge: 'ION G.',
     gate: 'GATE', aperture: 'APERTURE', cold: 'LN₂', hot: 'BAKE', piston: 'PISTON', rotary: 'ROTARY', scroll: 'SCROLL', roots: 'ROOTS', holweck: 'HOLWECK',
     sorption: 'SORPTION', diffusion: 'DIFF.', tsp: 'TSP', neg: 'NEG', ion: 'ION', cryo: 'CRYO', turbo: 'TURBO' };
   const SIDE = { 1: [0, -1], 2: [1, 0], 4: [0, 1], 8: [-1, 0] };
+  // Catalogue etchings use the part's actual family, not decorative app glyphs. Only released entries call this.
+  function engraving(c) {
+    const paths = {
+      source: 'M6 15h12m-5-4 5 4-5 4 M26 15a4 4 0 1 0 8 0a4 4 0 1 0-8 0',
+      tube: 'M6 10h40v10H6z M8 7v16m4-16v16M40 7v16m4-16v16',
+      elbowSq: 'M8 7h25v16H23V17H8z M8 5v14m14 4h13M23 7l10 10',
+      elbowArc: 'M8 7h12a13 13 0 0 1 13 13v3H23v-3a3 3 0 0 0-3-3H8z M8 5v14m13 4h14',
+      tee: 'M7 10h15V4h10v6h13v10H7z',
+      cross: 'M7 10h15V4h10v6h13v10H32v6H22v-6H7z M20 4h14m-14 22h14',
+      gate: 'M5 11h42v8H5z M22 5h8v20h-8z M26 2v3',
+      bellows: 'M7 10h7l3-4 4 18 4-18 4 18 4-18 4 14h8 M7 7v16m38-16v16',
+      valve: 'M6 12h17v11h10V12h13 M23 16h10M28 16V5m-7 0h14',
+      blank: 'M6 10h28v10H6z M34 5v20m4-20v20',
+      viewport: 'M9 15a17 10 0 1 0 34 0a17 10 0 1 0-34 0 M14 15a12 7 0 1 0 24 0a12 7 0 1 0-24 0 M22 10l8 10',
+      piston: 'M7 9h14v14H7z M29 6h14v17H29z M10 17h8m-4-8v8m18-3h8m-4-8v8M21 12h8M5 25h40',
+      rotary: 'M26 15a10 10 0 1 0 0 .1 M26 15l9-4m-9 4-2 9m2-9-8-4M16 5h-7v8m27 12h8V13',
+      scroll: 'M37 22c-18 9-29-5-21-14 7-8 22-1 19 7-3 7-16 6-16-1 0-5 11-5 11 0M9 24h33',
+      turbo: 'M17 4h18v22H17z M17 7l18 4m-18 0 18 4m-18 0 18 4m-18 0 18 4M26 2v26',
+      ion: 'M9 6h34v18H9z M16 7v16m10-16v16m10-16v16M9 15h34',
+      tsp: 'M11 4h30v22H11z M15 21l5-12 5 12 5-12 5 12M15 4v-2m22 2v-2',
+    };
+    const gauge = 'M6 15h12 M27 15a9 9 0 1 0 0 .1 M27 15l4-5 M21 22h12';
+    const p = paths[c.id] || (c.place === 'cap' ? gauge : 'M12 4h28v22H12z M18 10h16m-16 5h16m-16 5h16');
+    return `<svg class="vm-part-engraving" viewBox="0 0 52 30" aria-hidden="true" focusable="false"><path d="${p}" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
   function create(d) {
     const $ = d.$, sav = EC.store();
     let maze = EC.newMaze(), editId = null, tool = 'tube', ret = 'title', msg = '';
@@ -5533,7 +6437,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     // ---- the drawer: parts by tier, buy with coins, select to place
     function fillDrawer() {
       const st = d.store(); $('ed-coins').textContent = `Purse: ${st.coins} coins`;
-      let html = `<div class="ed-tools"><button data-tool="erase" class="${tool === 'erase' ? 'sel' : ''}">Remove</button><button data-tool="rotate" class="${tool === 'rotate' ? 'sel' : ''}">Rotate</button><button data-part="source" class="${tool === 'source' ? 'sel' : ''}">Atom source<small>free</small></button></div>`;
+      let html = `<div class="ed-tools"><button data-tool="erase" class="${tool === 'erase' ? 'sel' : ''}">Remove</button><button data-tool="rotate" class="${tool === 'rotate' ? 'sel' : ''}">Rotate</button><button data-part="source" class="${tool === 'source' ? 'sel' : ''}">${engraving(CAT.source)}<b>Atom source</b><small>free</small></button></div>`;
       // unreleased parts are omitted entirely (DECISIONS 657c839) — never greyed-out or "locked"
       for (let t = 0; t < CFG.COST.TIERS; t++) {
         const items = CFG.catalogueFor(releasedThrough()).filter((c) => c.tier === t);
@@ -5541,8 +6445,8 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
         html += `<h4>Tier ${t} · ${CFG.cost(t)} coins each</h4><div class="ed-tier">`;
         for (const c of items) {
           const own = owns(c.id), sel = tool === c.id;
-          html += own ? `<button data-part="${c.id}" class="${sel ? 'sel' : ''}" title="${c.blurb}">${c.name}<small>owned</small></button>`
-            : `<button data-buy="${c.id}" ${st.coins < CFG.cost(t) ? 'disabled' : ''} title="${c.blurb}">${c.name}<small>buy · ${CFG.cost(t)} coins</small></button>`;
+          html += own ? `<button data-part="${c.id}" class="${sel ? 'sel' : ''}" title="${c.blurb}">${engraving(c)}<b>${c.name}</b><small>owned</small></button>`
+            : `<button data-buy="${c.id}" ${st.coins < CFG.cost(t) ? 'disabled' : ''} title="${c.blurb}">${engraving(c)}<b>${c.name}</b><small>buy · ${CFG.cost(t)} coins</small></button>`;
         }
         html += '</div>';
       }
@@ -5568,11 +6472,11 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       cv.width = cw * dpr; cv.height = ch * dpr; cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
       geo = { s, ox: s * m, oy: s * m };
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      g.fillStyle = bw ? '#000' : '#2b1a0c'; g.fillRect(0, 0, cw, ch);
-      g.strokeStyle = bw ? 'rgba(255,255,255,.35)' : 'rgba(243,213,138,.22)'; g.lineWidth = 1;
+      g.fillStyle = bw ? '#000' : PAL.vacuum; g.fillRect(0, 0, cw, ch);
+      g.strokeStyle = bw ? 'rgba(255,255,255,.35)' : PAL.brassMid + '66'; g.lineWidth = 1;
       for (let i = 0; i <= maze.cols; i++) { g.beginPath(); g.moveTo(geo.ox + i * s, geo.oy); g.lineTo(geo.ox + i * s, geo.oy + maze.rows * s); g.stroke(); }
       for (let j = 0; j <= maze.rows; j++) { g.beginPath(); g.moveTo(geo.ox, geo.oy + j * s); g.lineTo(geo.ox + maze.cols * s, geo.oy + j * s); g.stroke(); }
-      const lay = EC.layout(maze), steel = bw ? '#fff' : '#c9d0d5', bore = bw ? '#000' : '#0b1016', ink = bw ? '#fff' : '#f3d58a';
+      const lay = EC.layout(maze), steel = bw ? '#fff' : '#c9d0d5', bore = bw ? '#000' : '#0b1016', ink = bw ? '#fff' : PAL.paperLight;
       const tw = s * 0.42;   // drawn tube width
       for (let j = 0; j < maze.rows; j++) for (let i = 0; i < maze.cols; i++) {
         const k = j * maze.cols + i, c = maze.cells[k]; if (!c) continue;
@@ -5593,7 +6497,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
           for (const [wid, col] of [[tw + 6, steel], [tw - 4, bore]]) { g.strokeStyle = col; g.lineWidth = wid; path(); g.stroke(); }
           if (shape === 'elbowSq') { const [ax, ay] = SIDE[bits[0]], [bx, by] = SIDE[bits[1]], h = tw / 2 + 3;   // the 45° mitre seam
             g.strokeStyle = steel; g.lineWidth = 1.5; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(cx + (ax + bx) * (tw / 2 - 2), cy + (ay + by) * (tw / 2 - 2)); g.lineTo(cx - (ax + bx) * h, cy - (ay + by) * h); g.stroke(); g.setLineDash([]); }
-          if (shape === 'cap') { const [dx, dy] = SIDE[bits[0]]; g.fillStyle = bw ? '#fff' : '#d9a943'; g.fillRect(cx - dx * tw * 0.1 - (dy ? tw / 2 + 4 : 4), cy - dy * tw * 0.1 - (dx ? tw / 2 + 4 : 4), dy ? tw + 8 : 8, dx ? tw + 8 : 8);
+          if (shape === 'cap') { const [dx, dy] = SIDE[bits[0]]; g.fillStyle = bw ? '#fff' : AP.brassGrad(g, cx - tw / 2, cy, cx + tw / 2, cy); g.fillRect(cx - dx * tw * 0.1 - (dy ? tw / 2 + 4 : 4), cy - dy * tw * 0.1 - (dx ? tw / 2 + 4 : 4), dy ? tw + 8 : 8, dx ? tw + 8 : 8);
             label(ABBR[CAT[c.p].part] || '', cx - dx * s * 0.28, cy - dy * s * 0.28 + (dx ? -s * 0.3 : 0), ink, s); }
         }
         // ends that meet nothing are closed: a short bar across the tube
@@ -5605,11 +6509,16 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
           else label(ABBR[f.fix] || f.fix, cx, cy, ink, s); }
       }
       for (const p of maze.pumps) { const [dx, dy] = SIDE[p.side], px = geo.ox + (p.i + 0.5) * s + dx * s * 0.78, py = geo.oy + (p.j + 0.5) * s + dy * s * 0.78;
-        g.fillStyle = bw ? '#000' : '#b07c25'; g.strokeStyle = bw ? '#fff' : '#3d2706'; g.lineWidth = 2; g.beginPath(); g.arc(px, py, s * 0.26, 0, 7); g.fill(); g.stroke(); label(ABBR[CAT[p.p].pump] || p.p, px, py, bw ? '#fff' : '#2a1803', s); }
+        // Brass flange disc only — Engraving CC at this size turns "PISTON" into illegible mush ("PUSTO").
+        // A small engraved cross marks the pump mouth; full name lives in the catalogue drawer.
+        g.fillStyle = bw ? '#000' : AP.brassGrad(g, px, py-s*.26, px, py+s*.26); g.strokeStyle = bw ? '#fff' : PAL.brassDark; g.lineWidth = 2; g.beginPath(); g.arc(px, py, s * 0.26, 0, 7); g.fill(); g.stroke();
+        const mark = bw ? '#fff' : PAL.engraving, rMark = s * 0.08; g.strokeStyle = mark; g.lineWidth = Math.max(1.5, s * 0.035); g.lineCap = 'round';
+        g.beginPath(); g.moveTo(px - rMark, py); g.lineTo(px + rMark, py); g.moveTo(px, py - rMark); g.lineTo(px, py + rMark); g.stroke();
+        g.beginPath(); g.arc(px, py, rMark * 1.55, 0, 7); g.stroke(); }
       if (maze.start) { const cx = geo.ox + (maze.start.i + 0.5) * s, cy = geo.oy + (maze.start.j + 0.5) * s; g.fillStyle = bw ? '#fff' : '#ff7a4a'; g.beginPath(); g.arc(cx, cy, s * 0.09, 0, 7); g.fill();
         g.strokeStyle = g.fillStyle; g.setLineDash([2, 3]); g.lineWidth = 1.5; g.beginPath(); g.arc(cx, cy, s * 0.2, 0, 7); g.stroke(); g.setLineDash([]); }
     }
-    function label(t, x, y, col, s) { if (!t) return; g.save(); g.font = `700 ${Math.max(8, Math.round(s * 0.15))}px Georgia, serif`; g.fillStyle = col; g.textAlign = 'center'; g.textBaseline = 'middle';
+    function label(t, x, y, col, s) { if (!t) return; g.save(); const face = d.theme() === 'bw' ? (FONTS.sans || FONTS.mono) : FONTS.engraved; g.font = `700 ${Math.max(8, Math.round(s * 0.15))}px ${face}`; g.fillStyle = col; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.lineWidth = 3; g.strokeStyle = d.theme() === 'bw' ? '#000' : 'rgba(26,14,6,.85)'; g.strokeText(t, x, y); g.fillText(t, x, y); g.restore(); }
     cv.addEventListener('click', (ev) => {
       const r = cv.getBoundingClientRect(), x = ev.clientX - r.left - geo.ox, y = ev.clientY - r.top - geo.oy;
@@ -5672,10 +6581,11 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
  * Round 3: the level editor (src/editor.js, editor-core.js, economy-config.js), square and arced elbows, coin packs. */
 (function () {
 'use strict';
-const VLS = window.VLS, AP = VLS.apparatus, HW = VLS.hardware, PAL = VLS.tokens.palette, FONTS = VLS.tokens.fonts, HIST = window.VMHistogram;
+const VLS = window.VLS, AP = { ...VLS.apparatus, plaque: window.VMChrome.plaque, engrave: window.VMChrome.engrave }, HW = VLS.hardware, PAL = VLS.tokens.palette, FONTS = VLS.tokens.fonts, HIST = window.VMHistogram;
 const A = VLS.atom.create({ shellsFor: window.MDPhysics.shellsFor, radiusFor: window.MDPhysics.atomRadius });   // drawn radius == collision radius
-const TK = { font: { mono: FONTS.mono, italic: FONTS.serif, serif: FONTS.engraved }, ink: { victorian: PAL.brassText }, brass: { engraveInk: PAL.engraving },
+const TK = { font: { mono: FONTS.mono, italic: FONTS.ivory || FONTS.serif, serif: FONTS.engraved }, ink: { victorian: PAL.paperLight }, brass: { engraveInk: PAL.engraving },
   vacuum: { center: PAL.vacuum, edge: PAL.vacuumDeep }, cold: { label: '#e8f4ff' }, hot: { label: '#ffe2c4' } };
+const face = (bw, victorian) => (bw ? (FONTS.sans || FONTS.mono) : victorian);   // DECISIONS 56dc2d2: B&W canvas → Inter
 const P = window.MDPhysics, M = window.VMMaze, E = window.VMEngine, SN = window.VMSensor, S = window.VMSettings, T = window.VMTilt;
 const LZ = window.VMLasers, ECO = window.VMEconomy, NB = window.VMNotebook, VP = window.VMPurchase, CFG = window.VMEconomyConfig, EC = window.VMEditorCore;
 const { ELEMENTS, formatT } = P;
@@ -5879,7 +6789,7 @@ function frame(now) {
   const running = state.screen === 'playing' || state.screen === 'won' || (state.demo && state.screen !== 'paused');
   if (running && state.world) {
     if (!state.world.won) { if (!(devHooks.on && state.freeze)) { E.step(state.world, dt); watchCells(); } if (state.world.won) onWin(); }
-    else { state.winT += dt; if (state.demo && state.winT > 1.5) startLevel(state.levelIdx, true); }
+    else { if (!(devHooks.on && state.freeze)) { E.step(state.world, dt); state.winT += dt; } if (state.demo && state.winT > E.EXTRACTION_DURATION + 0.25) startLevel(state.levelIdx, true); }
   }
   purchase.trial.tick(dt * 1000, state.screen === 'playing' && !state.demo && !document.hidden, performance.now() - state.lastInput);
   if (state.toastT > 0 && (state.toastT -= dt) <= 0) state.toast = null;
@@ -5888,6 +6798,7 @@ function frame(now) {
   camera(dt);
   render();
   if ($('p-pump').classList.contains('show')) drawPumpCard();
+  if ($('p-win').classList.contains('show')) drawWinPump();
   requestAnimationFrame(frame);
 }
 // encounters: entering a cell with a gate, aperture, thermal section or a dead-end instrument
@@ -5930,11 +6841,12 @@ function onCustomWin() {
 }
 function showWin() {
   const r = state.lastResult, L = state.level, b = E.BODIES[r.body];
+  ensureWinPump();
   if (r.custom) {
     $('win-title').textContent = `${L.name}: atom extracted!`;
     $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
     const rows = [['Time', `${r.t.toFixed(1)} s`], ['Par (★★★)', `${r.par} s (${L.pathCells} cells, ${b.name})`], ['Wall contacts', r.contacts], ['Pump', pumpName(r.exit.pump)],
-      ['Coins', 'none: mazes you build never pay coins'], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, left the pump at ${formatT(state.world.atom.T)}`]];
+      ['Coins', 'none: mazes you build never pay coins'], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, captured at ${formatT(state.world.atom.T)}`]];
     $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
     $('win-note').textContent = 'An editor-made maze.';
     $('b-next').style.display = ''; $('b-next').textContent = state.custom && state.custom.from === 'mymazes' ? 'My mazes ◂' : 'Back to the editor ◂';
@@ -5944,7 +6856,7 @@ function showWin() {
   $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
   const rows = [['Time', `${r.t.toFixed(1)} s`], ['Par (★★★)', `${r.par} s (${L.pathCells} cells, ${b.name})`], ['Wall contacts', r.contacts],
     [`Best on ${b.name}`, `${store.best[S.bestKey(L.id, r.body)].time.toFixed(1)} s`], ['Pump', pumpName(r.exit.pump) + (r.exit.bonus ? ' (bonus ×1.5)' : '')],
-    ['Coins', `+${r.coins} (${store.coins} in the purse)`], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, left the pump at ${formatT(state.world.atom.T)}`]];
+    ['Coins', `+${r.coins} (${store.coins} in the purse)`], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, captured at ${formatT(state.world.atom.T)}`]];
   $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
   $('win-note').textContent = r.rec && r.prev ? `New best! (was ${r.prev.time.toFixed(1)} s)` : r.rec ? 'First escape from this apparatus on this world.' : '';
   const nxt = state.levelIdx + 1;
@@ -5961,7 +6873,16 @@ function camera(dt) {
   const v = state.world.won ? { x: 0, y: 0 } : { x: a.vx, y: a.vy };
   let lx = v.x * 0.35 + state.tilt.x * 90, ly = v.y * 0.35 + state.tilt.y * 90;
   lx = Math.max(-halfW * 0.45, Math.min(halfW * 0.45, lx)); ly = Math.max(-halfH * 0.45, Math.min(halfH * 0.45, ly));
-  const c = state.cam, f = 1 - Math.exp(-dt / 0.6);
+  const c = state.cam, extraction = state.world.extraction;
+  if (state.world.won && extraction) {
+    // Follow into the cutaway, then frame the working apparatus rather than a stationary empty mouth.
+    const p = extraction.pump, q = Math.min(1, extraction.elapsed / E.EXTRACTION_INTAKE), f = 1 - Math.exp(-dt / 0.18);
+    c.lx *= 1 - f; c.ly *= 1 - f;
+    c.x += (a.x * (1 - q) + p.x * q - c.x) * f; c.y += (a.y * (1 - q) + p.y * q - c.y) * f;
+    const targetK = Math.min(k, short / (p.r * 3.2)) * devHooks.zoom();
+    c.k += (targetK - c.k) * f; return;
+  }
+  const f = 1 - Math.exp(-dt / 0.6);
   c.lx += (lx - c.lx) * f; c.ly += (ly - c.ly) * f;
   const tx = a.x + c.lx, ty = a.y + c.ly, g = 1 - Math.exp(-dt / 0.12);
   c.x += (tx - c.x) * g; c.y += (ty - c.y) * g;
@@ -5972,12 +6893,12 @@ function camera(dt) {
 // ------------------------------------------------------------------ rendering
 // Recessed walnut paneling from the shared kit (VLS.contraption.backdrop): screen-space full-viewport
 // draw with the kit's LRU cache. Never tile HW.benchWood as a wall/maze fill (N-1); benchWood stays OK for bench tops.
-const PUMP_R = 92, PUMP_GAP = 130;
 function drawWalnutBackdrop(g, w, h, theme) {
   const K = VLS.contraption;
   g.drawImage(K.backdrop(w, h, { theme, lampX: w * 0.3, lampY: h * 0.18, panel: Math.max(90, Math.min(w, h) * 0.28) }), 0, 0, w, h);
 }
 function render() {
+  window.VMChrome.setFaces(ctx);
   const theme = settings.theme, bw = theme === 'bw';
   document.body.dataset.theme = theme;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -6002,13 +6923,11 @@ function render() {
   for (const cell of vis) drawJoints(L, cell, bw);
   drawStart(L, bw);
   const a = state.world.atom;
-  if (!state.world.won || state.winT < 0.8) {
-    const fade = state.world.won ? Math.max(0, 1 - state.winT / 0.8) : 1;
-    ctx.globalAlpha = fade;
+  if (state.world.won) drawExtractionAtom(ctx, E.extractionPose(state.world), theme);
+  else {
     A.drawAtoms(ctx, [{ x: a.x, y: a.y, model: state.model, stuck: a.stuck }], theme, state.clock);
-    ctx.globalAlpha = 1;
     const Tk = a.stuck ? a.T : E.kinT(a, state.world.scale);
-    ctx.font = bw ? `9px ${TK.font.mono}` : `italic 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : 'rgba(243,213,138,0.9)'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.font = bw ? `9px ${face(true)}` : `italic 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : PAL.brass; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
     const tl = `${a.el.sym} ${formatT(Tk)}`;   // dark outline first, so the label stays readable where it crosses a (white/brass) pipe
     clampedText(tl, a.x + a.r * 0.7, a.y - a.r * 0.7, 0, bw ? '#000' : 'rgba(26,14,6,0.85)');   // kept on screen like the world labels
   }
@@ -6022,7 +6941,7 @@ const settingsLasersVisible = () => true;
 function drawSteel(cell, bw) {
   const o = { theme: settings.theme };
   for (const w of cell.walls) {
-    if (w.plate) continue;
+    if (w.plate || w.exitStub) continue;   // the shared pump adapter below draws the stub walls
     if (w.type === 'seg') HW.wallBand(ctx, w.ax, w.ay, w.bx, w.by, w.nx, w.ny, WALL_T, o);
     else HW.arcWallBand(ctx, w.cx, w.cy, w.R, w.a0, w.a1, w.s, WALL_T, o);
   }
@@ -6093,7 +7012,7 @@ function drawThermal(cell, bw) {
   // a faint glow inside the bore so the player can see the walls are different
   if (!bw) { ctx.fillStyle = cell.kind === 'cold' ? 'rgba(120,190,255,0.07)' : 'rgba(255,140,60,0.07)'; ctx.fillRect(-H, -L0, 2 * H, 2 * L0); }
   ctx.restore();
-  ctx.save(); ctx.font = bw ? `9px ${TK.font.mono}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : cell.kind === 'cold' ? TK.cold.label : TK.hot.label;
+  ctx.save(); ctx.font = bw ? `9px ${face(true)}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : cell.kind === 'cold' ? TK.cold.label : TK.hot.label;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const lab = cell.kind === 'cold' ? 'COLD TRAP · 0.26 × WALL TEMP' : 'BAKE-OUT TAPE · 1.5 × WALL TEMP';
   if (vert) clampedText(lab, cell.cx + H + WALL_T + 18, cell.cy, Math.PI / 2); else clampedText(lab, cell.cx, cell.cy - H - WALL_T - 16);
@@ -6118,7 +7037,7 @@ function drawPlates(cell, bw) {
     ctx.restore();
     const lampX = cell.cx + (g.vert ? H + WALL_T + 40 : 0), lampY = cell.cy + (g.vert ? 0 : H + WALL_T + 40);
     ctx.save(); ctx.beginPath(); ctx.arc(lampX, lampY, 7, 0, 7); ctx.fillStyle = bw ? (shut ? '#fff' : '#000') : shut ? '#d23a2a' : '#3ad26a'; ctx.fill(); ctx.strokeStyle = bw ? '#fff' : '#2a1803'; ctx.stroke();
-    ctx.font = bw ? `9px ${TK.font.mono}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.font = bw ? `9px ${face(true)}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     clampedText(g.type === 'fast' ? 'FAST VALVE' : 'GATE VALVE', lampX, lampY + 10); ctx.restore();
   }
   if (cell.plate) {
@@ -6127,7 +7046,7 @@ function drawPlates(cell, bw) {
     for (const [u0, u1] of [[-H, -a], [a, H]]) { ctx.fillStyle = bw ? '#fff' : HW.stainlessFill(ctx, 0, -T2, 0, T2); ctx.fillRect(u0, -T2, u1 - u0, 2 * T2); }
     ctx.restore();
     const mm = p.hole * state.world.scale * 1000;
-    ctx.save(); ctx.font = bw ? `9px ${TK.font.mono}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.save(); ctx.font = bw ? `9px ${face(true)}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     clampedText(`APERTURE ⌀ ${mm.toFixed(0)} mm`, cell.cx + (p.vert ? 0 : -H - WALL_T - 40), cell.cy + (p.vert ? -H - WALL_T - 6 + 0 : 0) + (p.vert ? 0 : 0)); ctx.restore();
   }
 }
@@ -6143,7 +7062,7 @@ function drawLaser(b, bw) {
   // point on the beam nearest the view centre but slid along the beam so the whole label stays on screen, shrunk if needed
   const c = state.cam, halfW = vw / c.k / 2, halfH = vh / c.k / 2, vert = Math.abs(b.uy) > 0.7;
   const d = lk.label.split(' · '), lines = [d.slice(0, 2).join(' · '), d.slice(2).join(' · ') + (lk.visible ? '' : ' (invisible)')];
-  ctx.save(); ctx.font = bw ? `10px ${TK.font.mono}` : `italic 700 12px ${TK.font.italic}`;
+  ctx.save(); ctx.font = bw ? `10px ${face(true)}` : `italic 700 12px ${TK.font.italic}`;
   const tw = Math.max(...lines.map((t) => ctx.measureText(t).width)), room = 2 * (vert ? halfH : halfW) - 16, sc = Math.min(1, room / tw), half = (tw * sc) / 2;
   const along = (vert ? halfH : halfW) - half - 8, ctr = (c.x - b.x0) * b.ux + (c.y - b.y0) * b.uy;
   let u = Math.max(ctr - Math.max(0, along), Math.min(ctr + Math.max(0, along), ctr));
@@ -6154,50 +7073,82 @@ function drawLaser(b, bw) {
   ctx.fillText(lines[0], 0, -7.5); ctx.fillText(lines[1], 0, 7.5); ctx.restore();
 }
 function drawExitStub(L, e, bw) {
-  const ep = M.exitPlane(L, e), len = PUMP_GAP - 10, nx = -ep.ay, ny = ep.ax;
+  const ep = M.exitPlane(L, e), pump = M.pumpLayout(ep), len = pump.inlet + 2, nx = -ep.ay, ny = ep.ax;
   ctx.save(); ctx.translate(ep.x, ep.y); ctx.transform(ep.ax, ep.ay, nx, ny, 0, 0);
-  for (const s of [-1, 1]) { ctx.fillStyle = bw ? '#fff' : HW.stainlessFill(ctx, 0, s * (H + WALL_T), 0, s * H); ctx.fillRect(0, s > 0 ? H : -H - WALL_T, len, WALL_T); }
-  ctx.fillStyle = bw ? '#000' : '#05080b'; ctx.fillRect(-1, -H, len + 2, 2 * H);
+  // A continuous cutaway reducer meets the actual kit cavity, including the shorter round housings.
+  // No blind black waiting area, disconnected flange, or pair of straight walls through the pump.
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(0, s * H); ctx.lineTo(len, s * pump.half);
+    ctx.lineTo(len, s * (pump.half + WALL_T)); ctx.lineTo(0, s * (H + WALL_T)); ctx.closePath();
+    ctx.fillStyle = bw ? '#fff' : HW.stainlessFill(ctx, 0, s * (H + WALL_T), 0, s * H); ctx.fill();
+  }
+  ctx.beginPath(); ctx.moveTo(-1, -H); ctx.lineTo(len, -pump.half); ctx.lineTo(len, pump.half); ctx.lineTo(-1, H); ctx.closePath();
+  ctx.fillStyle = bw ? '#000' : '#0a0e12'; ctx.fill();
   const ph = (state.clock * 1.2) % 1;
-  for (let q = 0; q < 3; q++) { const u = ((q / 3 + ph) % 1) * len; ctx.globalAlpha = 0.25 + 0.5 * Math.sin(Math.PI * (u / len));
-    ctx.fillStyle = bw ? '#fff' : '#f3d58a'; ctx.beginPath(); ctx.moveTo(u + 14, 0); ctx.lineTo(u - 6, -14); ctx.lineTo(u - 6, 14); ctx.closePath(); ctx.fill(); }
+  for (let q = 0; q < 3; q++) { const u = ((q / 3 + ph) % 1) * len; ctx.globalAlpha = 0.18 + 0.3 * Math.sin(Math.PI * (u / len));
+    ctx.fillStyle = bw ? '#fff' : PAL.paperLight; ctx.beginPath(); ctx.moveTo(u + 4, 0); ctx.lineTo(u - 3, -5); ctx.lineTo(u - 3, 5); ctx.closePath(); ctx.fill(); }
   ctx.globalAlpha = 1; ctx.restore();
   HW.conflatFlange(ctx, ep.x, ep.y, ep.ax, ep.ay, H, { theme: settings.theme, wall: WALL_T, over: 26 });
   if (e.bonus) {
-    ctx.save(); ctx.font = bw ? `11px ${TK.font.mono}` : `700 12px ${TK.font.serif}`; ctx.fillStyle = bw ? '#fff' : '#f3d58a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    clampedText('BONUS PUMP ×1.5', ep.x + ep.ax * 60 + nx * (H + WALL_T + 14), ep.y + ep.ay * 60 + ny * (H + WALL_T + 14)); ctx.restore();
+    ctx.save(); ctx.font = bw ? `11px ${face(true)}` : `700 12px ${TK.font.serif}`; ctx.fillStyle = bw ? '#fff' : PAL.paperLight; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    clampedText('BONUS PUMP ×1.5', ep.x + ep.ax * 30 + nx * (H + WALL_T + 14), ep.y + ep.ay * 30 + ny * (H + WALL_T + 14)); ctx.restore();
   }
 }
 function drawPump(L, e, bw) {
-  const ep = M.exitPlane(L, e), d = PUMP_GAP + PUMP_R;
-  if (e.pump === 'piston') { drawPiston(ep.x + ep.ax * d, ep.y + ep.ay * d, PUMP_R, ep.ax, ep.ay, bw); return; }
-  HW.pumpCutaway(ctx, e.pump, ep.x + ep.ax * d, ep.y + ep.ay * d, PUMP_R, { ax: ep.ax, ay: ep.ay, t: state.clock, theme: settings.theme });
+  const p = M.pumpLayout(M.exitPlane(L, e));
+  if (e.pump === 'piston') { drawPiston(p.x, p.y, p.r, p.ax, p.ay, bw); return; }
+  HW.pumpCutaway(ctx, e.pump, p.x, p.y, p.r, { ax: p.ax, ay: p.ay, t: state.clock, theme: settings.theme, labels: !state.world.won });
+}
+let extractionGlyph = null, extractionGlyphStamp = null;
+function drawExtractionAtom(g, pose, theme) {
+  if (!pose || pose.alpha <= 0) return;
+  // Composite the whole glyph as one image: the kit batches electron trails with their own alpha.
+  // This gives a genuine terminal fade, and a dark/white rim keeps B&W atoms legible on pump metal.
+  if (!extractionGlyph) { extractionGlyph = document.createElement('canvas'); extractionGlyph.width = extractionGlyph.height = 88; }
+  if (!extractionGlyphStamp || extractionGlyphStamp.model !== state.model || extractionGlyphStamp.theme !== theme || extractionGlyphStamp.t !== state.clock) {
+    const ink = extractionGlyph.getContext('2d'), R = state.model.R;
+    ink.setTransform(1, 0, 0, 1, 0, 0); ink.clearRect(0, 0, 88, 88);
+    if (theme === 'bw') {
+      ink.beginPath(); ink.arc(44, 44, R + 2, 0, Math.PI * 2); ink.strokeStyle = '#000'; ink.lineWidth = 5; ink.stroke();
+      ink.strokeStyle = '#fff'; ink.lineWidth = 1.5; ink.stroke();
+    }
+    A.drawAtoms(ink, [{ x: 44, y: 44, model: state.model, stuck: null }], theme, state.clock);
+    extractionGlyphStamp = { model: state.model, theme, t: state.clock };
+  }
+  g.save(); g.translate(pose.x, pose.y); g.scale(pose.scale, pose.scale); g.globalAlpha = pose.alpha;
+  g.drawImage(extractionGlyph, -44, -44); g.restore();
 }
 // two-stage dry piston pump (level editor, tier 0; the shared kit has no cutaway for it): two cylinders in series on one crank
-function drawPiston(x, y, r, ax, ay, bw) {
+function drawPiston(x, y, r, ax, ay, bw, g = ctx, plate = true) {
   const th = Math.atan2(-ax, ay), t = state.clock * 3;
-  ctx.save(); ctx.translate(x, y); ctx.rotate(th); ctx.scale(r, r);
-  const steelF = (x0, y0, x1, y1) => (bw ? '#000' : HW.stainlessFill(ctx, x0, y0, x1, y1)), edge = bw ? '#fff' : 'rgba(10,12,14,0.7)';
-  ctx.lineWidth = 1 / r * (bw ? 1.5 : 1);
-  ctx.fillStyle = steelF(-0.85, 0, 0.85, 0); ctx.strokeStyle = edge; ctx.beginPath(); ctx.roundRect(-0.85, -0.55, 1.7, 1.45, 0.08); ctx.fill(); ctx.stroke();   // crankcase
-  ctx.fillStyle = steelF(-0.3, 0, 0.3, 0); ctx.beginPath(); ctx.rect(-0.18, -1, 0.36, 0.45); ctx.fill(); ctx.stroke();   // inlet from the tube
+  g.save(); g.translate(x, y); g.rotate(th); g.scale(r, r);
+  const steelF = (x0, y0, x1, y1) => (bw ? '#000' : HW.stainlessFill(g, x0, y0, x1, y1)), edge = bw ? '#fff' : 'rgba(10,12,14,0.7)';
+  g.lineWidth = 1 / r * (bw ? 1.5 : 1);
+  g.fillStyle = steelF(-0.85, 0, 0.85, 0); g.strokeStyle = edge; g.beginPath(); g.roundRect(-0.85, -0.55, 1.7, 1.45, 0.08); g.fill(); g.stroke();   // crankcase
+  g.fillStyle = steelF(-0.3, 0, 0.3, 0); g.beginPath(); g.rect(-0.18, -1, 0.36, 0.45); g.fill(); g.stroke();   // inlet from the tube
+  // Open the inlet and stage manifold in the cutaway, instead of drawing a blind solid-steel neck.
+  g.fillStyle = bw ? '#000' : '#0a0e12'; g.fillRect(-0.12, -1.01, 0.24, 0.43);
+  g.beginPath(); g.moveTo(0, -0.60); g.quadraticCurveTo(-0.42, -0.61, -0.42, -0.44);
+  g.moveTo(-0.42, -0.44); g.quadraticCurveTo(0, -0.62, 0.42, -0.44);
+  g.strokeStyle = bw ? '#000' : '#0a0e12'; g.lineWidth = 0.16; g.stroke(); g.lineWidth = 1 / r; g.strokeStyle = edge;
   for (const [cx, ph] of [[-0.42, 0], [0.42, Math.PI]]) {   // first and second stage, half a turn apart
-    ctx.fillStyle = bw ? '#000' : '#0a0e12'; ctx.beginPath(); ctx.rect(cx - 0.24, -0.5, 0.48, 0.8); ctx.fill(); if (bw) ctx.stroke();
+    g.fillStyle = bw ? '#000' : '#0a0e12'; g.beginPath(); g.rect(cx - 0.24, -0.5, 0.48, 0.8); g.fill(); if (bw) g.stroke();
     const py = -0.12 + 0.16 * Math.sin(t + ph);
-    ctx.fillStyle = bw ? '#fff' : VLS.apparatus.brassGrad(ctx, cx - 0.22, 0, cx + 0.22, 0); ctx.beginPath(); ctx.rect(cx - 0.22, py, 0.44, 0.16); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = bw ? '#fff' : '#3d2706'; ctx.lineWidth = 3 / r; ctx.beginPath(); ctx.moveTo(cx, py + 0.16); ctx.lineTo(Math.cos(t + ph) * 0.12, 0.62 + Math.sin(t + ph) * 0.12); ctx.stroke(); ctx.lineWidth = 1 / r; ctx.strokeStyle = edge;
+    g.fillStyle = bw ? '#fff' : VLS.apparatus.brassGrad(g, cx - 0.22, 0, cx + 0.22, 0); g.beginPath(); g.rect(cx - 0.22, py, 0.44, 0.16); g.fill(); g.stroke();
+    g.strokeStyle = bw ? '#fff' : '#3d2706'; g.lineWidth = 3 / r; g.beginPath(); g.moveTo(cx, py + 0.16); g.lineTo(Math.cos(t + ph) * 0.12, 0.62 + Math.sin(t + ph) * 0.12); g.stroke(); g.lineWidth = 1 / r; g.strokeStyle = edge;
   }
-  ctx.beginPath(); ctx.arc(0, 0.62, 0.15, 0, 7); ctx.fillStyle = bw ? '#000' : '#5a3c0e'; ctx.fill(); ctx.stroke();   // crank
-  ctx.strokeStyle = bw ? '#fff' : 'rgba(243,213,138,0.6)'; ctx.setLineDash([0.06, 0.05]); ctx.beginPath(); ctx.moveTo(-0.18, -0.55); ctx.lineTo(-0.42, -0.5); ctx.moveTo(-0.18, -0.4); ctx.quadraticCurveTo(0, -0.62, 0.42, -0.5); ctx.stroke(); ctx.setLineDash([]);   // stage 1 → stage 2
-  ctx.restore();
-  ctx.save(); const py = y + r * 1.25, txt = 'TWO-STAGE PISTON PUMP';
-  ctx.font = bw ? `${Math.max(9, Math.round(r * 0.13))}px ${FONTS.mono}` : `700 ${Math.max(9, Math.round(r * 0.13))}px ${FONTS.engraved}`; const w = ctx.measureText(txt).width * 1.15 + r * 0.45;
-  if (bw) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(x - w / 2, py - r * 0.12, w, r * 0.24); ctx.fillStyle = '#fff'; } else { AP.plaque(ctx, x - w / 2, py - r * 0.13, w, r * 0.26, 3); ctx.fillStyle = PAL.engraving || '#2a1803'; }
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x, py + 1); ctx.restore();
+  g.beginPath(); g.arc(0, 0.62, 0.15, 0, 7); g.fillStyle = bw ? '#000' : '#5a3c0e'; g.fill(); g.stroke();   // crank
+  g.strokeStyle = bw ? '#fff' : PAL.brassMid + '99'; g.setLineDash([0.06, 0.05]); g.beginPath(); g.moveTo(-0.18, -0.55); g.lineTo(-0.42, -0.5); g.moveTo(-0.18, -0.4); g.quadraticCurveTo(0, -0.62, 0.42, -0.5); g.stroke(); g.setLineDash([]);   // stage 1 → stage 2
+  g.restore();
+  if (!plate) return;
+  g.save(); const py = y + r * 1.25, txt = 'TWO-STAGE PISTON PUMP';
+  g.font = bw ? `${Math.max(9, Math.round(r * 0.13))}px ${face(true)}` : `700 ${Math.max(9, Math.round(r * 0.13))}px ${FONTS.engraved}`; const w = g.measureText(txt).width * 1.15 + r * 0.45;
+  if (bw) { g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.strokeRect(x - w / 2, py - r * 0.12, w, r * 0.24); g.fillStyle = '#fff'; } else { AP.plaque(g, x - w / 2, py - r * 0.13, w, r * 0.26, 3); g.fillStyle = PAL.engraving || '#2a1803'; }
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, x, py + 1); g.restore();
 }
 function drawStart(L, bw) {
   const cell = L.cells[L.start.j * L.cols + L.start.i];
-  ctx.save(); ctx.font = bw ? `10px ${TK.font.mono}` : `italic 700 11px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : 'rgba(243,213,138,0.55)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.save(); ctx.font = bw ? `10px ${face(true)}` : `italic 700 11px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : PAL.paperEdge; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   clampedText(bw ? 'SOURCE' : 'atom source', cell.cx, cell.cy + H - 14); ctx.restore();
   ctx.save(); ctx.strokeStyle = bw ? '#fff' : 'rgba(217,169,67,0.35)'; ctx.setLineDash([3, 5]); ctx.beginPath(); ctx.arc(cell.cx, cell.cy, 26, 0, 7); ctx.stroke(); ctx.restore();
 }
@@ -6231,7 +7182,7 @@ const DE_REACH = { blank: 0.7, bellows: 2.1, viewport: 0.7, valve: 2.5, ionGauge
 function deadEndLabel(part, x, y, ax, ay, h, bw) {
   const info = HW.DEAD_END_INFO[part]; if (!info || !DE_REACH[part]) return;
   const reach = DE_REACH[part] * h + 14;
-  ctx.save(); ctx.font = bw ? `9px ${FONTS.mono}` : `italic 700 11px ${FONTS.serif}`; ctx.fillStyle = bw ? '#fff' : PAL.brassText || '#f3d58a';
+  ctx.save(); ctx.font = bw ? `9px ${face(true)}` : `italic 700 11px ${FONTS.serif}`; ctx.fillStyle = bw ? '#fff' : PAL.paperLight;
   ctx.textAlign = Math.abs(ax) > 0.5 ? (ax > 0 ? 'left' : 'right') : 'center'; ctx.textBaseline = Math.abs(ay) > 0.5 ? (ay > 0 ? 'top' : 'bottom') : 'middle';
   clampedText(info.name.toUpperCase(), x + ax * reach, y + ay * reach); ctx.restore();
 }
@@ -6239,29 +7190,24 @@ function deadEndLabel(part, x, y, ax, ay, h, bw) {
 function hud(theme) {
   const bw = theme === 'bw', w = state.world, L = state.level, a = w.atom, body = bodyFor(L), g = gFor(body);
   const t = w.stats.time, par = ECO.parFor(L.pathCells, body, g), stars = ECO.starsFor(t, par);
-  const Tk = a.stuck ? a.T : E.kinT(a, w.scale);
+  const Tk = w.won && w.extraction ? w.extraction.temperature : a.stuck ? a.T : E.kinT(a, w.scale);
   const left = safe.l + 8, top = safe.t + 8, right = vw - safe.r - 8 - 64, width = Math.min(560, right - left), h = 80;
   const best = store.best[S.bestKey(L.id, body)], bname = body === 'arcade' ? `Arcade ${g.toFixed(2)} m/s²` : E.BODIES[body].name;
-  if (!bw) {
-    AP.plaque(ctx, left, top, width, h, 3);
-    const cx = left + width / 2, col = width / 3;
-    AP.engrave(ctx, `${L.custom ? '' : L.id + '. '}${L.name.toUpperCase()} · ${L.cf}`, cx, top + 19, 11, 'center', '700');
-    AP.engrave(ctx, 'TIME', left + col * 0.5, top + 33, 9); AP.engrave(ctx, `${t.toFixed(1)} s`, left + col * 0.5, top + 52, 18, 'center', '700');
-    AP.engrave(ctx, 'CONTACTS', left + col * 1.5, top + 33, 9); AP.engrave(ctx, String(w.stats.contacts), left + col * 1.5, top + 52, 18, 'center', '700');
-    AP.engrave(ctx, 'TEMPERATURE', left + col * 2.5, top + 33, 9); AP.engrave(ctx, formatT(Tk), left + col * 2.5, top + 52, 16, 'center', '700');
-    AP.engrave(ctx, `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)} par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`, cx, top + 68, 9, 'center', 'italic 500');
-  } else {
-    ctx.fillStyle = '#000'; ctx.fillRect(left, top, width, h); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(left, top, width, h);
-    const mono = (s, px, x, y) => { ctx.font = `${px}px ${TK.font.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff'; ctx.fillText(s, x, y); };
-    const col = width / 3;
-    mono(`${L.custom ? '' : L.id + '. '}${L.name.toUpperCase()} ${L.cf}`, 11, left + width / 2, top + 14);
-    mono(`${t.toFixed(1)} S`, 17, left + col * 0.5, top + 40); mono(`${w.stats.contacts} HITS`, 15, left + col * 1.5, top + 40); mono(formatT(Tk), 15, left + col * 2.5, top + 40);
-    mono(`${'*'.repeat(stars)}${'.'.repeat(3 - stars)} PAR ${par} S ${bname.toUpperCase()}${best ? ` BEST ${best.time.toFixed(1)}` : ''}`, 10, left + width / 2, top + 62);
+  if (!bw) AP.plaque(ctx, left, top, width, h, 3);
+  else { ctx.fillStyle = '#000'; ctx.fillRect(left, top, width, h); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(left, top, width, h); }
+  const col = (width - 24) / 3, x0 = left + 12;
+  const field = (text, x, y, w, hh, size, weight = '600') => window.VMChrome.faceText(ctx, text, x + w / 2, y + hh / 2, size,
+    { face: { x, y, w, h: hh, inset: 0 }, engraved: !bw, font: bw ? face(true) : FONTS.engraved, weight, minSize: 8 });
+  field(`${L.custom ? '' : L.id + '. '}${L.name.toUpperCase()} · ${L.cf}`, x0, top + 11, width - 24, 15, 11, '700');
+  for (const [i,label,value,size] of [[0,'TIME',`${t.toFixed(1)} s`,18],[1,'CONTACTS',String(w.stats.contacts),18],[2,'TEMPERATURE',formatT(Tk),16]]) {
+    field(label, x0 + col * i, top + 27, col, 12, 9);
+    field(value, x0 + col * i, top + 40, col, 20, size, '700');
   }
+  field(`${'★'.repeat(stars)}${'☆'.repeat(3 - stars)} par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`, x0, top + 61, width - 24, 11, 9);
   // spirit level: in-plane gravity g·sin θ
   const gm = Math.hypot(state.tilt.x, state.tilt.y), ang = T.angleOf(state.tilt);
   HW.bubbleLevel(ctx, safe.l + 52, vh - safe.b - 56, 34, state.tilt.x, state.tilt.y, { theme: settings.theme });
-  ctx.save(); ctx.font = bw ? `10px ${TK.font.mono}` : `italic 12px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.save(); ctx.font = bw ? `10px ${face(true)}` : `italic 12px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   outlined(`tipped ${ang.toFixed(0)}° · g∥ ${(gm * g).toFixed(2)} m/s²`, safe.l + 100, vh - safe.b - 64, bw); outlined(`${state.tiltSource || ''}${inputMode === 'manual' ? ' (no tilt sensor)' : ''}`, safe.l + 100, vh - safe.b - 48, bw); ctx.restore();
   if (settings.minimap) minimap(bw);
   if (settings.showAngleHistogram) HIST.drawHistogram(ctx, vw / 2 - 140, vh - safe.b - 130, 280, 100, w.hist, theme, { title: `θ about local normal · n=${w.hist.reduce((x, y) => x + y, 0)}` });
@@ -6282,14 +7228,14 @@ function plumb(x, y, ang, bw, g) {
   const r = 46, t = state.tilt, m = Math.hypot(t.x, t.y);
   ctx.save();
   ctx.beginPath(); ctx.arc(x, y, r + 6, 0, 7); ctx.fillStyle = bw ? 'rgba(0,0,0,0.85)' : 'rgba(20,12,5,0.55)'; ctx.fill();
-  ctx.strokeStyle = bw ? '#fff' : 'rgba(243,213,138,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+  ctx.strokeStyle = bw ? '#fff' : PAL.brass; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
   for (const f of [0.5, 0.866]) { ctx.globalAlpha = 0.4; ctx.beginPath(); ctx.arc(x, y, r * f, 0, 7); ctx.stroke(); }   // 30° and 60° rings
   ctx.globalAlpha = 1;
   // the plumb line hangs toward the low edge; its length is sin θ (projected gravity)
   const ex = x + t.x * r, ey = y + t.y * r;
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
-  ctx.beginPath(); ctx.arc(ex, ey, 6, 0, 7); ctx.fillStyle = bw ? '#fff' : '#d9a943'; ctx.fill();
-  ctx.font = bw ? `11px ${TK.font.mono}` : `700 12px ${TK.font.serif}`; ctx.fillStyle = bw ? '#fff' : '#f3d58a'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.beginPath(); ctx.arc(ex, ey, 6, 0, 7); ctx.fillStyle = bw ? '#fff' : PAL.brass; ctx.fill();
+  ctx.font = bw ? `11px ${face(true)}` : `700 12px ${TK.font.serif}`; ctx.fillStyle = bw ? '#fff' : PAL.paperLight; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   outlined(`${ang.toFixed(0)}° · ${(m * g).toFixed(2)} m/s²`, x, y + r + 10, bw);
   if (m === 0) { ctx.textBaseline = 'middle'; ctx.fillText('level', x, y); }
   ctx.restore();
@@ -6297,15 +7243,15 @@ function plumb(x, y, ang, bw, g) {
 function stopwatch(x, y, ms, bw) {
   const s = Math.ceil(ms / 1000), txt = `TRIAL ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   ctx.save();
-  if (!bw) { AP.plaque(ctx, x, y, 132, 28, 7); AP.engrave(ctx, '⏱ ' + txt, x + 66, y + 15, 12, 'center', '700'); }
-  else { ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y, 132, 28); ctx.fillStyle = '#fff'; ctx.font = `12px ${TK.font.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x + 66, y + 14); }
+  if (!bw) { AP.plaque(ctx, x, y, 132, 28, 7); AP.engrave(ctx, txt, x + 66, y + 15, 11, 'center', '700'); }
+  else { ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y, 132, 28); ctx.fillStyle = '#fff'; ctx.font = `12px ${face(true)}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x + 66, y + 14); }
   ctx.restore();
 }
 function banner(text, bw, y) {
   const w = Math.min(vw - 24 - safe.l - safe.r, 520), x = (vw - w) / 2;
-  ctx.save(); ctx.font = bw ? `12px ${TK.font.mono}` : `700 13px ${TK.font.serif}`;
+  ctx.save(); ctx.font = bw ? `12px ${face(true)}` : `700 13px ${TK.font.serif}`;
   if (bw) { ctx.fillStyle = '#000'; ctx.fillRect(x, y, w, 36); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, 36); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text.toUpperCase(), vw / 2, y + 18, w - 16); }
-  else { AP.plaque(ctx, x, y, w, 40, 11); ctx.fillStyle = TK.brass.engraveInk; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, vw / 2, y + 20, w - 30); }
+  else { AP.plaque(ctx, x, y, w, 40, 11); AP.engrave(ctx, text, vw / 2, y + 20, 13, 'center', '700'); }
   ctx.restore();
 }
 function minimap(bw) {
@@ -6314,7 +7260,7 @@ function minimap(bw) {
   state.mmRect = { l: x0 - 6, t: y0 - 6, r: x0 + mw + 6, b: y0 + mh + 6 };   // world labels keep clear of it (clampedText)
   ctx.save();
   ctx.fillStyle = bw ? 'rgba(0,0,0,0.8)' : 'rgba(20,12,5,0.7)'; ctx.fillRect(x0 - 6, y0 - 6, mw + 12, mh + 12);
-  ctx.strokeStyle = bw ? '#fff' : 'rgba(217,169,67,0.7)'; ctx.lineWidth = 1; ctx.strokeRect(x0 - 5.5, y0 - 5.5, mw + 11, mh + 11);
+  ctx.strokeStyle = bw ? '#fff' : PAL.brassMid; ctx.lineWidth = 1; ctx.strokeRect(x0 - 5.5, y0 - 5.5, mw + 11, mh + 11);
   ctx.strokeStyle = bw ? '#fff' : '#c9d0d5'; ctx.lineWidth = Math.max(2, cs * 0.45); ctx.lineCap = 'round';
   for (const k of w.visited) {
     const i = k % L.cols, j = Math.floor(k / L.cols), m = L.open[k], cx = x0 + (i + 0.5) * cs, cy = y0 + (j + 0.5) * cs;
@@ -6326,10 +7272,21 @@ function minimap(bw) {
 }
 function titleHud(theme) {
   if (theme === 'bw') return;
-  const w = Math.min(340, vw - 24), x = (vw - w) / 2, y = safe.t + 14;
-  AP.plaque(ctx, x, y, w, 58, 5);
-  AP.engrave(ctx, 'VACUUM MAZE', vw / 2, y + 24, 18, 'center', '700');
-  AP.engrave(ctx, 'single-atom extraction apparatus', vw / 2, y + 44, 10, 'center', 'italic 500');
+  // Engraved title is wider than Old Standard: give the plaque room and pin each
+  // line to its own face band so the subtitle wrap cannot collide with the title.
+  const w = Math.min(340, vw - 24), x = (vw - w) / 2, y = safe.t + 14, h = 78;
+  AP.plaque(ctx, x, y, w, h, 5);
+  // Title: Engraving CC on brass. Subtitle: typeset Old Standard (ivory token) on the brass plaque.
+  window.VMChrome.faceText(ctx, 'VACUUM MAZE', vw / 2, y + 28, 16, {
+    align: 'center', weight: '700', minSize: 11,
+    face: { x: x + 16, y: y + 10, w: w - 32, h: 28, inset: 0 },
+  });
+  window.VMChrome.faceText(ctx, 'single-atom extraction apparatus', vw / 2, y + 56, 12, {
+    align: 'center', weight: 'italic', minSize: 9,
+    engraved: false, font: FONTS.ivory || FONTS.serif,
+    color: PAL.engraving || '#2a1803', // dark engraving ink on brass, not white web text
+    face: { x: x + 18, y: y + 42, w: w - 36, h: 26, inset: 0 },
+  });
 }
 
 // ------------------------------------------------------------------ menus
@@ -6426,10 +7383,34 @@ function showPumpCard(type) {
   showPanel('pump'); drawPumpCard();
 }
 function drawPumpCard() {
-  const c = $('pc-canvas'), g = c.getContext('2d');
-  g.setTransform(1, 0, 0, 1, 0, 0);
-  drawWalnutBackdrop(g, c.width, c.height, settings.theme);   // same kit paneling as the maze (not tiled benchWood)
-  HW.pumpCutaway(g, pumpCardType || 'turbo', c.width / 2, c.height * 0.45, 165, { ax: 0, ay: 1, t: state.clock, theme: settings.theme });
+  drawExtractionCard($('pc-canvas'), pumpCardType || 'turbo', 165, true);
+}
+// Reached pumps keep working while the card appears. Reuse the SAME extraction clock/pose
+// in the first-pump illustration and the repeat/custom-level result, never restart the atom.
+function drawExtractionCard(c, type, r, labels) {
+  const g = c.getContext('2d'), x = c.width / 2, y = c.height * 0.45;
+  g.setTransform(1, 0, 0, 1, 0, 0); drawWalnutBackdrop(g, c.width, c.height, settings.theme);
+  if (type === 'piston') drawPiston(x, y, r, 0, 1, settings.theme === 'bw', g, labels);
+  else HW.pumpCutaway(g, type, x, y, r, { ax: 0, ay: 1, t: state.clock, theme: settings.theme, labels, plate: labels });
+  const w = state.world, e = w && w.extraction, pose = w && E.extractionPose(w);
+  if (!e || !pose || e.pump.exit.pump !== type) return;
+  const p = e.pump, dx = pose.x - p.x, dy = pose.y - p.y;
+  // World → kit-local → upright card; size follows the cutaway's magnification.
+  drawExtractionAtom(g, { ...pose, x: x + (dx * p.ay - dy * p.ax) * r / p.r,
+    y: y + (dx * p.ax + dy * p.ay) * r / p.r, scale: pose.scale * r / p.r }, settings.theme);
+}
+function ensureWinPump() {
+  if (!$('win-pump-canvas')) {
+    const c = document.createElement('canvas'); c.id = 'win-pump-canvas'; c.width = 560; c.height = 260;
+    c.setAttribute('aria-label', 'The extracted atom moving through the pump cutaway');
+    c.style.cssText = 'display:block;width:100%;max-width:240px;height:auto;margin:4px auto';
+    $('win-title').insertAdjacentElement('afterend', c);
+  }
+  drawWinPump();
+}
+function drawWinPump() {
+  const c = $('win-pump-canvas'), r = state.lastResult;
+  if (c && r) drawExtractionCard(c, r.exit.pump, 108, false);
 }
 $('b-pc-ok').onclick = () => showWin();
 $('b-pc-read').onclick = () => { openNotebook('win', 'pump-' + pumpCardType); };
@@ -6484,7 +7465,7 @@ function showToc() {
   let html = `<p class="sub">${n} of ${shown.length} entries found. New entries appear as you meet each pump, gauge and idea.${later ? ` ${later} more arrive with the free updates.` : ''}</p><div class="nb-toc">`;
   for (const [g, list] of Object.entries(groups)) {
     html += `<h4>${g}${list.every((e) => !ed.has(e.id) && !store.notebook[e.id]) ? ' (free update)' : ''}</h4>`;
-    for (const e of list) html += store.notebook[e.id] ? `<button data-entry="${e.id}" class="${store.notebookNew[e.id] ? 'new' : ''}">${e.title}</button>` : ed.has(e.id) ? '<button disabled>— not yet encountered —</button>' : '<button disabled class="later">— arrives in a free update —</button>';
+    for (const e of list) html += store.notebook[e.id] ? `<button data-entry="${e.id}" class="${store.notebookNew[e.id] ? 'new' : ''}">${e.title}${store.notebookNew[e.id] ? '<small class="vm-new-label">•new</small>' : ''}</button>` : ed.has(e.id) ? '<button disabled>— not yet encountered —</button>' : '<button disabled class="later">— arrives in a free update —</button>';
   }
   $('nb-body').innerHTML = VLS.expHtml(html + '</div>');
 }

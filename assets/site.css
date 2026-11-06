@@ -1,4 +1,4 @@
-/* gl-plaque-kit-18923d3 */
+/* gl-plaque-kit-18923d3 fix1-readable */
 /* Gillund Labs site: apparatus register (wood + brass + ivory + glass) for chrome,
    notebook register for notes. Soft-gold card chrome banned (DECISIONS 4e3607b);
    beveled brass / engravers font (5b433b5); labels stay on button face (a10436a);
@@ -183,10 +183,12 @@ main > section > .prose.vls-plaque,
   align-items:stretch;
   justify-content:flex-start;
   border:none; /* kit frame + cast shadow carry the edge */
-  /* cream fallback — do not adopt kit ivory grain yet */
-  background:var(--gl-ivory-surface) !important;
-  background-image:none !important;
-  color:var(--vls-engraving);
+  /* Full ivory plate body under the kit frame (cream fallback, not kit grain).
+     Never leave dark text on bare wood — background-image:none was wiping the
+     --gl-ivory-surface gradient and leaving a transparent face. */
+  background-color:var(--gl-ivory) !important;
+  background-image:linear-gradient(180deg, var(--gl-ivory) 0%, var(--gl-ivory-deep) 100%) !important;
+  color:var(--vls-engraving); /* dark ink #2a1803 on cream */
   font-family:var(--vls-font-ivory);
   /* kit beyond-edge cast only (tokens); kill local stepped inset bezels */
   box-shadow:
@@ -206,15 +208,23 @@ main > section > .prose.vls-plaque,
 /* Brass section labels use kit brass plaque as-is (short label plate) */
 main > section > h2.vls-plaque,
 main > section > h2.vls-plaque--brass{
-  /* let kit .vls-plaque--brass paint face + cast; drop local lacquered button chrome */
-  background:unset;
+  /* Kit-style lacquered brass plate (slightly lifted mid so engraved ink clears 4.5:1) */
   border:none;
-  text-shadow:none;
-  box-shadow:unset;
-  font:unset;
-  letter-spacing:unset;
+  background:
+    radial-gradient(ellipse 70% 55% at 20% 20%, rgba(200,160,70,0.10), transparent 55%),
+    linear-gradient(180deg, #4a3010 0%, #8a6320 22%, #b08a38 48%, #8a6320 72%, #3d2708 100%) !important;
+  color:var(--vls-engraving);
+  font-family:var(--vls-font-engraved);
+  font-weight:600;
+  letter-spacing:.06em;
   text-transform:uppercase;
+  text-shadow:0 1px 0 rgba(255,240,190,.45);
   margin:18px 0 12px;
+}
+main > section > h2.vls-plaque--brass .vls-plaque__label{
+  color:var(--vls-engraving);
+  font-family:var(--vls-font-engraved);
+  text-shadow:0 1px 0 rgba(255,240,190,.45);
 }
 /* Labels wrap content for chrome layering; links/buttons must still receive clicks */
 .vls-plaque__label{pointer-events:auto;max-width:100%}
@@ -795,20 +805,26 @@ body[data-theme="bw"] .plaquebox{
 .foot.vls-plaque,
 .gamehead.vls-plaque,
 main > .prose.vls-plaque,
-main > section > .prose.vls-plaque{
-  background:var(--gl-ivory-surface) !important;
-  background-image:none !important;
+main > section > .prose.vls-plaque,
+.cardbody.vls-plaque{
+  background-color:var(--gl-ivory) !important;
+  background-image:linear-gradient(180deg, var(--gl-ivory) 0%, var(--gl-ivory-deep) 100%) !important;
   border:none !important;
+  border-top:none !important;
+  color:var(--vls-engraving) !important;
+  font-family:var(--vls-font-ivory);
   box-shadow:
     var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color) !important;
 }
-.cardbody.vls-plaque{
-  background:var(--gl-ivory-surface) !important;
-  background-image:none !important;
-  border:none !important;
-  border-top:none !important;
-  box-shadow:
-    var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color) !important;
+.hero.vls-plaque .vls-plaque__label,
+.plaquebox.vls-plaque .vls-plaque__label,
+.foot.vls-plaque .vls-plaque__label,
+.gamehead.vls-plaque .vls-plaque__label,
+.cardbody.vls-plaque .vls-plaque__label,
+main > .prose.vls-plaque .vls-plaque__label,
+main > section > .prose.vls-plaque .vls-plaque__label{
+  color:inherit;
+  font-family:inherit;
 }
 html[data-theme="bw"] .vls-plaque,
 html[data-theme="bw"] .vls-plaque--brass,
@@ -819,4 +835,52 @@ body[data-theme="bw"] .vls-plaque--ivory{
   /* kit B&W line plaque — don't re-impose cream */
   background:#fff !important;
   background-image:none !important;
+}
+
+/* B&W phone nav: no coloured brass cap; scroll stays inside viewport */
+html[data-theme="bw"] .bar,
+body[data-theme="bw"] .bar{
+  overflow-x:hidden;
+  max-width:100vw;
+}
+html[data-theme="bw"] .bar nav,
+body[data-theme="bw"] .bar nav{
+  max-width:100%;
+  box-sizing:border-box;
+}
+html[data-theme="bw"] .bar-nav-fade,
+body[data-theme="bw"] .bar-nav-fade{
+  background:linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,.55) 45%, rgba(255,255,255,.92) 75%, #fff 100%) !important;
+}
+html[data-theme="bw"] .bar-nav-cap,
+body[data-theme="bw"] .bar-nav-cap{
+  background:#fff !important;
+  border:1.5px solid #000 !important;
+  box-shadow:none !important;
+}
+html[data-theme="bw"] .bar-nav-cue-arrow,
+body[data-theme="bw"] .bar-nav-cue-arrow{
+  color:#000 !important;
+  text-shadow:none !important;
+  font-family:var(--vls-font-sans) !important;
+}
+html[data-theme="bw"] .bar nav a,
+body[data-theme="bw"] .bar nav a{
+  background:transparent !important;
+  color:#000 !important;
+  border:none !important;
+  box-shadow:none !important;
+  filter:none !important;
+}
+html[data-theme="bw"] .bar nav a:hover,
+body[data-theme="bw"] .bar nav a:hover{
+  background:#eee !important;
+  color:#000 !important;
+}
+/* Page itself must not overflow horizontally in B&W */
+html[data-theme="bw"],
+html[data-theme="bw"] body,
+body[data-theme="bw"]{
+  overflow-x:hidden;
+  max-width:100%;
 }
