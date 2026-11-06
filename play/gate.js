@@ -72,10 +72,10 @@
         '#gl-gate .gl-gate-btn.soon::before{border-color:rgba(61,39,6,.55);box-shadow:none}' +
         '#gl-gate .gl-gate-btn.soon small{display:block;margin:0;font-style:italic;text-transform:none!important;letter-spacing:0!important;' +
         'font-weight:600!important;font-size:11px!important;line-height:1.2;color:#2a1803!important;white-space:nowrap!important}' +
-        /* Primary Keep-playing is the larger lit brass plate */
-        '#gl-gate .gl-gate-primary{justify-content:center}' +
-        '#gl-gate .gl-gate-btn.primary,#gl-gate button.gl-gate-btn.primary{flex:1 1 auto!important;min-width:max-content!important;max-width:100%!important;min-height:52px!important;padding:11px 8px!important;font-size:12.5px!important;letter-spacing:0!important;box-shadow:0 2px 0 #1a0e06,0 4px 0 #1a0e06,0 8px 16px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,241,184,.55)!important}' +
-        '#gl-gate .gl-gate-btn.about,#gl-gate a.gl-gate-btn.about{flex:0 1 auto!important;min-width:max-content!important;max-width:100%!important;min-height:52px!important;padding:11px 8px!important;font-size:12.5px!important;letter-spacing:0!important}' +
+        /* Second row: equal-width plates; Keep playing is primary via stronger bevel */
+        '#gl-gate .gl-gate-primary{justify-content:center;align-items:stretch}' +
+        '#gl-gate .gl-gate-primary .gl-gate-btn,#gl-gate .gl-gate-btn.primary,#gl-gate button.gl-gate-btn.primary,#gl-gate .gl-gate-btn.about,#gl-gate a.gl-gate-btn.about{flex:1 1 0!important;min-width:0!important;max-width:100%!important;min-height:52px!important;padding:12px 18px!important;font-size:14px!important;letter-spacing:.02em!important}' +
+        '#gl-gate .gl-gate-btn.primary,#gl-gate button.gl-gate-btn.primary{box-shadow:0 2px 0 #1a0e06,0 4px 0 #1a0e06,0 8px 16px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,241,184,.55)!important}' +
         /* B&W: Inter, black/white/grey scrim, no ivory texture; soon looks flatter/dimmer */
         'html[data-theme="bw"] #gl-gate,body[data-theme="bw"] #gl-gate,[data-theme="bw"] #gl-gate{' +
         'background:rgba(60,60,60,.38);-webkit-backdrop-filter:grayscale(1) brightness(.85);backdrop-filter:grayscale(1) brightness(.85)}' +
@@ -87,23 +87,31 @@
         '[data-theme="bw"] #gl-gate h2,[data-theme="bw"] #gl-gate p{font-family:var(--vls-font-sans)!important;color:#000!important}' +
         '[data-theme="bw"] #gl-gate .gl-gate-btn,[data-theme="bw"] #gl-gate button.gl-gate-btn,' +
         '[data-theme="bw"] #gl-gate a.gl-gate-btn,[data-theme="bw"] #gl-gate span.gl-gate-btn{' +
-        'background:#fff!important;color:#000!important;border:2px solid #000!important;' +
+        'background:#fff!important;color:#000!important;border:1.5px solid #000!important;' +
         'box-shadow:none!important;text-shadow:none!important;font-family:var(--vls-font-sans)!important;filter:none!important;' +
-        'padding:10px 6px!important;font-size:12.5px!important;letter-spacing:0!important;white-space:nowrap!important}' +
-        '[data-theme="bw"] #gl-gate .gl-gate-btn::before{display:none!important}' +
-        '[data-theme="bw"] #gl-gate .gl-gate-btn.soon{background:#e6e6e6!important;border-style:dashed!important}' +
+        'padding:12px 16px!important;font-size:14px!important;letter-spacing:0!important;white-space:nowrap!important;outline:none!important}' +
+        /* Kill any brass/gold bevel lip from game button ::before */
+        '[data-theme="bw"] #gl-gate .gl-gate-btn::before,[data-theme="bw"] #gl-gate button.gl-gate-btn::before,[data-theme="bw"] #gl-gate a.gl-gate-btn::before,[data-theme="bw"] #gl-gate span.gl-gate-btn::before{display:block!important;inset:3px!important;border:1px solid #000!important;box-shadow:none!important;background:transparent!important}' +
+        /* Store plates: solid pale grey, thin black rule — no dashed */
+        '[data-theme="bw"] #gl-gate .gl-gate-btn.soon,[data-theme="bw"] #gl-gate span.gl-gate-btn.soon,#gl-gate[data-theme="bw"] .gl-gate-btn.soon{background:#e8e8e8!important;border:1.5px solid #000!important;border-style:solid!important;filter:grayscale(1)!important}' +
+        '[data-theme="bw"] #gl-gate .gl-gate-btn.soon::before{display:none!important}' +
         '[data-theme="bw"] #gl-gate .gl-gate-btn.soon small{color:#000!important;opacity:.75}' +
-        '[data-theme="bw"] #gl-gate .gl-gate-btn.primary{outline:3px solid #000;outline-offset:1px;background:#fff!important}' +
+        /* Keep playing: black inner rule (not gold-brown); greyscale kills residual brass */
+        '[data-theme="bw"] #gl-gate .gl-gate-btn,[data-theme="bw"] #gl-gate button.gl-gate-btn,#gl-gate[data-theme="bw"] .gl-gate-btn{filter:grayscale(1)!important;-webkit-filter:grayscale(1)!important}' +
+        '[data-theme="bw"] #gl-gate .gl-gate-btn.primary,[data-theme="bw"] #gl-gate button.gl-gate-btn.primary,#gl-gate[data-theme="bw"] .gl-gate-btn.primary{background:#fff!important;color:#000!important;border:2px solid #000!important;box-shadow:inset 0 0 0 2px #000!important;outline:none!important;text-shadow:none!important;filter:grayscale(1)!important}' +
+        '[data-theme="bw"] #gl-gate .gl-gate-btn.primary::before,#gl-gate[data-theme="bw"] .gl-gate-btn.primary::before{display:block!important;inset:4px!important;border:1.5px solid #000!important;border-color:#000!important;box-shadow:none!important;background:transparent!important}' +
+        '[data-theme="bw"] #gl-gate .brass-face,#gl-gate[data-theme="bw"] .brass-face{filter:none!important;background:transparent!important;box-shadow:none!important;border:none!important}' +
         /* Phone: stack stores full-width, then About + Keep playing full-width; labels stay one line */
         '@media (max-width:420px){' +
-        '#gl-gate{padding:4px}' +
-        '#gl-gate .gl-gate-plaque{max-width:100%}' +
-        '#gl-gate .gl-gate-plaque .vls-plaque__label{padding:6px 4px}' +
+        /* Inset matches plaque inner clear (~28px); extra top clears HUD / notebook plate */
+        '#gl-gate{padding:72px 28px 28px;align-items:center;justify-content:center;background:rgba(14,8,3,.55);-webkit-backdrop-filter:brightness(.5) saturate(.85);backdrop-filter:brightness(.5) saturate(.85)}' +
+        '[data-theme="bw"] #gl-gate{background:rgba(40,40,40,.55);-webkit-backdrop-filter:grayscale(1) brightness(.7);backdrop-filter:grayscale(1) brightness(.7)}' +
+        '#gl-gate .gl-gate-plaque{max-width:100%;max-height:calc(100vh - 100px);overflow:auto}' +
+        '#gl-gate .gl-gate-plaque .vls-plaque__label{padding:8px 10px}' +
         '#gl-gate .gl-gate-stores,#gl-gate .gl-gate-primary{flex-direction:column;flex-wrap:nowrap;gap:8px}' +
         '#gl-gate .gl-gate-stores .gl-gate-btn,' +
-        '#gl-gate .gl-gate-primary .gl-gate-btn{flex:0 0 auto!important;width:100%!important;max-width:100%!important;font-size:13px!important;padding:10px 4px!important;min-height:48px!important;letter-spacing:0!important;min-width:0!important;width:100%!important}' +
-        '#gl-gate .gl-gate-btn.primary,#gl-gate button.gl-gate-btn.primary{font-size:12.5px!important;padding:11px 2px!important}' +
-        '#gl-gate .gl-gate-btn.about,#gl-gate a.gl-gate-btn.about{font-size:12.5px!important;padding:11px 2px!important}' +
+        '#gl-gate .gl-gate-primary .gl-gate-btn{flex:0 0 auto!important;width:100%!important;max-width:100%!important;font-size:14px!important;padding:12px 16px!important;min-height:48px!important;letter-spacing:.02em!important;min-width:0!important}' +
+        '#gl-gate .gl-gate-btn.primary,#gl-gate button.gl-gate-btn.primary,#gl-gate .gl-gate-btn.about,#gl-gate a.gl-gate-btn.about{font-size:14px!important;padding:12px 16px!important}' +
         '#gl-gate h2{font-size:22px}' +
         '#gl-gate p{font-size:16px}' +
         '}';
@@ -188,9 +196,12 @@
         '<div class="gl-gate-actions">' +
         '<div class="gl-gate-stores">' + stores + '</div>' +
         '<div class="gl-gate-primary">' +
-        '<a class="gl-gate-btn about" href="../../games/' + slug + '/"><span>About ' + gameName + '</span></a>' +
-        '<button class="gl-gate-btn primary close" type="button"><span>Keep playing the free part</span></button>' +
+        '<a class="gl-gate-btn about" href="../../games/' + slug + '/"><span>About the game</span></a>' +
+        '<button class="gl-gate-btn primary close" type="button"><span>Keep playing</span></button>' +
         '</div></div></div>';
+      var theme = document.documentElement.getAttribute('data-theme')
+        || document.body.getAttribute('data-theme') || 'victorian';
+      d.setAttribute('data-theme', theme);
       document.body.appendChild(d);
       var plaque = d.querySelector('.gl-gate-plaque');
       mountPlaque(plaque);
