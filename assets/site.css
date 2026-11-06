@@ -1060,6 +1060,79 @@ body[data-theme="bw"] .feedback-status--error{color:#000!important;text-decorati
 
 /* Privacy policy (draft, noindex) */
 
+/* gl-404 kit plaque */
+.gl-404{
+  display:flex;align-items:center;justify-content:center;
+  min-height:calc(100vh - 200px);
+  padding:48px 20px 56px;
+  box-sizing:border-box;
+}
+.gl-404-plaque{
+  max-width:560px;width:100%;
+  text-align:center;
+  padding:28px 32px 30px;
+  box-sizing:border-box;
+}
+.gl-404-plaque h1{
+  margin:0 0 12px;
+  font-family:var(--vls-font-ivory);
+  font-weight:700;
+  font-size:clamp(1.35rem, 2.6vw, 1.85rem);
+  line-height:1.25;
+  color:#2a1803;
+  text-wrap:balance;
+}
+.gl-404-plaque p{
+  margin:0;
+  font-family:var(--vls-font-ivory);
+  color:#3b2414;
+  font-size:1.05rem;
+  line-height:1.45;
+}
+.gl-404-actions{margin:22px 0 0!important}
+.gl-404-actions .btn{
+  margin:0;
+  padding:calc(var(--gl-bevel-ring) + 10px) calc(var(--gl-bevel-ring) + 18px);
+  white-space:nowrap!important;
+  max-width:100%;
+}
+.gl-404-actions .btn > span{
+  display:inline-block;
+  margin:0 2px;
+  white-space:nowrap!important;
+}
+html[data-theme="bw"] .gl-404-plaque,
+body[data-theme="bw"] .gl-404-plaque{
+  background:#fff!important;
+  background-image:none!important;
+  color:#000!important;
+  box-shadow:none!important;
+  outline:1.5px solid #000;
+  border:1px solid #000;
+}
+html[data-theme="bw"] .gl-404-plaque h1,
+html[data-theme="bw"] .gl-404-plaque p,
+body[data-theme="bw"] .gl-404-plaque h1,
+body[data-theme="bw"] .gl-404-plaque p{
+  font-family:var(--vls-font-sans)!important;
+  color:#000!important;
+}
+html[data-theme="bw"] .gl-404-plaque[data-vls-ivory]::before,
+html[data-theme="bw"] .gl-404-plaque[data-vls-ivory]::after,
+body[data-theme="bw"] .gl-404-plaque[data-vls-ivory]::before,
+body[data-theme="bw"] .gl-404-plaque[data-vls-ivory]::after{
+  display:none!important;
+}
+@media (max-width:420px){
+  .gl-404{padding:32px 16px 40px;min-height:calc(100vh - 160px)}
+  .gl-404-plaque{padding:22px 18px 24px}
+  .gl-404-actions .btn{
+    font-size:13px!important;
+    letter-spacing:.02em!important;
+    padding:calc(var(--gl-bevel-ring) + 8px) calc(var(--gl-bevel-ring) + 12px);
+  }
+}
+
 .privacy-wrap{max-width:680px;width:100%;margin:0 auto 28px}
 .privacy-plaque{max-width:680px;width:100%;margin:0 auto 22px;text-align:left}
 .privacy-plaque .vls-plaque__label{text-align:left}
