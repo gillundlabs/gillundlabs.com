@@ -33,8 +33,9 @@
   --vls-line: 30px;         /* ruled line pitch: body text sits on the rules */
   --vls-min-touch: 44px;
   /* shared plaque (owner 2026-11-05): screw offset = corner radius; inset of engraved rule */
-  --vls-plaque-screw: 14px;   /* s: screw centre from corner; plate corner radius */
-  --vls-plaque-inset: 5px;    /* d: rule inset from edge (= clearance to screw head) */
+  --vls-plaque-screw: 10px;   /* s: screw centre from corner; plate corner radius; side-rule inset */
+  --vls-plaque-head: 3px;     /* r: screw-head radius; arc R = s + r; clearance to head = s */
+  --vls-plaque-inset: 10px;   /* alias of screw (clearance = s); kept for old readers */
   --vls-plaque-shadow-x: 4px; /* cast shadow BEYOND edge, bottom-right only */
   --vls-plaque-shadow-y: 4px;
   --vls-plaque-shadow-blur: 8px;
@@ -102,17 +103,13 @@
 [data-theme="bw"] .vls-analogy::before { display: none; }
 
 
-/* ---------------- shared plaque (extends VLS.apparatus.plaque) ----------------
-   Geometry: screw at (s,s) from each corner; plate corner-radius = s; engraved rule
-   inset d; concave quarter-arcs of radius (s-d) centred on each screw. Cast shadow
-   lies BEYOND the plate on the bottom and right only — never inside the edge
-   (owner: "Shadow lies beyond edge, not within it."). overflow:visible so the
-   shadow is not clipped; leave margin around the plate for it to land on. */
+/* ---------------- shared plaque ----------------
+   Side rules at inset s; concave quarters R=s+r; ONE closed SVG path (no full-length lines).
+   Labels one line, auto-fit. Shadow beyond BR only. */
 .vls-plaque {
-  /* On short plates, shrink s so 2s fits; keep d/s ratio (~5/14). */
-  --_s: min(var(--vls-plaque-screw), calc(50% - 1px));
-  --_d: min(var(--vls-plaque-inset), calc(var(--_s) * 0.36));
-  --_r: max(1.2px, calc(var(--_s) - 2 * var(--_d))); /* screw-head radius; arc R = s - d */
+  --_s: min(var(--vls-plaque-screw), calc((100% - 14px) / 4.6));
+  --_r: min(var(--vls-plaque-head), calc(var(--_s) * 0.3));
+  --_R: calc(var(--_s) + var(--_r));
   position: relative;
   box-sizing: border-box;
   display: inline-flex;
@@ -120,83 +117,21 @@
   justify-content: center;
   text-align: center;
   border-radius: var(--_s);
-  padding: calc(var(--_d) + var(--_r) + 4px) calc(var(--_d) + var(--_r) + 8px);
-  overflow: visible; /* do not clip the beyond-edge cast shadow */
+  padding: calc(var(--_s) + var(--_R) + 2px) calc(var(--_s) + var(--_R) + 6px);
+  overflow: visible;
   isolation: isolate;
   box-shadow: var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color);
-  /* no inset / inner shadow */
 }
 .vls-plaque__label {
-  position: relative;
-  z-index: 2;
-  margin: 0;
-  max-width: 100%;
-  line-height: 1.2;
-  pointer-events: none;
+  position: relative; z-index: 2; margin: 0; max-width: 100%;
+  line-height: 1.05; pointer-events: none;
+  white-space: nowrap; overflow: hidden; text-overflow: clip;
 }
-/* SVG overlay: rule + screws; sized to the plate, arcs stay circular via user units set at paint time
-   or via the percentage viewBox paired with non-scaling corner marks. Default markup uses a
-   preserveAspectRatio=none viewBox matched to the element box and circular corners drawn in
-   a nested <svg> per corner so circles never squash. */
 .vls-plaque__chrome {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-  overflow: visible;
-  border-radius: inherit;
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 1; overflow: visible; border-radius: inherit;
 }
-.vls-plaque__corner {
-  position: absolute;
-  width: calc(var(--_s) + var(--_d));
-  height: calc(var(--_s) + var(--_d));
-  overflow: visible;
-  pointer-events: none;
-  z-index: 1;
-}
-.vls-plaque__corner--tl { top: 0; left: 0; }
-.vls-plaque__corner--tr { top: 0; right: 0; transform: scaleX(-1); }
-.vls-plaque__corner--bl { bottom: 0; left: 0; transform: scaleY(-1); }
-.vls-plaque__corner--br { bottom: 0; right: 0; transform: scale(-1); }
-/* Straight rule segments between corner arcs */
-.vls-plaque__rule-h, .vls-plaque__rule-v {
-  position: absolute;
-  pointer-events: none;
-  z-index: 1;
-  background: transparent;
-  box-shadow: none;
-}
-.vls-plaque__rule-h {
-  left: var(--_s);
-  right: var(--_s);
-  height: 0;
-  border-top: 1.55px solid var(--vls-plaque-rule);
-  /* light lip on the lower side of the groove */
-  border-bottom: 1px solid var(--vls-plaque-rule-lip);
-  top: calc(var(--_d) - 0.5px);
-}
-.vls-plaque__rule-h--bottom {
-  top: auto;
-  bottom: calc(var(--_d) - 0.5px);
-  border-top: 1px solid var(--vls-plaque-rule-lip);
-  border-bottom: 1.55px solid var(--vls-plaque-rule);
-}
-.vls-plaque__rule-v {
-  top: var(--_s);
-  bottom: var(--_s);
-  width: 0;
-  border-left: 1.55px solid var(--vls-plaque-rule);
-  border-right: 1px solid var(--vls-plaque-rule-lip);
-  left: calc(var(--_d) - 0.5px);
-}
-.vls-plaque__rule-v--right {
-  left: auto;
-  right: calc(var(--_d) - 0.5px);
-  border-left: 1px solid var(--vls-plaque-rule-lip);
-  border-right: 1.55px solid var(--vls-plaque-rule);
-}
+.vls-plaque__corner, .vls-plaque__rule-h, .vls-plaque__rule-v { display: none !important; }
 
 .vls-plaque--brass {
   /* Aged brass (no lemon hot-stripe): mid/warm only, soft TL wash */
@@ -218,11 +153,9 @@
 }
 
 .vls-plaque--ivory {
-  background-color: #f1ecdf;
-  background-image:
-    linear-gradient(130deg, rgba(255,253,246,0.45), rgba(255,253,246,0) 42%, rgba(87,55,20,0.06)),
-    repeating-linear-gradient(90deg, transparent 0, transparent 2px, rgba(138,106,58,0.045) 2px, rgba(138,106,58,0.045) 3px);
-  color: #2b2015;
+  background-color: var(--vls-ivory-base, #f1ecdf);
+  background-image: none;
+  color: var(--vls-ivory-ink, #2b2015);
   font-family: var(--vls-font-ivory);
   font-weight: 400;
   letter-spacing: 0.02em;
@@ -231,6 +164,19 @@
   box-shadow:
     var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color),
     inset 0 1px 1px rgba(255, 254, 249, 0.55);
+}
+/* Procedural ivory on plaques: keep plaque chrome above the ivory ::before/::after. */
+.vls-plaque--ivory.vls-ivory,
+.vls-plaque--ivory[data-vls-ivory] {
+  overflow: hidden; /* ivory surface clips to the rounded plate; shadow still from box-shadow */
+}
+.vls-plaque--ivory.vls-ivory::before,
+.vls-plaque--ivory.vls-ivory::after {
+  border-radius: inherit;
+}
+.vls-plaque--ivory .vls-plaque__chrome-built,
+.vls-plaque--ivory .vls-plaque__label {
+  z-index: 2;
 }
 
 /* B&W: black/white/grey line plaque, Inter text (font tokens already remap under [data-theme=bw]) */

@@ -37,9 +37,10 @@
     },
     fontFiles: { sans: 'fonts/Inter-Variable.woff2', ivory: ['fonts/OldStandardTT-Regular.woff2', 'fonts/OldStandardTT-Italic.woff2', 'fonts/OldStandardTT-Bold.woff2'], engraved: 'fonts/EngravingCC.woff2', hand: 'fonts/Caveat-Variable.woff2' },
     sizes: { handBody: 21, handSmall: 17, scriptTitle: 40, minTouch: 44 },
-    // Shared plaque geometry (owner 2026-11-05). s = screw offset = corner radius;
-    // d = rule inset; screw-head radius = s - 2d so arc clearance equals edge clearance.
-    plaque: { screw: 14, inset: 5, shadowX: 4, shadowY: 4, shadowBlur: 8 },
+    // Shared plaque geometry (owner 2026-11-06). s = screw offset = corner radius =
+    // side-rule inset; head = screw-head radius r; arc R = s+r so clearance to head
+    // equals clearance to edge (= s). inset kept as alias of screw for old readers.
+    plaque: { screw: 10, head: 3, inset: 10, shadowX: 4, shadowY: 4, shadowBlur: 8 },
     labels: { analogy: 'Analogy', simplification: 'Simplification', cf: 'cf.' },
   };
   VLS.tokens = tokens;
@@ -151,75 +152,120 @@
   }
 
   // ---------- shared plaque DOM chrome (mirrors VLS.apparatus.plaque geometry) ----------
-  // Builds the four corner SVGs (concave rule arc + slotted brass/BW screw) and the
-  // straight rule segments inside a .vls-plaque. Idempotent. Shadow is CSS box-shadow
-  // on the plate (beyond-edge, bottom-right only) — never drawn inside the chrome.
+  // One SVG draws the full closed rule path (no separate full-length lines). Screws are
+  // circles in the same SVG. Short label plates stay one line; tall content plaques wrap.
+  // Chrome is rebuilt on size change (ResizeObserver) so the viewBox always matches the
+  // real box — otherwise preserveAspectRatio=meet centres a short frame on a tall plaque.
+  const _plaqueObserved = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function _isContentPlaque(el) {
+    return !!(el && (
+      el.classList.contains('hero') || el.classList.contains('cardbody') ||
+      el.classList.contains('foot') || el.classList.contains('gamehead') ||
+      el.classList.contains('prose') || el.classList.contains('plaquebox') ||
+      el.classList.contains('feedback-plaque') || el.classList.contains('gl-gate-plaque') ||
+      el.classList.contains('gl-plaque') && el.querySelector('p, form, .row, h1, textarea, button')
+    ));
+  }
   function plaqueChrome(el, opts = {}) {
     if (!el || el.nodeType !== 1) return el;
-    if (el.querySelector(':scope > .vls-plaque__chrome-built')) return el;
+    const force = !!(opts && opts.force);
+    const existing = el.querySelector(':scope > .vls-plaque__chrome-built');
+    if (existing && !force) {
+      // Still ensure we are watching for later size changes
+      _watchPlaque(el);
+      return el;
+    }
+    if (existing) existing.remove();
+
     const cs = getComputedStyle(el);
     let s = parseFloat(opts.s != null ? opts.s : (cs.getPropertyValue('--vls-plaque-screw') || tokens.plaque.screw));
-    let d = parseFloat(opts.d != null ? opts.d : (cs.getPropertyValue('--vls-plaque-inset') || tokens.plaque.inset));
+    let rHead = parseFloat(opts.r != null ? opts.r
+      : (opts.head != null ? opts.head
+        : (cs.getPropertyValue('--vls-plaque-head') || tokens.plaque.head || 3)));
     const box = el.getBoundingClientRect();
-    const sMax = Math.max(5, Math.min(box.width || 100, box.height || 40) * 0.5 - 0.5);
-    if (s > sMax) { const k = sMax / s; s = sMax; d = Math.max(1.5, d * k); }
-    if (d >= s * 0.45) d = Math.max(1.2, s * 0.35);
-    const R = s - d, rHead = Math.max(1.2, s - 2 * d);
+    let w = Math.max(1, box.width || el.offsetWidth || 100);
+    let h = Math.max(1, box.height || el.offsetHeight || 40);
+    // Prefer layout size (offset*) once in document — more stable than a mid-reflow rect
+    if (el.offsetWidth > 0) w = el.offsetWidth;
+    if (el.offsetHeight > 0) h = el.offsetHeight;
+    const minDim = Math.min(w, h);
+    const sMax = Math.max(4, (minDim - 14) / (4 + 2 * (rHead / Math.max(s, 1))));
+    if (s > sMax) { const k = sMax / s; s = sMax; rHead = Math.max(1.1, rHead * k); }
+    if (rHead > s * 0.45) rHead = Math.max(1.1, s * 0.3);
+    const R = s + rHead;
     el.style.setProperty('--_s', s + 'px');
-    el.style.setProperty('--_d', d + 'px');
+    el.style.setProperty('--_r', rHead + 'px');
+    el.style.setProperty('--_R', R + 'px');
+    el.style.setProperty('--_d', s + 'px'); // clearance (= s); legacy alias
     const bw = el.classList.contains('vls-plaque--bw') || (el.closest('[data-theme="bw"]') != null);
+    const ivory = !bw && el.classList.contains('vls-plaque--ivory');
+    if (ivory && !el.getAttribute('data-vls-ivory')) {
+      const existingId = el.id;
+      el.setAttribute('data-vls-ivory', existingId || ('plaque/dom/' + Math.random().toString(36).slice(2, 10)));
+    }
     const NS = 'http://www.w3.org/2000/svg';
     const wrap = document.createElement('div');
     wrap.className = 'vls-plaque__chrome-built';
     wrap.setAttribute('aria-hidden', 'true');
     wrap.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:1;overflow:visible;border-radius:inherit;';
 
-    // straight rule segments
-    [['vls-plaque__rule-h', ''], ['vls-plaque__rule-h vls-plaque__rule-h--bottom', ''],
-     ['vls-plaque__rule-v', ''], ['vls-plaque__rule-v vls-plaque__rule-v--right', '']].forEach(([cls]) => {
-      const n = document.createElement('div'); n.className = cls; wrap.appendChild(n);
-    });
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'vls-plaque__chrome');
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    // none: if CSS size drifts 1px we still cover the whole plate; ResizeObserver rebuilds on real change
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.style.cssText = 'position:absolute;inset:0;overflow:visible;display:block;';
 
-    // one TL corner SVG, mirrored for the other three
-    function cornerSvg(slotAngle) {
-      const size = s + rHead + 2;
-      const svg = document.createElementNS(NS, 'svg');
-      svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
-      svg.setAttribute('width', String(size));
-      svg.setAttribute('height', String(size));
-      svg.style.overflow = 'visible';
-      // arc from (s,d) to (d,s), centred on (s,s), radius R — toward the corner
-      const path = document.createElementNS(NS, 'path');
-      // A: arc flags — sweep 1 goes the short quarter through the corner
-      path.setAttribute('d', `M ${s} ${d} A ${R} ${R} 0 0 0 ${d} ${s}`);
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', bw ? '#000' : 'currentColor');
-      path.setAttribute('stroke-width', bw ? '1.5' : '1.55');
-      path.style.color = 'var(--vls-plaque-rule)';
-      if (!bw) {
-        const lip = document.createElementNS(NS, 'path');
-        lip.setAttribute('d', `M ${s + 0.55} ${d + 0.55} A ${R} ${R} 0 0 0 ${d + 0.55} ${s + 0.55}`);
-        lip.setAttribute('fill', 'none');
-        lip.setAttribute('stroke', 'var(--vls-plaque-rule-lip)');
-        lip.setAttribute('stroke-width', '1.2');
-        svg.appendChild(lip);
-      }
-      svg.appendChild(path);
-      // screw
-      const cx = s, cy = s;
+    const dRule = [
+      `M ${s + R} ${s}`,
+      `L ${w - s - R} ${s}`,
+      `A ${R} ${R} 0 0 0 ${w - s} ${s + R}`,
+      `L ${w - s} ${h - s - R}`,
+      `A ${R} ${R} 0 0 0 ${w - s - R} ${h - s}`,
+      `L ${s + R} ${h - s}`,
+      `A ${R} ${R} 0 0 0 ${s} ${h - s - R}`,
+      `L ${s} ${s + R}`,
+      `A ${R} ${R} 0 0 0 ${s + R} ${s}`,
+      'Z',
+    ].join(' ');
+    if (!bw) {
+      const lip = document.createElementNS(NS, 'path');
+      lip.setAttribute('d', dRule);
+      lip.setAttribute('fill', 'none');
+      lip.setAttribute('stroke', 'var(--vls-plaque-rule-lip)');
+      lip.setAttribute('stroke-width', '1.2');
+      lip.setAttribute('vector-effect', 'non-scaling-stroke');
+      lip.setAttribute('transform', 'translate(0.7 0.7)');
+      svg.appendChild(lip);
+    }
+    const rule = document.createElementNS(NS, 'path');
+    rule.setAttribute('d', dRule);
+    rule.setAttribute('fill', 'none');
+    rule.setAttribute('stroke', bw ? '#000' : 'var(--vls-plaque-rule)');
+    rule.setAttribute('stroke-width', bw ? '1.6' : '1.55');
+    rule.setAttribute('stroke-linejoin', 'round');
+    rule.setAttribute('vector-effect', 'non-scaling-stroke');
+    svg.appendChild(rule);
+
+    const angles = [0.4, 1.1, 2.3, 0.85];
+    const corners = [[s, s], [w - s, s], [s, h - s], [w - s, h - s]];
+    corners.forEach(([cx, cy], i) => {
       if (bw) {
         const ring = document.createElementNS(NS, 'circle');
         ring.setAttribute('cx', cx); ring.setAttribute('cy', cy); ring.setAttribute('r', rHead);
         ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', '#000'); ring.setAttribute('stroke-width', '1.2');
+        ring.setAttribute('vector-effect', 'non-scaling-stroke');
         svg.appendChild(ring);
         const slot = document.createElementNS(NS, 'line');
-        const a = slotAngle, c = Math.cos(a), sn = Math.sin(a), L = rHead * 0.75;
+        const a = angles[i], c = Math.cos(a), sn = Math.sin(a), L = rHead * 0.75;
         slot.setAttribute('x1', cx - c * L); slot.setAttribute('y1', cy - sn * L);
         slot.setAttribute('x2', cx + c * L); slot.setAttribute('y2', cy + sn * L);
         slot.setAttribute('stroke', '#000'); slot.setAttribute('stroke-width', String(Math.max(1, rHead * 0.22)));
+        slot.setAttribute('vector-effect', 'non-scaling-stroke');
         svg.appendChild(slot);
       } else {
-        // brass screw: layered circles + slot
         const shadow = document.createElementNS(NS, 'circle');
         shadow.setAttribute('cx', cx + 0.5); shadow.setAttribute('cy', cy + 0.9); shadow.setAttribute('r', rHead + 1);
         shadow.setAttribute('fill', 'rgba(0,0,0,0.4)'); svg.appendChild(shadow);
@@ -228,33 +274,26 @@
         const gid = `vls-scr-${Math.random().toString(36).slice(2, 8)}`;
         grad.setAttribute('id', gid);
         grad.setAttribute('cx', '35%'); grad.setAttribute('cy', '30%'); grad.setAttribute('r', '70%');
-        [['0%', '#fff1b8'], ['40%', '#d9a943'], ['100%', '#3d2706']].forEach(([o, c]) => {
+        [['0%', '#e8d090'], ['40%', '#8f6a28'], ['100%', '#2a1803']].forEach(([o, c]) => {
           const stop = document.createElementNS(NS, 'stop'); stop.setAttribute('offset', o); stop.setAttribute('stop-color', c); grad.appendChild(stop);
         });
         defs.appendChild(grad); svg.appendChild(defs);
         const head = document.createElementNS(NS, 'circle');
         head.setAttribute('cx', cx); head.setAttribute('cy', cy); head.setAttribute('r', rHead);
         head.setAttribute('fill', `url(#${gid})`); head.setAttribute('stroke', 'rgba(40,24,4,0.85)'); head.setAttribute('stroke-width', '0.8');
+        head.setAttribute('vector-effect', 'non-scaling-stroke');
         svg.appendChild(head);
         const g = document.createElementNS(NS, 'g');
-        g.setAttribute('transform', `translate(${cx} ${cy}) rotate(${(slotAngle * 180) / Math.PI})`);
+        g.setAttribute('transform', `translate(${cx} ${cy}) rotate(${(angles[i] * 180) / Math.PI})`);
         const slot = document.createElementNS(NS, 'rect');
         slot.setAttribute('x', -rHead * 0.78); slot.setAttribute('y', -rHead * 0.12);
         slot.setAttribute('width', rHead * 1.56); slot.setAttribute('height', rHead * 0.24);
         slot.setAttribute('fill', 'rgba(30,18,4,0.92)');
         g.appendChild(slot); svg.appendChild(g);
       }
-      return svg;
-    }
-    const angles = [0.4, 1.1, 2.3, 0.85];
-    ['tl', 'tr', 'bl', 'br'].forEach((name, i) => {
-      const box = document.createElement('div');
-      box.className = `vls-plaque__corner vls-plaque__corner--${name}`;
-      box.appendChild(cornerSvg(angles[i]));
-      wrap.appendChild(box);
     });
+    wrap.appendChild(svg);
 
-    // Ensure label is wrapped
     let label = el.querySelector(':scope > .vls-plaque__label');
     if (!label) {
       label = document.createElement('span');
@@ -262,13 +301,58 @@
       while (el.firstChild) label.appendChild(el.firstChild);
       el.appendChild(label);
     }
+    const content = _isContentPlaque(el);
+    if (content) {
+      label.style.whiteSpace = 'normal';
+      label.style.overflow = 'visible';
+      label.style.fontSize = '';
+      label.style.lineHeight = '';
+      label.style.textOverflow = '';
+    } else {
+      label.style.whiteSpace = 'nowrap';
+      const maxW = Math.max(8, w - 2 * (s + rHead + 6));
+      const maxH = Math.max(8, h - 2 * (s + R + 2));
+      let size = parseFloat(cs.fontSize) || 18;
+      label.style.fontSize = size + 'px';
+      for (let guard = 0; guard < 80 && size > 7; guard++, size -= 0.5) {
+        label.style.fontSize = size + 'px';
+        if (label.scrollWidth <= maxW + 0.5 && label.scrollHeight <= maxH + 0.5) break;
+      }
+    }
     el.insertBefore(wrap, el.firstChild);
+    el.setAttribute('data-vls-plaque-w', String(Math.round(w)));
+    el.setAttribute('data-vls-plaque-h', String(Math.round(h)));
+    _watchPlaque(el);
     return el;
   }
-  function plaqueMount(root) {
-    const scope = root && root.querySelectorAll ? root : document;
-    scope.querySelectorAll('.vls-plaque').forEach((el) => plaqueChrome(el));
+  function _watchPlaque(el) {
+    if (!_plaqueObserved || typeof ResizeObserver === 'undefined') return;
+    if (_plaqueObserved.has(el)) return;
+    let lastW = el.offsetWidth, lastH = el.offsetHeight;
+    let timer = null;
+    const ro = new ResizeObserver(function () {
+      const w = el.offsetWidth, h = el.offsetHeight;
+      if (w < 2 || h < 2) return;
+      if (Math.abs(w - lastW) < 1 && Math.abs(h - lastH) < 1) return;
+      lastW = w; lastH = h;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () {
+        if (!el.isConnected) return;
+        plaqueChrome(el, { force: true });
+      }, 40);
+    });
+    ro.observe(el);
+    _plaqueObserved.set(el, ro);
   }
-  Object.assign(VLS, { MINUS, pow10, fmtSci, sciParts, expHtml, drawPow10, drawSciText, plaqueChrome, plaqueMount });
+  function plaqueMount(root, opts) {
+    const scope = root && root.querySelectorAll ? root : document;
+    const force = !!(opts && opts.force);
+    const list = scope.classList && scope.classList.contains('vls-plaque')
+      ? [scope]
+      : [...scope.querySelectorAll('.vls-plaque')];
+    list.forEach((el) => plaqueChrome(el, { force: force }));
+  }
+
+    Object.assign(VLS, { MINUS, pow10, fmtSci, sciParts, expHtml, drawPow10, drawSciText, plaqueChrome, plaqueMount });
   if (typeof module === 'object' && module.exports) module.exports = tokens;
 })(typeof self !== 'undefined' ? self : this);

@@ -1,0 +1,41 @@
+/* Procedural ivory (owner approved 2026-11-06). */
+.vls-ivory, [data-vls-ivory] {
+  --vls-ivory-base: #f1ecdf;
+  --vls-ivory-ink: #2b2015;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--vls-ivory-ink);
+  background: var(--vls-ivory-base);
+  box-shadow: inset 0 1px 1px rgba(255,254,249,.60), inset 0 -1px 1px rgba(89,65,31,.16);
+}
+.vls-ivory::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  pointer-events: none;
+  left: 50%; top: 50%;
+  width: var(--vls-ivory-surface-w, 100%);
+  height: var(--vls-ivory-surface-h, 100%);
+  transform: translate(-50%, -50%) rotate(var(--vls-ivory-angle, 0deg));
+  background-image: linear-gradient(var(--vls-ivory-tint, transparent), var(--vls-ivory-tint, transparent)), var(--vls-ivory-image, none);
+  background-size: auto, var(--vls-ivory-image-size, cover);
+  background-position: 0 0, var(--vls-ivory-offset, 0 0);
+  background-repeat: no-repeat;
+}
+.vls-ivory::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  inset: 0;
+  background-image:
+    linear-gradient(130deg, rgba(255,253,246,.10), rgba(255,253,246,0) 42%, rgba(87,55,20,.025)),
+    radial-gradient(ellipse 100% 130% at 48% 35%, transparent 48%, rgba(153,106,45,.055) 100%);
+}
+.vls-plaque.vls-ivory, .vls-plaque[data-vls-ivory] {
+  box-shadow:
+    var(--vls-plaque-shadow-x, 3px) var(--vls-plaque-shadow-y, 3px)
+      var(--vls-plaque-shadow-blur, 8px) var(--vls-plaque-shadow-color, rgba(0,0,0,.45)),
+    inset 0 1px 1px rgba(255, 254, 249, 0.55);
+}
