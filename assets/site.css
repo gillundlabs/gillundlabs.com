@@ -441,6 +441,8 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 .vls-notebook .fa-toc{columns:2;padding-left:22px}@media(max-width:560px){.vls-notebook .fa-toc{columns:1}}
 
 
+.bar-nav-cue{display:none} /* phone-only; see ≤600px block */
+
 /* Phone nav: brand on its own row (never truncate studio name); nav scrolls sideways */
 @media (max-width:600px){
   .bar{
@@ -476,11 +478,11 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
     -webkit-overflow-scrolling:touch;
     overscroll-behavior-x:contain;
     gap:0;
-    padding:0 28px 0 10px; /* room for end fades */
+    /* right pad so glyphs soft-end under the cue fade (continuing, not hard-chopped) */
+    padding:0 56px 0 10px;
     scrollbar-width:none; /* tidy — no scrollbar chrome */
     position:relative;
-    mask-image:linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 22px), transparent 100%);
-    -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 22px), transparent 100%);
+    /* fade lives on .bar-nav-cue overlay — mask would also fade the brass cap */
   }
   .bar nav::-webkit-scrollbar{display:none}
   .bar nav a{
@@ -490,13 +492,51 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
     padding:10px 10px;
     letter-spacing:.04em;
   }
-  /* Brass end-cap hint on the nav row only (not over the brand) */
-  .bar nav::after{
-    content:"";position:absolute;top:0;bottom:0;right:0;width:22px;pointer-events:none;z-index:2;
-    background:linear-gradient(90deg, transparent, rgba(26,14,6,.92) 55%, #1a0e06 100%);
+  /* Strong walnut fade + stepped brass end-cap + engraved more-arrow (nav row only) */
+  .bar-nav-cue{
+    display:block;
+    position:absolute;
+    right:0;
+    bottom:3px; /* sit on nav row, above brass rail (::after on .bar) */
+    height:44px;
+    width:56px;
+    pointer-events:none;
+    z-index:3;
+    opacity:1;
+    transition:opacity .18s ease;
+    background:
+      linear-gradient(90deg,
+        rgba(26,14,6,0) 0%,
+        rgba(26,14,6,.55) 22%,
+        rgba(18,9,3,.88) 48%,
+        rgba(12,6,2,.97) 72%,
+        #0e0703 100%);
+    /* stepped brass bevel on the right edge with light falloff */
+    box-shadow:
+      inset -1px 0 0 rgba(255,241,184,.55),
+      inset -2px 0 0 #e0c070,
+      inset -3px 0 0 #c49b4e,
+      inset -5px 0 0 #8a6320,
+      inset -7px 0 0 #4a300a,
+      inset -9px 0 0 #1a0e06,
+      -1px 0 0 #0e0703;
     border-right:2px solid #3d2706;
-    box-shadow:inset -1px 0 0 rgba(196,155,78,.35);
   }
+  .bar-nav-cue-arrow{
+    position:absolute;
+    right:7px;
+    top:50%;
+    transform:translateY(-54%);
+    font:700 17px/1 var(--vls-font-engraved);
+    color:var(--vls-brass-text);
+    text-shadow:
+      0 1px 0 #0e0703,
+      0 -1px 0 rgba(255,241,184,.4),
+      1px 0 0 rgba(61,39,6,.5);
+    letter-spacing:0;
+  }
+  /* Hide cue when scrolled to the end (or when nothing to scroll) */
+  .bar.nav-at-end .bar-nav-cue{opacity:0}
 }
 
 /* Hero: ivory face in a stepped walnut + brass bezel (depth via multiple steps + highlight/shadow; not flat gold) */

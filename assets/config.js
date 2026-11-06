@@ -24,3 +24,37 @@ window.GL_CONFIG = {
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render); else render();
 })();
+
+/* Phone nav scroll cue: walnut fade + brass end-cap; hide at scroll end. */
+(function () {
+  function setupNavCue() {
+    var bar = document.querySelector('header.bar');
+    if (!bar) return;
+    var nav = bar.querySelector('nav');
+    if (!nav) return;
+    var cue = bar.querySelector('.bar-nav-cue');
+    if (!cue) {
+      cue = document.createElement('span');
+      cue.className = 'bar-nav-cue';
+      cue.setAttribute('aria-hidden', 'true');
+      cue.innerHTML = '<span class="bar-nav-cue-arrow" aria-hidden="true">\u25B8</span>';
+      bar.appendChild(cue);
+    }
+    function update() {
+      var max = nav.scrollWidth - nav.clientWidth;
+      var canScroll = max > 2;
+      var atEnd = !canScroll || nav.scrollLeft >= max - 2;
+      bar.classList.toggle('nav-has-more', canScroll && !atEnd);
+      bar.classList.toggle('nav-at-end', atEnd);
+    }
+    if (!nav._glNavCueBound) {
+      nav.addEventListener('scroll', update, { passive: true });
+      window.addEventListener('resize', update);
+      nav._glNavCueBound = true;
+    }
+    update();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(update).catch(function () {});
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupNavCue);
+  else setupNavCue();
+})();
