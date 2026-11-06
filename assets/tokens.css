@@ -2,7 +2,10 @@
    Fonts are bundled (SIL OFL 1.1, see fonts/OFL-*.txt) so everything works offline and from file://. */
 @font-face { font-family: "VLS Caveat"; src: url("fonts/Caveat-Variable.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
 @font-face { font-family: "VLS Engraving CC"; src: url("fonts/EngravingCC.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
-@font-face { font-family: "VLS Pinyon Script"; src: url("fonts/PinyonScript-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "VLS Inter"; src: url("fonts/Inter-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "VLS Old Standard TT"; src: url("fonts/OldStandardTT-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "VLS Old Standard TT"; src: url("fonts/OldStandardTT-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "VLS Old Standard TT"; src: url("fonts/OldStandardTT-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
 
 :root {
   /* apparatus */
@@ -18,11 +21,15 @@
   --vls-note-analogy: #fdf6dc; --vls-note-simplification: #f6e1d3;
   /* type */
   --vls-font-engraved: "VLS Engraving CC", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
-  --vls-font-serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --vls-font-ivory: "VLS Old Standard TT", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --vls-font-sans: "VLS Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* B&W mode only */
+  --vls-font-serif: var(--vls-font-ivory); /* three-font system: typeset text is Old Standard TT */
   --vls-font-mono: ui-monospace, Menlo, Consolas, monospace;
   --vls-font-hand: "VLS Caveat", "Segoe Print", "Bradley Hand", Georgia, cursive;
-  --vls-font-script: "VLS Pinyon Script", "Snell Roundhand", "Apple Chancery", Georgia, cursive;
-  --vls-font-plain: Georgia, "Times New Roman", serif;
+  --vls-font-script: var(--vls-font-hand); /* retired copperplate; alias kept so old references fall through to the hand */
+  --vls-font-title-weight: 700;
+  --vls-font-title-size: 46px;
+  --vls-font-plain: var(--vls-font-ivory);
   --vls-line: 30px;         /* ruled line pitch: body text sits on the rules */
   --vls-min-touch: 44px;
 }
@@ -45,7 +52,7 @@
   box-shadow: 0 2px 0 var(--vls-paper-shade), 0 4px 0 var(--vls-paper-edge), 0 10px 24px rgba(0,0,0,0.45);
   border-radius: 2px 6px 6px 2px; line-height: var(--vls-line); font-size: 21px;
 }
-.vls-page h2, .vls-title { font-family: var(--vls-font-script); font-weight: 400; font-size: 40px; line-height: 1.15; margin: 4px 0 6px; color: var(--vls-ink); }
+.vls-page h2, .vls-title { font-family: var(--vls-font-hand); font-weight: var(--vls-font-title-weight); font-size: var(--vls-font-title-size); line-height: 1.15; margin: 4px 0 6px; color: var(--vls-ink); }
 .vls-page p { margin: 0 0 var(--vls-line) 0; }
 .vls-page .vls-pageno { position: absolute; top: 8px; right: 14px; font-size: 17px; color: var(--vls-ink-faded); }
 .vls-page .vls-date { position: absolute; top: 46px; left: 6px; width: 38px; font-size: 14px; line-height: 15px; color: var(--vls-ink-faded); text-align: center; transform: rotate(-4deg); }
@@ -56,7 +63,7 @@
 .vls-note { position: relative; margin: 10px 0 var(--vls-line); padding: 12px 14px 10px; font-size: 19px; line-height: 25px; }
 .vls-page .vls-note p { margin: 0; line-height: inherit; }
 .vls-page .vls-note p + p { margin-top: 6px; }
-.vls-note-label { display: block; font-family: var(--vls-font-engraved); font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 4px; }
+.vls-note-label { display: block; font-family: var(--vls-font-hand); font-size: 17px; font-weight: 700; letter-spacing: 0.02em; margin-bottom: 4px; }
 .vls-analogy { background: var(--vls-note-analogy); border: 1px solid rgba(112,66,20,0.35); transform: rotate(-0.8deg); box-shadow: 1px 2px 6px rgba(60,30,5,0.3); }
 .vls-analogy::before { content: ""; position: absolute; top: -9px; left: 38%; width: 70px; height: 18px; background: rgba(235,225,190,0.75); transform: rotate(-3deg); box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
 .vls-analogy .vls-note-label { color: var(--vls-ink-blue); }
@@ -74,12 +81,27 @@
 .vls-plain .vls-cf { font-size: 14px; }
 
 /* B&W theme: ink on white, no ageing */
+/* B&W mode: one sans for all text (owner, 2026-11-05). Every font token resolves to Inter inside a bw theme. */
+[data-theme="bw"], [data-theme="bw"] * {
+  --vls-font-engraved: var(--vls-font-sans); --vls-font-ivory: var(--vls-font-sans); --vls-font-serif: var(--vls-font-sans);
+  --vls-font-hand: var(--vls-font-sans); --vls-font-script: var(--vls-font-sans); --vls-font-plain: var(--vls-font-sans); --vls-font-mono: var(--vls-font-sans);
+}
+[data-theme="bw"] { font-family: var(--vls-font-sans); }
 [data-theme="bw"] .vls-page { background: #fff; background-image: repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--vls-line) - 1px), #d0d0d0 calc(var(--vls-line) - 1px), #d0d0d0 var(--vls-line)); background-position: 0 14px; color: #000; box-shadow: none; border: 2px solid #fff; outline: 1px solid #000; }
 [data-theme="bw"] .vls-page h2, [data-theme="bw"] .vls-title, [data-theme="bw"] .vls-pageno, [data-theme="bw"] .vls-date, [data-theme="bw"] .vls-cf { color: #000; }
 [data-theme="bw"] .vls-note { background: #fff; border: 1.5px solid #000; box-shadow: none; transform: none; }
 [data-theme="bw"] .vls-simplification { border-left: 5px double #000; }
 [data-theme="bw"] .vls-note-label, [data-theme="bw"] .vls-ink-red { color: #000; }
 [data-theme="bw"] .vls-analogy::before { display: none; }
+
+/* Powers of ten (v1.1.0): VLS.pow10 / VLS.fmtSci / VLS.expHtml emit <sup class="vls-exp"><span class="vls-minus">−</span>9</sup> with a true minus
+   (U+2212; the bundled fonts have it, unlike the superscript minus U+207B). Big and bold enough that the minus is
+   at least a digit wide and a digit stroke thick on a phone; line-height 0 and a relative raise keep ruled lines even. */
+.vls-exp { font-size: 0.8em; font-weight: 700; line-height: 0; position: relative; top: -0.45em; vertical-align: baseline; margin-left: 0.04em; font-variant-numeric: lining-nums; letter-spacing: 0.02em; color: inherit; }
+/* the minus itself: the font's own U+2212 (so it sits on that font's maths axis), thickened and lengthened by a stroke
+   of 0.06em so it is at least a digit wide and a digit stroke thick in Caveat, Georgia and the system fallbacks */
+.vls-exp .vls-minus { -webkit-text-stroke: 0.06em currentColor; paint-order: stroke fill; padding: 0 0.04em 0 0.02em; }
+[data-theme="bw"] .vls-exp { color: inherit; font-weight: 700; }
 
 @media (max-width: 520px) {
   .vls-page { padding: 14px 12px 18px 58px; font-size: 20px; }
