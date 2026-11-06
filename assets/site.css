@@ -12,35 +12,46 @@ html{-webkit-text-size-adjust:100%}
   /* DECISIONS 0b95716 / 69f3073: ivory plaque body → kit ivory (Old Standard TT) */
   /* DECISIONS 50fea0f / 0b95716: typeset = kit ivory (Old Standard TT); brass = engraved */
   --gl-font-plaque:var(--vls-font-ivory);
-  --gl-brass-surface:
-    repeating-linear-gradient(0deg, rgba(40,22,4,.06) 0 1px, transparent 1px 3px),
-    linear-gradient(116deg, transparent 18%, rgba(255,241,184,.18) 38%, transparent 56%),
-    linear-gradient(180deg, #b89245 0%, #c49b4e 46%, #a67f35 100%);
+  /* Lacquered brass (kit engraver ref / cleared Vac+Fan): outer bevel uses kit brass gradient;
+     face is the inset ::before — never a flat mustard/soft-gold fill (DECISIONS 4e3607b). */
+  --gl-brass-surface: var(--vls-brass-gradient);
   --gl-brass-bevel:
-    0 3px 0 #130a03,
-    0 4px 8px rgba(0,0,0,.55),
-    inset 2px 2px 0 var(--vls-brass-highlight),
-    inset -2px -2px 0 var(--vls-brass-shadow),
-    inset 0 0 0 4px var(--vls-brass-mid),
-    inset 0 0 0 5px #8a6320; /* dark brass lip, not soft-gold */
+    0 2px 0 #1a0e06,
+    3px 5px 12px rgba(0,0,0,.5),
+    inset 0 1px 0 rgba(255,241,184,.55),
+    inset 0 -1px 0 rgba(61,39,6,.65);
+  --gl-brass-face:
+    repeating-linear-gradient(90deg,
+      rgba(255,241,184,.07) 0 1px,
+      transparent 1px 3px),
+    linear-gradient(160deg,
+      #8a6320 0%,
+      #c8922e 18%,
+      #d9a943 36%,
+      #b88228 62%,
+      #6b4a14 84%,
+      #3d2706 100%);
+  --gl-brass-face-shadow:
+    inset 0 2px 3px rgba(61,39,6,.5),
+    inset 0 -1px 1px rgba(255,241,184,.35),
+    inset 1px 0 2px rgba(255,241,184,.12),
+    0 0 0 1px rgba(61,39,6,.4);
   --gl-face-inset: 10px; /* desktop; phone raises to 16px clear face */
-  --gl-bevel-ring: 7px;  /* ::before inset ≈ bevel width used in face-clearance measure */
+  --gl-bevel-ring: 7px;  /* ::before inset ≈ bevel width; labels stay inside face (a10436a) */
   --gl-ivory: #f8eed6;
   --gl-ivory-deep: #f1e3c2;
   /* Single ivory surface hook — flat cream for now; kit ivory drops in here after owner sign-off (Labs Manager). */
   --gl-ivory-surface: linear-gradient(180deg, var(--gl-ivory) 0%, var(--gl-ivory-deep) 100%);
-  /* Shared stepped walnut+brass bezel for ivory plaques (hero / prose / foot / captions) */
+  /* Ivory plaque frame: thin brass/walnut bezel rings + OUTER cast shadow only
+     (light from top-left → shadow falls outside bottom+right). No inset depth fakes —
+     owner note 2026-11-05. Kit screwed-plaque may replace this later. */
   --gl-ivory-plaque-shadow:
-    0 0 0 3px #1a0e06,
-    0 0 0 6px #2b170b,
-    0 0 0 7px #0e0703,
-    0 0 0 9px #8a6320,
-    0 0 0 10px #4a300a,
-    0 0 0 12px #1a0e06,
-    0 8px 22px rgba(0,0,0,.5),
-    inset 0 2px 3px rgba(255,255,255,.35),
-    inset 0 -2px 4px rgba(61,39,6,.22),
-    inset 0 0 0 1px rgba(107,77,33,.55);
+    0 0 0 1px #1a0e06,
+    0 0 0 2px #8a6320,
+    0 0 0 3px #3d2706,
+    0 0 0 4px #1a0e06,
+    3px 5px 0 rgba(0,0,0,.2),
+    6px 12px 20px rgba(0,0,0,.48);
   --gl-wood: #2b170b;
   --gl-wood-deep: #1a0e06;
   --gl-wood-light: #3a2110;
@@ -79,6 +90,23 @@ body{margin:0;min-height:100vh;color:var(--vls-brass-text);font:18px/1.6 var(--v
 html[data-theme="bw"] body,
 body[data-theme="bw"]{
  background:#fff;background-image:none;color:#111;
+}
+/* Truly B&W: raster/colour imagery goes greyscale (icons, thumbs, gallery, brand mark) */
+html[data-theme="bw"] img,
+html[data-theme="bw"] svg,
+html[data-theme="bw"] .bigicon,
+html[data-theme="bw"] .icon,
+html[data-theme="bw"] .shot,
+html[data-theme="bw"] .gallery,
+html[data-theme="bw"] .brand img,
+body[data-theme="bw"] img,
+body[data-theme="bw"] svg,
+body[data-theme="bw"] .bigicon,
+body[data-theme="bw"] .icon,
+body[data-theme="bw"] .shot,
+body[data-theme="bw"] .gallery,
+body[data-theme="bw"] .brand img{
+  filter:grayscale(1);
 }
 html[data-theme="bw"] .bar,
 body[data-theme="bw"] .bar{
@@ -132,6 +160,32 @@ body[data-theme="bw"] main > section > h2{background:#fff;border:2px solid #000;
 a{color:var(--vls-brass-bright)}a:hover{color:var(--vls-brass-highlight)}
 :focus-visible{outline:3px solid #8a6320;outline-offset:2px}
 .skip{position:absolute;left:-999px;top:0;background:var(--vls-paper);color:var(--vls-ink);padding:10px}.skip:focus{left:8px;z-index:9}
+
+
+/* Shared plaque class hook — Labs Manager kit screwed-plaque component drops in here later.
+   Brass/ivory variants carry today's material recipes; legacy selectors are aliased below
+   so a single class swap can adopt the kit frame without rewriting pages. */
+.gl-plaque{position:relative;border-radius:3px}
+.gl-plaque--brass{
+  background:var(--gl-brass-face);
+  color:var(--vls-engraving);
+  border:1px solid var(--vls-brass-dark);
+  box-shadow:var(--gl-brass-bevel), var(--gl-brass-face-shadow);
+  font-family:var(--vls-font-engraved);
+  text-shadow:
+    0 1px 0 rgba(255,241,184,.55),
+    0 -.5px 0 rgba(26,14,6,.35);
+}
+.gl-plaque--ivory{
+  background:var(--gl-ivory-surface);
+  color:var(--vls-engraving);
+  border:1px solid #3d2706;
+  box-shadow:var(--gl-ivory-plaque-shadow);
+  font-family:var(--vls-font-ivory);
+}
+/* Legacy aliases (kit drop-in targets the same materials):
+   brass → .btn:not(.ghost):not(.store):not(.soon), main > section > h2
+   ivory → .btn.ghost, .hero, .plaquebox, .foot, .gamehead, main prose, .cardbody, figcaption */
 
 /* Ivory surface class — same hook as --gl-ivory-surface for non-CSS-var consumers */
 .gl-ivory-surface{background:var(--gl-ivory-surface);color:var(--vls-engraving)}
@@ -193,29 +247,47 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
   position:relative;
   display:inline-flex;align-items:center;justify-content:center;gap:6px;
   min-height:44px;min-width:44px;
-  padding:calc(var(--gl-face-inset) + 2px) calc(var(--gl-face-inset) + 10px);
-  border-radius:2px;border:1px solid var(--vls-brass-dark);
-  background:var(--gl-brass-surface);
+  /* ≥8px clear face above/below past bevel ring (hero matches cards) */
+  padding:calc(var(--gl-bevel-ring) + 8px) calc(var(--gl-bevel-ring) + var(--gl-face-inset));
+  border-radius:3px;border:1px solid var(--vls-brass-dark);
+  /* Lacquered face is the element background so labels stay on top (no opaque ::before cover) */
+  background:var(--gl-brass-face);
   color:var(--vls-engraving);
-  font:600 15px/1.25 var(--vls-font-engraved);
-  letter-spacing:.015em;text-transform:uppercase;text-decoration:none; /* Engraving CC already wide (765cd83) */
-  box-shadow:var(--gl-brass-bevel);
-  text-shadow:0 1px 0 rgba(255,230,166,.55);
+  font:700 15px/1.25 var(--vls-font-engraved);
+  letter-spacing:.04em;text-transform:uppercase;text-decoration:none;
+  box-shadow:
+    var(--gl-brass-bevel),
+    var(--gl-brass-face-shadow);
+  /* engraved into the face (kit recipe) — text stays on face, never on bevel */
+  text-shadow:
+    0 1px 0 rgba(255,241,184,.55),
+    0 -.5px 0 rgba(26,14,6,.35);
   cursor:pointer;
   overflow:hidden;
-  white-space:nowrap;overflow-wrap:normal;word-break:keep-all; /* labels stay one line; Engraving CC is wide */
+  white-space:nowrap;overflow-wrap:normal;word-break:keep-all;
   max-width:100%;
 }
 .btn::before{
-  content:"";position:absolute;inset:var(--gl-bevel-ring);border:1px solid rgba(84,59,22,.45);
-  box-shadow:0 1px 0 rgba(245,216,138,.45);pointer-events:none;border-radius:1px;
+  /* thin dark bevel lip only — transparent so engraved text stays visible on the face */
+  content:"";position:absolute;inset:var(--gl-bevel-ring);border-radius:2px;
+  background:transparent;
+  border:1px solid rgba(61,39,6,.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255,241,184,.3),
+    inset 0 -1px 0 rgba(61,39,6,.35);
+  pointer-events:none;
 }
+.btn > *{position:relative;z-index:1}
 .btn:hover{color:var(--vls-engraving);filter:brightness(1.04)}
 .btn:active{
   filter:brightness(.94);
   box-shadow:0 1px 0 #130a03, inset 2px 2px 3px rgba(57,37,14,.75), inset -1px -1px 0 #f5d88a, inset 0 0 0 4px #876024;
 }
-.btn.big{font-size:17px;min-height:54px;padding:calc(var(--gl-face-inset) + 4px) calc(var(--gl-face-inset) + 16px);letter-spacing:.02em}
+.btn.big{
+  font-size:17px;min-height:54px;
+  padding:calc(var(--gl-bevel-ring) + 8px) calc(var(--gl-bevel-ring) + var(--gl-face-inset) + 6px);
+  letter-spacing:.04em;
+}
 .btn small{
   margin-left:4px;font-weight:500;font-style:normal;font-size:.78em;
   letter-spacing:.04em;text-transform:uppercase;color:var(--vls-engraving);
@@ -223,19 +295,25 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 }
 
 .btn.ghost{
-  background:var(--gl-ivory-surface);
+  background:var(--gl-ivory-surface); /* flat cream; kit ivory later via same hook */
   color:var(--vls-engraving); /* dark ink on ivory */
-  /* Labs Manager: only brass is engraved — ivory ghost buttons use ivory typeface */
   font-family:var(--vls-font-ivory);
-  border:2px solid #1a0e06; /* deep walnut rim — no soft-gold outline */
+  font-weight:600;
+  /* thin brass bezel + fine inked rule (border) — not a heavy black double border.
+     Shadow is OUTER cast only (bottom+right); no inset depth fakes. */
+  border:1px solid var(--vls-brass-mid);
   box-shadow:
-    0 2px 4px rgba(0,0,0,.45),
-    0 0 0 1px #0e0703,
-    inset 0 0 0 1px rgba(42,24,3,.25),
-    inset 0 1px 0 rgba(255,255,255,.3);
+    0 0 0 1px var(--vls-brass-dark),
+    2px 3px 0 rgba(0,0,0,.18),
+    4px 7px 12px rgba(0,0,0,.38);
   text-shadow:none;filter:none;
 }
-.btn.ghost::before{border-color:rgba(42,24,3,.28);box-shadow:none}
+.btn.ghost::before{
+  /* fine inked rule on the ivory face — border only, no inset shadow depth */
+  background:transparent;
+  border:1px solid rgba(42,24,3,.28);
+  box-shadow:none;
+}
 .btn.ghost:hover{filter:brightness(1.03);color:var(--vls-engraving)}
 
 .stores{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
@@ -292,7 +370,9 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
   position:relative;
   background:var(--gl-ivory-surface);
   color:var(--vls-engraving);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 0 0 1px rgba(107,77,33,.35);
+  /* ivory face inside the card frame — no inset depth; fine inked rule via border */
+  border-top:1px solid rgba(107,77,33,.35);
+  box-shadow:none;
   min-height:0;
 }
 .cardbody .icon{
@@ -368,7 +448,8 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
     0 0 0 1px #2b170b,
     0 0 0 2px #8a6320,
     0 0 0 3px #1a0e06,
-    0 2px 6px rgba(0,0,0,.35);
+    2px 3px 0 rgba(0,0,0,.18),
+    4px 8px 14px rgba(0,0,0,.4);
 }
 /* Footer as a small centered ivory plate (typeset on ivory) */
 .foot{
@@ -653,11 +734,13 @@ main > section > h2 {
   font:600 16px/1.2 var(--vls-font-engraved);
   letter-spacing:.06em;text-transform:uppercase;
   color:var(--vls-engraving);
-  background:var(--gl-brass-surface);
+  background:var(--gl-brass-face);
   border:1px solid var(--vls-brass-dark);
   border-radius:2px;
-  box-shadow:var(--gl-brass-bevel);
-  text-shadow:0 1px 0 rgba(255,230,166,.55);
+  box-shadow:var(--gl-brass-bevel), var(--gl-brass-face-shadow);
+  text-shadow:
+    0 1px 0 rgba(255,241,184,.55),
+    0 -.5px 0 rgba(26,14,6,.35);
 }
 html[data-theme="bw"] .gamehead,
 html[data-theme="bw"] main > .prose,
