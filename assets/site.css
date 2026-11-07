@@ -143,8 +143,6 @@ html[data-theme="bw"] .btn::before,
 html[data-theme="bw"] .btn::after,
 body[data-theme="bw"] .btn::before,
 body[data-theme="bw"] .btn::after{display:none}
-html[data-theme="bw"] .btn.ghost,
-body[data-theme="bw"] .btn.ghost{background:transparent}
 html[data-theme="bw"] .card,
 body[data-theme="bw"] .card{
  background:#fff;border:2px solid #000;box-shadow:none;color:#000
@@ -356,7 +354,9 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
     0 -.5px 0 rgba(26,14,6,.35);
   cursor:pointer;
   overflow:hidden;
-  white-space:nowrap;overflow-wrap:normal;word-break:keep-all;
+  /* Wrap inside the face padding when the engraving is wider than the plate.
+     nowrap paints the label across the bevel. A wide plate stays one line. */
+  white-space:normal;text-align:center;overflow-wrap:normal;word-break:keep-all;
   max-width:100%;
 }
 .btn::before{
@@ -386,27 +386,10 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
   opacity:.9;max-width:100%;
 }
 
-.btn.ghost{
-  background:var(--vls-ivory-base, var(--gl-ivory-surface)); /* kit ivory via data-vls-ivory */
-  color:var(--vls-engraving); /* dark ink on ivory */
-  font-family:var(--vls-font-ivory);
-  font-weight:600;
-  /* thin brass bezel + fine inked rule (border) — not a heavy black double border.
-     Shadow is OUTER cast only (bottom+right); no inset depth fakes. */
-  border:1px solid var(--vls-brass-mid);
-  box-shadow:
-    0 0 0 1px var(--vls-brass-dark),
-    2px 3px 0 rgba(0,0,0,.18),
-    4px 7px 12px rgba(0,0,0,.38);
-  text-shadow:none;filter:none;
-}
-.btn.ghost::before{
-  /* fine inked rule on the ivory face — border only, no inset shadow depth */
-  background:transparent;
-  border:1px solid rgba(42,24,3,.28);
-  box-shadow:none;
-}
-.btn.ghost:hover{filter:brightness(1.03);color:var(--vls-engraving)}
+/* .btn.ghost is not a second material. Cream + Old Standard on a button, and
+   stamping data-vls-ivory onto it, rotated this same ::before through the label.
+   Ghost keeps the brass .btn face, Engraving CC, and the unrotated bevel lip.
+   Ivory plaques stay .vls-plaque--ivory. */
 
 .stores{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 .btn.store,.btn.soon:not(.store){
@@ -491,7 +474,6 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
   padding-bottom:calc(var(--gl-bevel-ring) + 9px);
   padding-left:calc(var(--gl-bevel-ring) + 10px);
   padding-right:calc(var(--gl-bevel-ring) + 10px);
-  white-space:nowrap;
   justify-content:center;
 }
 @media (max-width:600px){
@@ -593,17 +575,10 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
   text-shadow:none;
 }
 .nbhead .btn{
-  /* brass chrome buttons stay engraved */
+  /* brass chrome on the notebook head stays engraved, including a leftover ghost class */
   font-family:var(--vls-font-engraved);
   text-transform:uppercase;
   letter-spacing:.03em;
-  font-weight:600;
-}
-.nbhead .btn.ghost{
-  /* ivory ghost on paper still ivory typeface (not engraved) */
-  font-family:var(--vls-font-ivory);
-  text-transform:none;
-  letter-spacing:.02em;
   font-weight:600;
 }
 .vls-notebook code, .vls-notebook kbd, .vls-notebook samp{
@@ -787,14 +762,6 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 }
 .hero .eyebrow{color:#6b4a2e;font-family:var(--vls-font-ivory);font-style:italic}
 .hero .lede{color:#3b2414;font-family:var(--vls-font-ivory)}
-/* Same brass .btn as "See the games". Engraving CC of this label is wider
-   than the phone plate's content box, and nowrap paints it across the bevel.
-   Wrapping uses the button's own face padding, so the engraving stays on the
-   face. Where the plate is wide enough (desktop), it stays one line. */
-.hero .row a.btn[href="notebook/"]{
-  white-space:normal;
-  text-align:center;
-}
 .hero h1,.hero h2{color:#2a1803;font-family:var(--vls-font-ivory);font-weight:700}
 html[data-theme="bw"] .hero,
 body[data-theme="bw"] .hero{
@@ -1118,13 +1085,11 @@ body[data-theme="bw"] .feedback-status--error{color:#000!important;text-decorati
 .gl-404-actions .btn{
   margin:0 auto;
   padding:calc(var(--gl-bevel-ring) + 10px) calc(var(--gl-bevel-ring) + 18px);
-  white-space:nowrap!important;
   max-width:100%;
 }
 .gl-404-actions .btn > span{
   display:inline-block;
   margin:0 2px;
-  white-space:nowrap!important;
 }
 html[data-theme="bw"] .gl-404-plaque,
 body[data-theme="bw"] .gl-404-plaque{

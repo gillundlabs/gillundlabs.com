@@ -19,13 +19,9 @@
   function stampIvory(root) {
     var scope = root && root.querySelectorAll ? root : document;
     scope.querySelectorAll('.vls-plaque--ivory').forEach(function (el, i) {
+      if (el.classList.contains('btn')) return; /* buttons are brass, not ivory plates */
       if (!el.getAttribute('data-vls-ivory')) {
         el.setAttribute('data-vls-ivory', el.id || ('site/ivory/' + (el.className.match(/\b(hero|cardbody|foot|gamehead|prose|plaquebox|feedback-plaque|gl-gate-plaque)\b/) || ['block'])[0] + '/' + i));
-      }
-    });
-    scope.querySelectorAll('.btn.ghost, .btn[data-vls-ivory]').forEach(function (el, i) {
-      if (!el.getAttribute('data-vls-ivory')) {
-        el.setAttribute('data-vls-ivory', el.id || ('site/btn-ghost/' + i + '/' + (el.textContent || '').trim().slice(0, 24)));
       }
     });
   }
