@@ -787,6 +787,14 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 }
 .hero .eyebrow{color:#6b4a2e;font-family:var(--vls-font-ivory);font-style:italic}
 .hero .lede{color:#3b2414;font-family:var(--vls-font-ivory)}
+/* Same brass .btn as "See the games". Engraving CC of this label is wider
+   than the phone plate's content box, and nowrap paints it across the bevel.
+   Wrapping uses the button's own face padding, so the engraving stays on the
+   face. Where the plate is wide enough (desktop), it stays one line. */
+.hero .row a.btn[href="notebook/"]{
+  white-space:normal;
+  text-align:center;
+}
 .hero h1,.hero h2{color:#2a1803;font-family:var(--vls-font-ivory);font-weight:700}
 html[data-theme="bw"] .hero,
 body[data-theme="bw"] .hero{
