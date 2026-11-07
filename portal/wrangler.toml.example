@@ -1,0 +1,21 @@
+# Example only. Do not deploy from this pull request.
+# A Worker route on gillundlabs.com requires a DNS decision the owner has not made,
+# and the free Worker plan cannot run the password check (10 ms CPU).
+# See portal/README.md. Leave every binding empty until that decision.
+
+name = "gillundlabs-test-portal"
+main = "worker.js"
+compatibility_date = "2026-11-07"
+workers_dev = false
+
+# [[routes]]
+# pattern = "gillundlabs.com/test*"
+# zone_name = "gillundlabs.com"
+
+# [[kv_namespaces]]
+# binding = "PORTAL_RATE"
+# id = ""
+
+# [[r2_buckets]]
+# binding = "PORTAL_PACKAGES"
+# bucket_name = "gillundlabs-test-packages"

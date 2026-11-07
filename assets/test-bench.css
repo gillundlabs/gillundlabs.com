@@ -1,0 +1,37 @@
+/* Testing bench only. Public pages do not link this file.
+   Fonts stay on the kit tokens. No separate face names. */
+
+.gl-bench .gl-404 {
+  min-height: 0;
+  padding: 12px 0 8px;
+}
+.gl-bench-plaque .feedback-form,
+.gl-bench-plaque .feedback-field,
+.gl-bench-plaque .feedback-field label,
+.gl-bench-plaque .feedback-field input {
+  text-align: left;
+}
+.gl-bench-plaque .feedback-form .btn {
+  width: 100%;
+  margin-top: 4px;
+}
+.gl-bench-mark {
+  font-family: var(--vls-font-engraved);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--vls-brass-dark, #3d2706);
+}
+.gl-bench-card .shot {
+  cursor: default;
+}
+.gl-bench-note {
+  margin-top: 8px;
+}
+html[data-theme="bw"] .gl-bench-mark,
+body[data-theme="bw"] .gl-bench-mark {
+  color: #000;
+  font-family: var(--vls-font-sans);
+}

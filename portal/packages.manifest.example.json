@@ -1,0 +1,14 @@
+{
+  "maxwells-demon": {
+    "packageId": "md-test-36ec3cdea1",
+    "sha256": ""
+  },
+  "vacuum-maze": {
+    "packageId": "vm-test-full-a4a51186fe",
+    "sha256": ""
+  },
+  "fantastic-apparatus": {
+    "packageId": "fa-standard-full-v1-4322acb",
+    "sha256": ""
+  }
+}
