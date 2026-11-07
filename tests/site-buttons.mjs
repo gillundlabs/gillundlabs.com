@@ -10,7 +10,7 @@ const BASE = process.argv[2] || 'http://127.0.0.1:8765';
 const OUT = process.argv[3] || '/tmp/gl-buttons';
 const PORT = 9341;
 const ROUTES = ['/', '/about/', '/games/maxwells-demon/', '/games/vacuum-maze/', '/games/fantastic-apparatus/', '/notebook/', '/404.html'];
-const WIDTHS = [320, 360, 390, 1280];
+const WIDTHS = [320, 360, 390, 393, 1280];
 
 await mkdir(OUT, { recursive: true });
 const chrome = spawn('google-chrome', [
@@ -127,6 +127,37 @@ try {
           /* brass section labels are engraved; ivory plates are Old Standard */
           if (p.className.includes('plaque--ivory') && !p.className.includes('plaque--brass')) {
             fail(tag + ' ivory plaque font ' + p.font + ' ' + p.className);
+          }
+        }
+      }
+      if (route === '/') {
+        const cards = await send('Runtime.evaluate', {
+          returnByValue: true,
+          expression: `(() => {
+            const hero = document.querySelector('.hero');
+            const rows = [...document.querySelectorAll('.cardbody .row')].map((row) =>
+              [...row.querySelectorAll('.btn')].map((el) => {
+                const r = el.getBoundingClientRect();
+                return { t: el.innerText.replace(/\\s+/g, ' ').trim(), x: r.x, y: r.y };
+              }));
+            return {
+              eyebrow: !!document.querySelector('.hero .eyebrow'),
+              hero: hero ? hero.innerText.replace(/\\s+/g, ' ').trim().slice(0, 48) : '',
+              overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+              rows,
+            };
+          })()`,
+        });
+        const c = cards.result.value;
+        if (!c) fail(tag + ' card probe failed');
+        else {
+          if (c.eyebrow || /Gillund.s Laboratory/.test(c.hero)) fail(tag + ' hero still shows the plaque title: ' + c.hero);
+          if (c.overflow) fail(tag + ' homepage overflows horizontally');
+          if (c.rows.length !== 3) fail(tag + ' expected 3 card pairs, got ' + c.rows.length);
+          for (const row of c.rows) {
+            if (row.length !== 2 || Math.abs(row[0].y - row[1].y) > 1 || !(row[1].x > row[0].x)) {
+              fail(tag + ' Play/Details not side by side ' + JSON.stringify(row));
+            }
           }
         }
       }
