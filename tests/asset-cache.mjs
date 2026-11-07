@@ -60,14 +60,14 @@ function assertFrozenUnchanged() {
   ];
   for (const rel of frozen) {
     const text = readFileSync(new URL('../' + rel, import.meta.url), 'utf8');
-    if (text.includes('v=24fe294')) throw new Error(rel + ' was cache-busted; frozen HTML must stay immutable');
+    if (text.includes('v=24fe294') || text.includes('v=20261107c')) throw new Error(rel + ' was cache-busted; frozen HTML must stay immutable');
   }
   const owned = ['index.html', 'about/index.html', 'notebook/index.html', '404.html',
     'games/maxwells-demon/index.html', 'games/vacuum-maze/index.html', 'games/fantastic-apparatus/index.html'];
   for (const rel of owned) {
     const text = readFileSync(new URL('../' + rel, import.meta.url), 'utf8');
-    if (!text.includes('site.css?v=24fe294') || !text.includes('plaque-boot.js?v=24fe294')) {
-      throw new Error(rel + ' is missing the asset version');
+    if (!text.includes('site.css?v=20261107c') || !text.includes('plaque-boot.js?v=24fe294')) {
+      throw new Error(rel + ' is missing the current asset version');
     }
   }
 }

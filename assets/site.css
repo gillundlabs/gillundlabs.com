@@ -458,34 +458,24 @@ h1{font-size:clamp(32px,6vw,54px);margin:.2em 0}
 .cardbody h3{margin:4px 0;font-size:22px;color:#2a1803;letter-spacing:.02em;font-family:var(--vls-font-ivory);font-weight:700}
 .cardbody h3 a{text-decoration:none;color:inherit}
 .cardbody p{color:#3b2414;margin:.4em 0 .8em;font-family:var(--vls-font-ivory)}
-.cardbody > .row{
-  margin-top:auto; /* pin buttons to the bottom of equal-height cards */
+/* Plaque chrome wraps this row in .vls-plaque__label, so it is not a direct child.
+   Play and Details stay side by side. DETAILS in Engraving CC is ~97px; a 320px
+   card row is 220px, so the phone 18px face inset would drop Details under Play.
+   Horizontal padding is the bevel plus 4px, which keeps the words off the bevel. */
+.cardbody .row{
+  margin-top:auto;
   padding-top:10px;
   clear:both;
-  flex-wrap:nowrap; /* desktop: PLAY + DETAILS side by side when they fit */
+  flex-wrap:nowrap;
   gap:8px;
 }
-.cardbody > .row .btn{
-  flex:1 1 auto;
-  font-size:14px; /* Engraving CC via --vls-font-engraved */
+.cardbody .row .btn{
+  flex:0 0 auto;
+  font-size:14px;
   letter-spacing:.02em;
-  /* >=8px clear face above/below past bevel ring */
-  padding-top:calc(var(--gl-bevel-ring) + 9px);
-  padding-bottom:calc(var(--gl-bevel-ring) + 9px);
-  padding-left:calc(var(--gl-bevel-ring) + 10px);
-  padding-right:calc(var(--gl-bevel-ring) + 10px);
+  white-space:nowrap;
+  padding:calc(var(--gl-bevel-ring) + 8px) calc(var(--gl-bevel-ring) + 4px);
   justify-content:center;
-}
-@media (max-width:600px){
-  .cardbody > .row{flex-wrap:wrap}
-  .cardbody > .row .btn{
-    flex:1 1 100%;
-    font-size:14px;
-    padding-top:calc(var(--gl-bevel-ring) + 9px);
-    padding-bottom:calc(var(--gl-bevel-ring) + 9px);
-    padding-left:calc(var(--gl-bevel-ring) + var(--gl-face-inset));
-    padding-right:calc(var(--gl-bevel-ring) + var(--gl-face-inset));
-  }
 }
 
 .gamehead{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;padding-top:12px}
