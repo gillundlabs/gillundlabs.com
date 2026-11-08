@@ -102,7 +102,8 @@ try {
       if (i === 39) throw new Error('game did not start');
     }
     await evalJs(`MDScale.set(${view.ppi}, ${JSON.stringify(view.source)})`);
-    const expectCss = Math.min(view.w > view.h ? view.w - 420 : view.w, view.h * 1000 / 680);
+    const gutter = view.w > view.h && view.w > 720 ? 420 : 0;
+    const expectCss = Math.min(Math.max(0, view.w - gutter), view.h * 1000 / 680);
     for (let i = 0; i < 30; i++) {
       const w = await evalJs("document.getElementById('game').getBoundingClientRect().width");
       if (Math.abs(w - expectCss) < 1.5) break;
@@ -141,7 +142,8 @@ try {
           expectT: H.startT * c.factor,
         };
       })()`);
-      const cssW = Math.min(view.w > view.h ? view.w - 420 : view.w, view.h * 1000 / 680);
+      const gutter = view.w > view.h && view.w > 720 ? 420 : 0;
+      const cssW = Math.min(Math.max(0, view.w - gutter), view.h * 1000 / 680);
       const mpp = (cssW / 1000) * (0.0254 / view.ppi);
       const L = 880 * mpp;
       if (Math.abs(sample.canvas.w - cssW) > 2) fail(`${theme} ${view.name} canvas ${sample.canvas.w} != stage ${cssW}`);
@@ -193,11 +195,21 @@ try {
   await sleep(100);
   await evalJs("document.getElementById('b-again').click()");
   await sleep(250);
-  const after = await evalJs(`({ T: MDGameLive.gas()[0].T, f: MDGameLive.crossing().runFactor, hud: MDPhysics.formatT(MDGameLive.gas()[0].T, 2) })`);
+  const after = await evalJs(`({ T: MDGameLive.gas()[0].T, f: MDGameLive.crossing().runFactor, hud: MDPhysics.formatT(MDGameLive.gas()[0].T) })`);
   if (Math.abs(after.T - before.T) / before.T < 0.2) fail('the next fresh run did not pick up the new width');
   if (Math.abs(after.f - mid.screen) / mid.screen > 1e-6) fail('fresh run factor is not the resized screen');
   await shot('maxwell-fresh-run-after-resize-desktop-victorian');
   console.log('resize hold', (before.T * 1e9).toFixed(3), 'nK ->', (mid.T * 1e9).toFixed(3), 'nK; next run', after.hud);
+  await boot({ name: 'tiny-landscape', w: 400, h: 300, ppi: 100, source: 'monitor' }, 'victorian');
+  const tiny = await evalJs(`(() => {
+    const box = document.getElementById('game').getBoundingClientRect();
+    const c = MDGameLive.crossing();
+    return { viewportWidth: 400, viewportHeight: 300, canvasCssWidth: box.width, canvasCssHeight: box.height, chamberWidthMm: c.L * 1000 };
+  })()`);
+  if (!(tiny.canvasCssWidth > 100)) fail(`400×300 landscape stage collapsed to ${tiny.canvasCssWidth}`);
+  const tinyExpect = 880 * (tiny.canvasCssWidth / 1000) * (0.0254 / 100) * 1000;
+  if (Math.abs(tiny.chamberWidthMm - tinyExpect) / tinyExpect > 0.02) fail(`400×300 chamber ${tiny.chamberWidthMm} mm is not the drawn width`);
+  console.log('tiny landscape', tiny.canvasCssWidth.toFixed(1), 'css px, L', tiny.chamberWidthMm.toFixed(2), 'mm');
   const viewsOnly = readouts.filter((r) => r.temperatureReadout);
   await writeFile(`${OUT}/maxwell-crossing-readouts.json`, JSON.stringify({
     game: "Maxwell's Demon",
@@ -205,6 +217,7 @@ try {
     gas: 'hydrogen',
     note: 'displayedTemperature is the exact string drawn on the canvas (there is no DOM temperature node). numericTemperatureNK is the physical value. roundedSummaryNotDisplayed is formatT(T, 2) and is not the HUD string.',
     views: viewsOnly,
+    smallLandscape: tiny,
     resizeHold: { T_nK: before.T * 1e9, T_after_resize_nK: mid.T * 1e9, freshRunReadout: after.hud, fresh_nK: after.T * 1e9 },
     failures,
   }, null, 2));

@@ -320,6 +320,9 @@
   @media (orientation: landscape) {
     #stage { width: min(calc(100vw - var(--sal) - var(--sar) - 420px), calc((var(--vh) - var(--sat) - var(--sab)) * 1000 / 680)); }
   }
+  @media (orientation: landscape) and (max-width: 720px) {
+    #stage { width: min(calc(100vw - var(--sal) - var(--sar)), calc((var(--vh) - var(--sat) - var(--sab)) * 1000 / 680)); }
+  }
   @media (orientation: portrait) {
     #controls { top: auto; bottom: calc(var(--sab) + 56px); right: 50%; transform: translateX(50%); flex-direction: row; width: auto; }
     #controls button { min-width: 84px; width: auto; max-width: min(240px, 70vw); white-space: normal !important; overflow-wrap: anywhere !important; }
@@ -1904,6 +1907,33 @@
     return lengthM / REF_CROSSING_M;
   }
   function crossingFactor(lengthM) { const p = crossingPace(lengthM); return p * p; }
+  function stageMetersPerPx(cssWidth, cssPerInch) {
+    if (!(cssWidth > 0) || !(cssPerInch > 0) || !isFinite(cssWidth) || !isFinite(cssPerInch)) return null;
+    return (cssWidth / 1000) * (0.0254 / cssPerInch);
+  }
+  function referenceEquivalent(T, factor) {
+    const f = factor > 0 && isFinite(factor) ? factor : 1;
+    return T / f;
+  }
+  // Records are the peak temperature divided by this run's fresh-start factor:
+  // the same play, stated as a temperature in the reference chamber. The fresh
+  // start itself is not a performance. Saved numbers are left as stored.
+  function performanceRecord(peakT, startT, factor, saved) {
+    const peakEq = referenceEquivalent(peakT, factor);
+    const startEq = referenceEquivalent(startT, factor);
+    const played = peakT > startT * (1 + 1e-12);
+    const prev = saved > 0 && isFinite(saved) ? saved : 0;
+    const beat = played && peakEq > prev;
+    return { peakEq, startEq, played, beat, stored: beat ? peakEq : prev };
+  }
+  // The default wall kick is a heating step in the reference chamber, so it
+  // scales with (L/L_ref)² and the same bounces reach the next element. Any
+  // other setting is the absolute temperature the player chose.
+  function heatingKick(settingT, presetT, factor) {
+    const f = factor > 0 && isFinite(factor) ? factor : 1;
+    const preset = !(settingT > 0) || !(presetT > 0) || Math.abs(settingT / presetT - 1) < 1e-9;
+    return { preset, mean: preset ? presetT * f : settingT };
+  }
 
   const SHELL_CAP = [2, 8, 8, 18];
   function shellsFor(Z) {
@@ -2050,6 +2080,7 @@
   return {
     DEFAULT_METERS_PER_PX, K_B, AMU, TIME_SCALE, START_SPEED, T_SCALE, GRAVITY, GRAVITY_LABEL, pressure, BEST_LAB_VACUUM_PA, UNLOCK_MARGIN, SHELL_CAP, setMetersPerPx, setMagnification, formatLength,
     REF_PX_PER_S, REF_CHAMBER_PX, REF_CROSSING_M, REF_CROSSING_S, crossingPace, crossingFactor, formatMetresPerSecond,
+    stageMetersPerPx, referenceEquivalent, performanceRecord, heatingKick,
     get BASE_METERS_PER_PX() { return BASE_MPP; }, get CHAMBER_MAG() { return MAG; },
     get METERS_PER_PX() { return METERS_PER_PX; }, get START_SPEED_PX() { return START_SPEED / METERS_PER_PX; },
     ELEMENTS, EXIT_LAWS, DEFAULT_EXIT_LAW,
@@ -5556,10 +5587,10 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
       body: `<p>A wall is not still: its atoms vibrate at the wall's own temperature. An atom that sits on it long enough trades energy with those vibrations until it shares that temperature. When it leaves, it carries the wall's temperature away, whatever it arrived with.</p>
         <p>In 1911 Martin Knudsen measured how complete this trade is with the <i>accommodation coefficient</i> α = (E<sub>out</sub> − E<sub>in</sub>) / (E<sub>wall</sub> − E<sub>in</sub>). α = 1 means the atom leaves fully at the wall temperature; α = 0 means it keeps its own energy. A cold atom on a warm wall heats up, and a hot atom on a cold wall cools down. On average the atom is pulled toward the wall temperature, not pushed past it.</p>
         <p>That is why real ultracold atoms never touch anything. Lab walls are at room temperature, or a few kelvin inside a cryostat. One fully accommodating touch would make a ${GN.tH} atom about ${GN.cryo} times hotter in a 4 K cryostat, and about ${GN.room} times hotter at room temperature. Instead, atoms are held by magnetic fields or beams of light in the middle of the vacuum.</p>`,
-      model: "In the game, every visit to a wall or paddle adds a random temperature kick, exponentially distributed with an average equal to the 'wall temperature' setting. The atom never cools. Real walls do the opposite of a ratchet: they drag the atom toward their own temperature. The game's ratchet is where your score comes from. And an atom stuck to your paddle rides along with it, but leaves with none of the paddle's own velocity: a real moving wall would hand it some (see \"Moving walls and pistons\").",
+      model: "In the game, every visit to a wall or paddle adds a random temperature kick, exponentially distributed. The default average is 20 nK in the reference chamber and scales with the chamber width, so the same number of bounces reaches the next element. A temperature you set yourself stays that absolute temperature on every screen. The atom never cools. Real walls do the opposite of a ratchet: they drag the atom toward their own temperature. The game's ratchet is where your score comes from. And an atom stuck to your paddle rides along with it, but leaves with none of the paddle's own velocity: a real moving wall would hand it some (see \"Moving walls and pistons\").",
       cf: 'M. Knudsen, "Die molekulare Wärmeleitung der Gase und der Akkommodationskoeffizient", <i>Ann. Phys.</i> 339(4), 593–656 (1911); Thermopedia, "Accommodation coefficient" (thermopedia.com).' },
     { id: 'collisions', title: 'Atoms bumping into atoms', toc: 'Atoms bumping', date: '1995', sketch: sketchSWave, h: 280, live: true, alt: 'Sketch: two atoms approach the centre of mass from opposite sides; afterwards they leave back to back along a randomly chosen direction, drawn again every second.',
-      body: `<p>At everyday temperatures, two atoms collide a bit like billiard balls. Ultracold, quantum mechanics takes over. Each atom behaves as a wave with de Broglie wavelength λ = h / (mv). For hydrogen at ${GN.tH}, where the game starts it, moving at the matching root-mean-square speed, that is about ${GN.lamDB}, thousands of times larger than the nanometre-scale reach of the forces between atoms. (Other pages quote the <i>thermal</i> wavelength h / √(2π m k<sub>B</sub>T), the standard yardstick for a whole gas. It is a different definition, smaller by √(2π/3) ≈ 1.45: about ${GN.lamTh} at the same temperature. Both are right; they answer different questions.)</p>
+      body: `<p>At everyday temperatures, two atoms collide a bit like billiard balls. Ultracold, quantum mechanics takes over. Each atom behaves as a wave with de Broglie wavelength λ = h / (mv). For hydrogen at ${GN.tH} in the reference chamber, moving at that fresh-start speed, λ is about ${GN.lamDB}. On another chamber the fresh start is hotter or colder with the square of the width, and this wavelength changes with it. It is thousands of times larger than the nanometre-scale reach of the forces between atoms. (Other pages quote the <i>thermal</i> wavelength h / √(2π m k<sub>B</sub>T), the standard yardstick for a whole gas. It is a different definition, smaller by √(2π/3) ≈ 1.45: about ${GN.lamTh} at the same reference temperature. Both are right; they answer different questions.)</p>
         <p>When the wave is that much bigger than its target, only the simplest, perfectly round scattering wave survives: the <i>s-wave</i> (zero angular momentum). An s-wave has no favourite direction. So, seen from the pair's centre of mass, the atoms fly apart at a completely random angle. Momentum and energy are still conserved: the centre of mass carries on as before and the relative speed is unchanged. Only the direction is new.</p>
         <p>The whole collision boils down to one number, the <i>scattering length</i> a. At low energy two different (distinguishable) atoms have cross-section σ = 4πa². Two identical bosons get double, 8πa², because their waves interfere constructively. At higher energy the unitarity limit caps it: for identical bosons σ = 8πa² / (1 + k²a²). Scattering lengths are quoted in Bohr radii (a₀ ≈ 0.053 nm): about 1.2–1.3 a₀ for spin-polarised hydrogen and about 100 a₀ for rubidium-87.</p>
         <p>These collisions are what make evaporative cooling work: they keep re-sharing energy among the atoms left behind after the hottest ones are let go. That is how the first condensates were made in 1995.</p>
@@ -5927,7 +5958,7 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     { id: 'waves', title: 'When atoms become waves', date: '1924', sketch: sketchWaves, h: 230,
       alt: 'Sketch: four boxes, getting colder from left to right. Hot atoms are small balls; cold atoms are wave packets; colder still, the packets overlap; finally a single giant wave, the condensate.',
       body: `<p>In his 1924 doctoral thesis, Louis de Broglie proposed that every particle has a wave, with wavelength λ = h / p, where p is its momentum and h = 6.62607015 × 10⁻³⁴ J s is Planck's constant (exact since 2019). The idea was soon confirmed. Clinton Davisson and Lester Germer saw electrons diffract from a nickel crystal in 1927. Immanuel Estermann and Otto Stern diffracted helium atoms in 1930. In 1999 Anton Zeilinger's group in Vienna diffracted buckyballs, C₆₀ molecules of 60 carbon atoms each, whose wavelength was about 2.5 picometres.</p>
-        <p>For a gas the useful size is the <i>thermal</i> de Broglie wavelength, λ = h / √(2π m k<sub>B</sub>T). For hydrogen at room temperature it is about 0.1 nm, roughly the size of the atom itself and far smaller than the gaps between atoms, so the atoms behave like tiny billiard balls. Cool the gas and λ grows as 1/√T: about 1.7 µm for hydrogen at 1 µK, and about ${GN.lamTh} at ${GN.tH}, where the game starts it. (The page "Atoms bumping into atoms" quotes h/(mv) for a single atom at the root-mean-square speed, about ${GN.lamDB}: a different definition, larger by √(2π/3) ≈ 1.45.)</p>
+        <p>For a gas the useful size is the <i>thermal</i> de Broglie wavelength, λ = h / √(2π m k<sub>B</sub>T). For hydrogen at room temperature it is about 0.1 nm, roughly the size of the atom itself and far smaller than the gaps between atoms, so the atoms behave like tiny billiard balls. Cool the gas and λ grows as 1/√T: about 1.7 µm for hydrogen at 1 µK, and about ${GN.lamTh} at ${GN.tH} in the reference chamber. That is the fresh start there; a wider chamber starts hotter and this wavelength is shorter. (The page "Atoms bumping into atoms" quotes h/(mv) for a single atom at the root-mean-square speed, about ${GN.lamDB}: a different definition, larger by √(2π/3) ≈ 1.45.)</p>
         <p>Quantum behaviour takes over when the waves of neighbouring atoms overlap, that is, when the number of atoms in a cube of side λ (the <i>phase-space density</i> nλ³) approaches one. Einstein's theory says that identical bosons start to condense at nλ³ = 2.612. MIT's hydrogen condensate of 1998 appeared at about 50 µK and 1.8 × 10¹⁴ atoms per cm³. Put those numbers in and nλ³ comes out at about 2.7.</p>`,
       analogy: 'Hot atoms are like pebbles: small, hard and easy to count. Cold atoms are more like ripples on a pond, which spread until they run into each other.',
       model: "The game draws atoms as little solar systems with sharp edges and moves each one as a point along an exact path. Nothing ever diffracts or interferes; the wave nature enters only through the collision rule (random-angle s-wave scattering).",
@@ -6859,12 +6890,13 @@ const ctx = canvas.getContext('2d');
 let dpr = 1;
 function resizeCanvas() {
   const r = canvas.getBoundingClientRect();
+  if (!(r.width > 0) || !(r.height > 0)) return;
   const cap = QUALITY[quality].dprCap;
   const devicePx = Math.min(cap, window.devicePixelRatio || 1);
-  const bw = Math.max(1, Math.round((r.width || W) * devicePx)), bh = Math.max(1, Math.round((r.height || H) * devicePx));
+  const bw = Math.max(1, Math.round(r.width * devicePx)), bh = Math.max(1, Math.round(r.height * devicePx));
   if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; for (const k in bgCache) delete bgCache[k]; }
   dpr = bw / W;
-  if (!PIN_SCALE) applyScale(MDS.mmPerCssPx() * ((r.width || W) / W) / 1000);
+  if (!PIN_SCALE) applyScale(MDS.mmPerCssPx() * (r.width / W) / 1000);
 }
 function applyScale(m) {
   const old = P.METERS_PER_PX; if (!(m > 0) || Math.abs(m / P.BASE_METERS_PER_PX - 1) < 1e-9) return;
@@ -6966,6 +6998,15 @@ function factorShown() {
 function freezeRun(logicalPx) {
   state.runPace = paceFor(logicalPx);
   state.runFactor = state.runPace * state.runPace;
+  state.runStartT = 0;
+}
+function noteRunStart() {
+  const at = state.atoms;
+  state.runStartT = at.length ? at.reduce((s, a) => s + a.T, 0) / at.length : 0;
+}
+function wallKick() {
+  const f = state.runFactor > 0 && (inRun() || state.screen === 'over') ? state.runFactor : factorNow();
+  return P.heatingKick(settings.wallTemp, S.DEFAULTS.wallTemp, f);
 }
 function launchSpeedPx() {
   const pace = state.runPace > 0 ? state.runPace : paceFor(CH.w);
@@ -7115,6 +7156,7 @@ function setupPaddleGame(mode) {
        { side: 'R', x: CH.x + CH.w - PAD.gap - PAD.w, face: CH.x + CH.w - PAD.gap - PAD.w, nx: -1, y: mid, len: PAD.len }];
   for (const z of zs) for (let i = 0; i < state.mix[z]; i++) spawn(z, mode);
   state.atoms.sort(() => Math.random() - 0.5);
+  noteRunStart();
 }
 function startSort(watch) {
   state.watch = null; $('watch-bar').hidden = true;
@@ -7230,7 +7272,8 @@ function endGame(reason) {
   state.screen = 'over';
   const key = state.pure ? `${state.mode}:${state.pure}` : `${state.mode}:mix`;
   const prevBest = store.best[key] || 0;
-  if (state.best > prevBest) store.best[key] = state.best;
+  const rec = P.performanceRecord(state.best, state.runStartT || 0, state.runFactor || 1, prevBest);
+  if (rec.beat) store.best[key] = rec.stored;
   const coinFactor = state.runFactor > 0 ? state.runFactor : 1;
   state.bonus = Math.floor(state.best / (1e-6 * P.T_SCALE * coinFactor) + 1e-9);
   store.coins += state.bonus; state.coinsEarned += state.bonus;
@@ -7239,10 +7282,16 @@ function endGame(reason) {
   const rows = [[state.pure ? 'Element' : 'Gas mixture', state.pure ? `${el(state.pure).name} (${el(state.pure).sym}, ${el(state.pure).u} u)` : `${mixText(state.mix)}${state.bought ? ` + ${state.bought} bought` : ''}`]];
   if (state.mode === 'two') rows.push(['Points', `P1 ${state.points[0]} : ${state.points[1]} P2`]);
   rows.push(['Final score (best T)', formatT(state.best)], ['Hottest single atom', formatT(state.maxT)],
-    ['Previous record', prevBest ? formatT(prevBest) : '—'], ['Paddle hits', `${state.hits}`], ['Coins earned', `${state.coinsEarned} (incl. ${state.bonus} temperature bonus)`], ['Atoms bought', `${state.bought}`], ['Coins spent', `${state.spent}`],
+    ['This run, reference chamber', formatT(rec.peakEq)],
+    ['Saved record, reference chamber', prevBest ? formatT(prevBest) : '—'], ['Paddle hits', `${state.hits}`], ['Coins earned', `${state.coinsEarned} (incl. ${state.bonus} temperature bonus)`], ['Atoms bought', `${state.bought}`], ['Coins spent', `${state.spent}`],
     ['Purse', `${store.coins} coins`], ['Time in play', `${state.simTime.toFixed(1)} s`]);
   $('over-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
-  $('over-note').textContent = (state.best > prevBest ? (state.pure ? 'A new record for this element! ' : 'A new mixed-gas record! ') : '') +
+  const recordNote = rec.beat
+    ? (state.pure ? 'A new reference-chamber record for this element. ' : 'A new reference-chamber mixed-gas record. ')
+    : rec.played
+      ? 'No new record. The saved record is the peak divided by this run’s fresh-start factor, the temperature that same play would reach in the reference chamber. '
+      : 'No record. The fresh start on a wider screen is not itself a record; records compare heating above that start, stated in the reference chamber. ';
+  $('over-note').textContent = recordNote +
     (state.unlocked.length ? `Unlocked by temperature: ${state.unlocked.map((z) => el(z).name).join(', ')}.` : nextUnlockText()) + trialEndNote();
   afterRun();
   showPanel('over');
@@ -7269,7 +7318,7 @@ function adsorb(a, nx, ny, paddle) {
 }
 function desorb(a) {
   const s = a.stuck;
-  a.T += P.sampleHeating(settings.wallTemp);
+  a.T += P.sampleHeating(wallKick().mean);
   const d = P.desorbVelocity(s.nx, s.ny, a.T, a.m, settings.exitLaw);
   a.vx = d.vx; a.vy = d.vy; a.stuck = null;
   if (state.desorbLog) state.desorbLog.push({ nx: s.nx, ny: s.ny, vx: a.vx, vy: a.vy, x: a.x, y: a.y });
@@ -7598,7 +7647,7 @@ function hud(theme) {
   const sub = `best ${bestT}${multi ? ` · hottest atom ${maxT}` : ''}`;
   state.hud = { scoreText: T, bestText: bestT, maxText: maxT };
   const lawTxt = settings.exitLaw === 'cos' ? 'cos θ' : 'cos² θ';
-  const foot = `${lawTxt} law · wall ${formatT(settings.wallTemp)} · τ ${settings.residenceMean.toFixed(2)} s · purse ${store.coins}`;
+  const foot = `${lawTxt} law · wall kick ${formatT(wallKick().mean)} · τ ${settings.residenceMean.toFixed(2)} s · purse ${store.coins}`;
   const help = single ? 'drag, W/S, ↑/↓ or mouse · ❚❚/P pause' : 'drag your half or W/S · ↑/↓ · ❚❚/P pause';
   if (!bw) {
     R.plaque(ctx, 24, 14, 300, 88, 3); R.plaque(ctx, 340, 14, 320, 88, 5); R.plaque(ctx, 676, 14, 300, 88, 9);
@@ -7867,7 +7916,7 @@ $('b-over-title').onclick = goTitle;
 let previewAtom = null, previewRaf = 0;
 function openShop(from) { shopReturn = from; enforceAccess(); buildShop(); showPanel('shop'); previewLoop(); }
 function buildShop() {
-  const sel = settings.element, rows = ['<tr><th>Z</th><th>Element</th><th>Mass (u)</th><th>Starts at</th><th>Unlock by temperature</th><th>…or by sorting</th><th>Cost</th><th>Best (1P / 2P)</th><th></th><th>Starting mix</th></tr>'];
+  const sel = settings.element, rows = ['<tr><th>Z</th><th>Element</th><th>Mass (u)</th><th>Starts at</th><th>Unlock by temperature</th><th>…or by sorting</th><th>Cost</th><th>Ref. best (1P / 2P)</th><th></th><th>Starting mix</th></tr>'];
   const tot = mixTotal(settings.mix);
   for (const e of ELEMENTS) {
     const owned = e.Z <= store.unlockedZ, usable = e.Z <= usableMaxZ(), beyond = e.Z > capZ(), buyable = e.Z === store.unlockedZ + 1 && !beyond;
@@ -8063,7 +8112,11 @@ function fillSettings() {
   const ho = $('s-shape').querySelector('option[value="half"]'); ho.disabled = halfLocked(); ho.textContent = 'Half-circle: semicircular end, diameter = chamber height' + (halfLocked() ? ' (Full version)' : ''); labels();
 }
 function labels() {
-  $('l-wall').textContent = `${formatT(wallFromSlider(+$('s-wall').value))} mean ΔT per wall or paddle interaction`;
+  const setT = wallFromSlider(+$('s-wall').value);
+  const preset = Math.abs(setT / S.DEFAULTS.wallTemp - 1) < 1e-9;
+  $('l-wall').textContent = preset
+    ? `Default heating step ${formatT(S.DEFAULTS.wallTemp)} in the reference chamber (${formatT(S.DEFAULTS.wallTemp * factorNow())} on this screen), so the same bounces reach the next element. Any other setting is that absolute temperature on every screen.`
+    : `${formatT(setT)} absolute mean ΔT on every screen.`;
   const v = +$('s-vac').value;
   $('l-vac').textContent = `${v} atom${v > 1 ? 's' : ''} in the chamber${v === 1 ? ' (best vacuum)' : ''}: ${mixText(v === settings.vacuum ? settings.mix : rescaleMix(settings.mix, v))}${state.screen === 'paused' ? '. Applies to the next game.' : ''}`;
   const sn = +$('s-sortn').value; $('l-sortn').textContent = `${sn} atoms: ${mixText(rescaleMix(settings.mix, sn))}`;
