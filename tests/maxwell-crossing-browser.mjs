@@ -130,6 +130,8 @@ try {
         return {
           theme: document.body.dataset.theme,
           font: getComputedStyle(document.body).fontFamily,
+          scale: MDScale.describe(),
+          cssPerInch: MDScale.cssPerInch,
           c, T: a ? a.T : 0, v: a ? a.v : 0, vFromT, free: free.length,
           canvas: { w: box.width, h: box.height },
           hudT: a ? MDPhysics.formatT(a.T, 2) : '',
@@ -148,10 +150,15 @@ try {
       if (sample.theme !== theme) fail(`${theme} ${view.name} theme is ${sample.theme}`);
       const t = sample.c.L / sample.vFromT;
       readouts.push({
-        theme, view: view.name, viewport: `${view.w}x${view.h}`, cssPerInch: view.ppi,
-        canvas: sample.canvas, L_mm: sample.c.L * 1000, factor: sample.c.factor,
-        T_nK: T * 1e9, v_mm_s: sample.vFromT * 1000, measured_v_mm_s: sample.v * 1000,
-        free: sample.free, t_s: t, hud: sample.hudT, font: sample.font,
+        file: `maxwell-${view.name}-${theme}.png`,
+        theme, view: view.name,
+        viewportWidth: view.w, viewportHeight: view.h, viewport: `${view.w}x${view.h}`,
+        calibrationCssPxPerInch: sample.cssPerInch, calibration: sample.scale,
+        canvasCssWidth: sample.canvas.w, canvasCssHeight: sample.canvas.h,
+        chamberWidthMm: sample.c.L * 1000,
+        temperatureReadout: sample.hudT, temperatureNK: T * 1e9,
+        speedMmPerS: sample.vFromT * 1000, crossingTimeS: t,
+        v_mm_s: sample.vFromT * 1000, t_s: t, hud: sample.hudT, font: sample.font, free: sample.free,
       });
       await shot(`maxwell-${view.name}-${theme}`);
       console.log(theme, view.name, 'L', (sample.c.L * 1000).toFixed(2), 'mm', 'T', sample.hudT, 't', t.toFixed(4), 's', sample.free ? 'free' : 'adsorbed');
@@ -183,10 +190,17 @@ try {
   if (Math.abs(after.T - before.T) / before.T < 0.2) fail('the next fresh run did not pick up the new width');
   if (Math.abs(after.f - mid.screen) / mid.screen > 1e-6) fail('fresh run factor is not the resized screen');
   await shot('maxwell-fresh-run-after-resize-desktop-victorian');
-  readouts.push({ event: 'resize-hold', T_nK: before.T * 1e9, T_after_resize_nK: mid.T * 1e9, fresh_nK: after.T * 1e9, hud: after.hud });
   console.log('resize hold', (before.T * 1e9).toFixed(3), 'nK ->', (mid.T * 1e9).toFixed(3), 'nK; next run', after.hud);
-
-  await writeFile(`${OUT}/maxwell-crossing-readouts.json`, JSON.stringify({ readouts, failures }, null, 2));
+  const viewsOnly = readouts.filter((r) => r.temperatureReadout);
+  await writeFile(`${OUT}/maxwell-crossing-readouts.json`, JSON.stringify({
+    game: "Maxwell's Demon",
+    mode: 'single',
+    gas: 'hydrogen',
+    note: 'Fresh-run HUD temperature at the rendered chamber. Calibration is the CSS pixels per inch the game used.',
+    views: viewsOnly,
+    resizeHold: { T_nK: before.T * 1e9, T_after_resize_nK: mid.T * 1e9, freshRunReadout: after.hud, fresh_nK: after.T * 1e9 },
+    failures,
+  }, null, 2));
 } finally {
   try { ws && ws.close(); } catch {}
   chrome.kill('SIGKILL');
