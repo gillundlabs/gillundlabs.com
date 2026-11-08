@@ -321,7 +321,7 @@
     #stage { width: min(calc(100vw - var(--sal) - var(--sar) - 420px), calc((var(--vh) - var(--sat) - var(--sab)) * 1000 / 680)); }
   }
   @media (orientation: landscape) and (max-width: 720px) {
-    #stage { width: min(calc(100vw - var(--sal) - var(--sar)), calc((var(--vh) - var(--sat) - var(--sab)) * 1000 / 680)); }
+    #stage { width: min(calc(100vw - var(--sal) - var(--sar) - 112px), calc((var(--vh) - var(--sat) - var(--sab)) * 1000 / 680)); justify-self: start; margin-left: max(8px, var(--sal)); }
   }
   @media (orientation: portrait) {
     #controls { top: auto; bottom: calc(var(--sab) + 56px); right: 50%; transform: translateX(50%); flex-direction: row; width: auto; }
@@ -497,7 +497,10 @@
   .fv-small { font-size: 13px; text-align: center; } .fv-legal { font-size: 11px; line-height: 1.35; opacity: .85; text-align: center; margin-top: 10px; }
   .fv-legal a { padding: 8px 2px; }
   .shop-tier { font-size: 13px; margin: 8px 0 0; } .shop-tier button { padding: 2px 10px !important; font-size: 12px !important; min-height: 32px; }
-  #shop-list td button.fv-btn { font-size: 11px; }
+  body[data-theme="victorian"] #shop-list td button.fv-btn {
+    overflow-wrap: normal !important; word-break: keep-all !important; hyphens: none;
+    min-width: 7.6em; letter-spacing: .04em; line-height: 1.15;
+  }
   #dev-badge { position: fixed; z-index: 20; left: calc(var(--sal) + 6px); bottom: calc(var(--sab) + 6px); padding: 3px 8px; font: 700 11px var(--vls-font-mono); letter-spacing: .1em; color: #fff; background: #b3261e; border: 1px solid #fff; border-radius: 3px; pointer-events: none; }
   #trial-badge { position: fixed; z-index: 5; left: calc(var(--sal) + 8px); top: calc(var(--sat) + 8px);
     padding: 10px 16px; font: 500 13px var(--vls-font-engraved); letter-spacing: .06em;
@@ -1926,12 +1929,11 @@
     const beat = played && peakEq > prev;
     return { peakEq, startEq, played, beat, stored: beat ? peakEq : prev };
   }
-  // The default wall kick is a heating step in the reference chamber, so it
-  // scales with (L/L_ref)² and the same bounces reach the next element. Any
-  // other setting is the absolute temperature the player chose.
-  function heatingKick(settingT, presetT, factor) {
+  // mode 'preset' scales the reference heating step with (L/L_ref)².
+  // mode 'absolute' uses settingT on every screen, including 20 nK.
+  function heatingKick(mode, settingT, presetT, factor) {
     const f = factor > 0 && isFinite(factor) ? factor : 1;
-    const preset = !(settingT > 0) || !(presetT > 0) || Math.abs(settingT / presetT - 1) < 1e-9;
+    const preset = mode === 'preset';
     return { preset, mean: preset ? presetT * f : settingT };
   }
 
@@ -2209,6 +2211,7 @@ if (typeof module === 'object' && module.exports) module.exports = root.MDScale;
     gravity: 'micro',
     sortDoorControl: 'hold',
     sortPreview: true,
+    wallHeat: 'preset',
   };
   const RANGES = { wallTemp: [0.8e-9, 400e-9], vacuum: [1, 20], residenceMean: [0, 1.5], sortN: [20, 200] };
 
@@ -2252,6 +2255,11 @@ if (typeof module === 'object' && module.exports) module.exports = root.MDScale;
     st.sortPreview = st.sortPreview !== false;
     if (!P.EXIT_LAWS[st.exitLaw]) st.exitLaw = DEFAULTS.exitLaw;
     if (st.theme !== 'bw') st.theme = 'victorian';
+    // Released saves store an absolute wall temperature and have no wallHeat flag.
+    // Do not guess whether an unreleased copy meant the scaled preset. Only an
+    // explicit 'preset' scales; a missing flag keeps the stored kelvin as the kick.
+    if (raw && raw.settings && raw.settings.wallHeat !== 'preset' && raw.settings.wallHeat !== 'absolute') st.wallHeat = 'absolute';
+    if (st.wallHeat !== 'preset') st.wallHeat = 'absolute';
     return s;
   }
   function save(s) { try { root.localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {  } }
@@ -2259,7 +2267,6 @@ if (typeof module === 'object' && module.exports) module.exports = root.MDScale;
 
   root.MDSettings = { KEY, DEFAULTS, RANGES, load, save, reset };
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script data-src="src/config.js">
 (function (root) {
@@ -7006,7 +7013,7 @@ function noteRunStart() {
 }
 function wallKick() {
   const f = state.runFactor > 0 && (inRun() || state.screen === 'over') ? state.runFactor : factorNow();
-  return P.heatingKick(settings.wallTemp, S.DEFAULTS.wallTemp, f);
+  return P.heatingKick(settings.wallHeat, settings.wallTemp, S.DEFAULTS.wallTemp, f);
 }
 function launchSpeedPx() {
   const pace = state.runPace > 0 ? state.runPace : paceFor(CH.w);
@@ -8104,7 +8111,8 @@ const wallFromSlider = (u) => S.RANGES.wallTemp[0] * Math.pow(S.RANGES.wallTemp[
 const sliderFromWall = (T) => Math.log(T / S.RANGES.wallTemp[0]) / Math.log(S.RANGES.wallTemp[1] / S.RANGES.wallTemp[0]);
 function openSettings(from) { settingsReturn = from; fillSettings(); showPanel('settings'); }
 function fillSettings() {
-  $('s-theme').value = settings.theme; $('s-law').value = settings.exitLaw; $('s-wall').value = sliderFromWall(settings.wallTemp);
+  const shownWall = settings.wallHeat === 'preset' ? S.DEFAULTS.wallTemp : settings.wallTemp;
+  $('s-theme').value = settings.theme; $('s-law').value = settings.exitLaw; $('s-wall').value = sliderFromWall(shownWall);
   $('s-vac').value = settings.vacuum; $('s-res').value = settings.residenceMean; $('s-hist').checked = settings.showAngleHistogram;
   $('s-sortn').value = settings.sortN; $('s-door').value = settings.sortDoorControl; $('s-preview').checked = settings.sortPreview !== false;
   $('s-grav').value = settings.gravity; $('s-stats').checked = settings.shareStats;
@@ -8112,11 +8120,10 @@ function fillSettings() {
   const ho = $('s-shape').querySelector('option[value="half"]'); ho.disabled = halfLocked(); ho.textContent = 'Half-circle: semicircular end, diameter = chamber height' + (halfLocked() ? ' (Full version)' : ''); labels();
 }
 function labels() {
-  const setT = wallFromSlider(+$('s-wall').value);
-  const preset = Math.abs(setT / S.DEFAULTS.wallTemp - 1) < 1e-9;
-  $('l-wall').textContent = preset
-    ? `Default heating step ${formatT(S.DEFAULTS.wallTemp)} in the reference chamber (${formatT(S.DEFAULTS.wallTemp * factorNow())} on this screen), so the same bounces reach the next element. Any other setting is that absolute temperature on every screen.`
-    : `${formatT(setT)} absolute mean ΔT on every screen.`;
+  const kick = wallKick();
+  $('l-wall').textContent = kick.preset
+    ? `Default heating step ${formatT(S.DEFAULTS.wallTemp)} in the reference chamber. This screen’s kick is ${formatT(kick.mean)}. Move the slider to choose one absolute temperature for every screen.`
+    : `${formatT(settings.wallTemp)} absolute mean ΔT. This screen’s kick is ${formatT(kick.mean)}.`;
   const v = +$('s-vac').value;
   $('l-vac').textContent = `${v} atom${v > 1 ? 's' : ''} in the chamber${v === 1 ? ' (best vacuum)' : ''}: ${mixText(v === settings.vacuum ? settings.mix : rescaleMix(settings.mix, v))}${state.screen === 'paused' ? '. Applies to the next game.' : ''}`;
   const sn = +$('s-sortn').value; $('l-sortn').textContent = `${sn} atoms: ${mixText(rescaleMix(settings.mix, sn))}`;
@@ -8124,7 +8131,7 @@ function labels() {
   $('l-scale').textContent = `Fresh hydrogen starts at ${formatT(P.ELEMENTS[0].startT * factorNow())} across this ${P.formatLength(chamberLengthM(CH.w))} chamber, so the width takes the same time to cross as the reference chamber. Gas already in play keeps its temperature. ${MDS.describe()}.`;
 }
 function applySettings() {
-  Object.assign(settings, { theme: $('s-theme').value, exitLaw: $('s-law').value, wallTemp: wallFromSlider(+$('s-wall').value),
+  Object.assign(settings, { theme: $('s-theme').value, exitLaw: $('s-law').value,
     residenceMean: +$('s-res').value, showAngleHistogram: $('s-hist').checked, collisionModel: $('s-coll').value, realisticRate: $('s-real').checked, chamberShape: $('s-shape').value,
     sortN: +$('s-sortn').value, sortDoorControl: $('s-door').value, sortPreview: $('s-preview').checked, gravity: $('s-grav').value, shareStats: $('s-stats').checked });
   if (!settings.shareStats) STATS.setEnabled(false);
@@ -8132,7 +8139,13 @@ function applySettings() {
   if (v !== settings.vacuum) { settings.mix = rescaleMix(settings.mix, v); settings.vacuum = mixTotal(settings.mix); }
   persist(); labels();
 }
-for (const id of ['s-theme', 's-law', 's-wall', 's-vac', 's-res', 's-hist', 's-coll', 's-real', 's-shape', 's-sortn', 's-door', 's-preview', 's-grav', 's-stats']) $(id).addEventListener('input', applySettings);
+function onWallChosen() {
+  settings.wallHeat = 'absolute';
+  settings.wallTemp = wallFromSlider(+$('s-wall').value);
+  persist(); labels();
+}
+for (const id of ['s-theme', 's-law', 's-vac', 's-res', 's-hist', 's-coll', 's-real', 's-shape', 's-sortn', 's-door', 's-preview', 's-grav', 's-stats']) $(id).addEventListener('input', applySettings);
+$('s-wall').addEventListener('input', onWallChosen);
 const calW = () => $('s-calw');
 $('s-calib').onclick = () => { $('s-calbox').hidden = false; calW().value = Math.round(MDS.cssPerInch * MDS.CARD_MM / 25.4); $('s-card').style.width = `${calW().value}px`; };
 calW().addEventListener('input', () => { $('s-card').style.width = `${calW().value}px`; });

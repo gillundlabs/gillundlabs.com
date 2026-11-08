@@ -86,11 +86,15 @@ try {
   const readouts = [];
 
   let preloadId = null;
-  async function boot(view, theme) {
+  async function boot(view, theme, extra = {}) {
     await send('Emulation.setDeviceMetricsOverride', { width: view.w, height: view.h, deviceScaleFactor: 1, mobile: view.source === 'phone' });
     if (preloadId) await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: preloadId });
+    const saved = {
+      settings: { theme, tempScale2: true, wallHeat: 'preset', ...(extra.settings || {}) },
+      coins: 0, unlockedZ: 1, best: extra.best || {},
+    };
     const added = await send('Page.addScriptToEvaluateOnNewDocument', {
-      source: `try{localStorage.setItem('maxwells-demon.v2', JSON.stringify({settings:{theme:${JSON.stringify(theme)}}}));}catch(e){}`,
+      source: `try{localStorage.setItem('maxwells-demon.v2', ${JSON.stringify(JSON.stringify(saved))});}catch(e){}`,
     });
     preloadId = added.identifier;
     await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/play/maxwells-demon/?t=${theme}-${view.name}` });
@@ -102,7 +106,7 @@ try {
       if (i === 39) throw new Error('game did not start');
     }
     await evalJs(`MDScale.set(${view.ppi}, ${JSON.stringify(view.source)})`);
-    const gutter = view.w > view.h && view.w > 720 ? 420 : 0;
+    const gutter = view.w > view.h ? (view.w > 720 ? 420 : 112) : 0;
     const expectCss = Math.min(Math.max(0, view.w - gutter), view.h * 1000 / 680);
     for (let i = 0; i < 30; i++) {
       const w = await evalJs("document.getElementById('game').getBoundingClientRect().width");
@@ -142,7 +146,7 @@ try {
           expectT: H.startT * c.factor,
         };
       })()`);
-      const gutter = view.w > view.h && view.w > 720 ? 420 : 0;
+      const gutter = view.w > view.h ? (view.w > 720 ? 420 : 112) : 0;
       const cssW = Math.min(Math.max(0, view.w - gutter), view.h * 1000 / 680);
       const mpp = (cssW / 1000) * (0.0254 / view.ppi);
       const L = 880 * mpp;
@@ -200,16 +204,88 @@ try {
   if (Math.abs(after.f - mid.screen) / mid.screen > 1e-6) fail('fresh run factor is not the resized screen');
   await shot('maxwell-fresh-run-after-resize-desktop-victorian');
   console.log('resize hold', (before.T * 1e9).toFixed(3), 'nK ->', (mid.T * 1e9).toFixed(3), 'nK; next run', after.hud);
-  await boot({ name: 'tiny-landscape', w: 400, h: 300, ppi: 100, source: 'monitor' }, 'victorian');
-  const tiny = await evalJs(`(() => {
-    const box = document.getElementById('game').getBoundingClientRect();
-    const c = MDGameLive.crossing();
-    return { viewportWidth: 400, viewportHeight: 300, canvasCssWidth: box.width, canvasCssHeight: box.height, chamberWidthMm: c.L * 1000 };
+  const tinyViews = [];
+  for (const theme of ['victorian', 'bw']) {
+    await boot({ name: 'tiny-landscape', w: 400, h: 300, ppi: 100, source: 'monitor' }, theme);
+    await evalJs("document.getElementById('b-begin').click(); document.getElementById('b-single').click();");
+    await evalJs('(async () => { await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); })()');
+    await sleep(200);
+    const lay = await evalJs(`(() => {
+      const box = document.getElementById('game').getBoundingClientRect();
+      const controls = [...document.querySelectorAll('#controls button')].map((el) => el.getBoundingClientRect());
+      const hit = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5;
+      const overlaps = controls.filter((r) => hit(box, r)).length;
+      const c = MDGameLive.crossing();
+      return { theme: document.body.dataset.theme, canvasCssWidth: box.width, canvasCssHeight: box.height, chamberWidthMm: c.L * 1000, controlOverlaps: overlaps, displayedTemperature: MDGameLive.hudReadout().scoreText };
+    })()`);
+    if (lay.controlOverlaps) fail(`${theme} 400×300 controls overlap the chamber (${lay.controlOverlaps})`);
+    if (!(lay.canvasCssWidth > 100 && lay.canvasCssWidth < 390)) fail(`${theme} 400×300 stage width ${lay.canvasCssWidth} is not kept clear of the controls`);
+    tinyViews.push(lay);
+    console.log('tiny', theme, lay.canvasCssWidth.toFixed(1), 'px, overlaps', lay.controlOverlaps);
+  }
+  const tiny = tinyViews[0];
+  await boot({ name: 'desktop-landscape', w: 1280, h: 800, ppi: 100, source: 'monitor' }, 'victorian', { best: { 'single:1': 50e-9 } });
+  await evalJs("document.getElementById('b-begin').click(); document.getElementById('b-single').click();");
+  await sleep(150);
+  await evalJs("document.getElementById('b-pausebtn').click();");
+  await sleep(80);
+  await evalJs("document.getElementById('b-end').click();");
+  await sleep(150);
+  const ended = await evalJs(`(() => {
+    const panel = document.getElementById('p-over');
+    const again = document.getElementById('b-again');
+    const shopBtn = document.getElementById('b-over-shop');
+    again.scrollIntoView({ block: 'end' });
+    const pr = panel.getBoundingClientRect();
+    const inside = (r) => r.top >= pr.top - 2 && r.bottom <= pr.bottom + 2 && r.height > 0;
+    const saved = JSON.parse(localStorage.getItem('maxwells-demon.v2'));
+    return {
+      note: document.getElementById('over-note').textContent,
+      stats: document.getElementById('over-stats').innerText,
+      best: saved.best['single:1'],
+      again: inside(again.getBoundingClientRect()),
+      shop: inside(shopBtn.getBoundingClientRect()),
+    };
   })()`);
-  if (!(tiny.canvasCssWidth > 100)) fail(`400×300 landscape stage collapsed to ${tiny.canvasCssWidth}`);
-  const tinyExpect = 880 * (tiny.canvasCssWidth / 1000) * (0.0254 / 100) * 1000;
-  if (Math.abs(tiny.chamberWidthMm - tinyExpect) / tinyExpect > 0.02) fail(`400×300 chamber ${tiny.chamberWidthMm} mm is not the drawn width`);
-  console.log('tiny landscape', tiny.canvasCssWidth.toFixed(1), 'css px, L', tiny.chamberWidthMm.toFixed(2), 'mm');
+  if (ended.best !== 50e-9) fail(`no-play end overwrote the 50 nK record with ${ended.best}`);
+  if (!/No record/.test(ended.note)) fail(`end screen announced a record: ${ended.note}`);
+  if (!/50\.0 nK/.test(ended.stats) || !/40\.0 nK/.test(ended.stats)) fail(`end screen labels missing reference comparison: ${ended.stats}`);
+  if (!ended.again || !ended.shop) fail('end-screen actions are not reachable by scrolling');
+  await evalJs("document.getElementById('b-over-shop').click();");
+  await sleep(200);
+  const shopBest = await evalJs(`document.querySelector('#shop-list tr.sel') ? document.querySelector('#shop-list tr.sel').innerText : ''`);
+  if (!/50\.0 nK/.test(shopBest)) fail(`shop did not show the seeded reference best: ${shopBest}`);
+  await boot({ name: 'desktop-landscape', w: 1280, h: 800, ppi: 100, source: 'monitor' }, 'victorian', { best: { 'single:1': 50e-9 } });
+  await evalJs("document.getElementById('b-settings').click();");
+  await sleep(100);
+  await evalJs("document.getElementById('s-wall').value = '1'; document.getElementById('s-wall').dispatchEvent(new Event('input', { bubbles: true }));");
+  await sleep(50);
+  await evalJs("document.getElementById('s-close').click(); document.getElementById('b-begin').click(); document.getElementById('b-single').click();");
+  let heated = null;
+  for (let i = 0; i < 40; i++) {
+    heated = await evalJs(`(() => {
+      const over = document.getElementById('p-over').classList.contains('show');
+      const g = MDGameLive.gas();
+      const T = g.length ? g[0].T : 0;
+      const saved = JSON.parse(localStorage.getItem('maxwells-demon.v2'));
+      return { over, T, best: saved.best['single:1'], hud: MDGameLive.hudReadout().scoreText };
+    })()`);
+    if (heated.over || heated.T > 2e-7) break;
+    await sleep(400);
+  }
+  if (!heated.over) {
+    await evalJs("document.getElementById('b-pausebtn').click();");
+    await sleep(50);
+    await evalJs("document.getElementById('b-end').click();");
+    await sleep(150);
+    heated = await evalJs(`(() => { const saved = JSON.parse(localStorage.getItem('maxwells-demon.v2')); return { over: true, best: saved.best['single:1'], note: document.getElementById('over-note').textContent, stats: document.getElementById('over-stats').innerText }; })()`);
+  } else {
+    heated.note = await evalJs("document.getElementById('over-note').textContent");
+    heated.stats = await evalJs("document.getElementById('over-stats').innerText");
+  }
+  if (!(heated.best > 50e-9)) fail(`heated run did not store a higher reference record (${heated.best})`);
+  if (!/reference-chamber record/.test(heated.note || '')) fail(`heated run did not announce a reference record: ${heated.note}`);
+  console.log('end-game path kept', ended.best, 'then stored', heated.best);
   const viewsOnly = readouts.filter((r) => r.temperatureReadout);
   await writeFile(`${OUT}/maxwell-crossing-readouts.json`, JSON.stringify({
     game: "Maxwell's Demon",
@@ -217,7 +293,8 @@ try {
     gas: 'hydrogen',
     note: 'displayedTemperature is the exact string drawn on the canvas (there is no DOM temperature node). numericTemperatureNK is the physical value. roundedSummaryNotDisplayed is formatT(T, 2) and is not the HUD string.',
     views: viewsOnly,
-    smallLandscape: tiny,
+    smallLandscape: tinyViews,
+    endGame: { seededBest: ended.best, heatedBest: heated.best, note: heated.note },
     resizeHold: { T_nK: before.T * 1e9, T_after_resize_nK: mid.T * 1e9, freshRunReadout: after.hud, fresh_nK: after.T * 1e9 },
     failures,
   }, null, 2));
