@@ -5069,11 +5069,21 @@ function font(key = 'engraved') { return type[key]; }
 function fontRevision() { return typeRevision; }
 if (root.document && root.document.fonts) root.document.fonts.addEventListener('loadingdone', () => { typeRevision++; });
 refreshFonts();
-function cutText(ctx,text,x,y,size,align,weight,family) {
+function cutText(ctx, text, x, y, size, align, weight, family, cut) {
   ctx.save(); ctx.font = `${weight} ${size}px ${family}`; ctx.textAlign = align; ctx.textBaseline = 'middle';
-  ctx.letterSpacing = `${Math.max(.5,size*.08)}px`;
-  ctx.fillStyle = 'rgba(255,240,190,0.55)'; ctx.fillText(text,x,y+1);
-  ctx.fillStyle = root.VLS.tokens.palette.engraving; ctx.fillText(text,x,y); ctx.restore();
+  ctx.letterSpacing = `${Math.max(.5, size * .08)}px`;
+  const scale = Math.abs(ctx.getTransform().a) || 1;
+  const ink = (cut && cut.ink) || root.VLS.tokens.palette.engraving;
+  const principal = !!(cut && cut.deviceRim);
+  const drop = principal ? Math.min(size * 0.08, 1 / scale) : 1;
+  const hi = cut && cut.highlight != null ? cut.highlight : 0.55;
+  ctx.fillStyle = `rgba(255,240,190,${hi})`; ctx.fillText(text, x, y + drop);
+  if (principal) {
+    ctx.lineJoin = 'round'; ctx.miterLimit = 2;
+    ctx.lineWidth = Math.min(size * 0.12, Math.max(0.8, 1.35 / scale));
+    ctx.strokeStyle = ink; ctx.strokeText(text, x, y);
+  }
+  ctx.fillStyle = ink; ctx.fillText(text, x, y); ctx.restore();
 }
 
 const faces = new WeakMap();
@@ -5123,7 +5133,7 @@ function faceText(ctx, text, x, y, size, options = {}) {
   const family = options.font || font(), min = Math.min(size, options.minSize || 10);
   const engraved = options.engraved !== false;
   if (!rect) {
-    if (engraved) cutText(ctx, text, x, y, size, align, weight, family);
+    if (engraved) cutText(ctx, text, x, y, size, align, weight, family, options.cut);
     else { ctx.save(); ctx.font = `${weight} ${size}px ${family}`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = options.color || '#fff'; ctx.fillText(text, x, y); ctx.restore(); }
     return null;
   }
@@ -5166,12 +5176,12 @@ function faceText(ctx, text, x, y, size, options = {}) {
   lines.forEach((line, i) => {
     const m = ms[i], xx = Math.max(f.x + m.actualBoundingBoxLeft, Math.min(f.x + f.w - m.actualBoundingBoxRight, x)), yy = y0 + i * lh;
     bounds.push({ left: xx - m.actualBoundingBoxLeft, right: xx + m.actualBoundingBoxRight, top: yy - m.actualBoundingBoxAscent, bottom: yy + m.actualBoundingBoxDescent + (engraved ? 1 : 0) });
-    if (engraved) cutText(ctx, line, xx, yy, px, align, weight, family);
+    if (engraved) cutText(ctx, line, xx, yy, px, align, weight, family, options.cut);
     else { ctx.fillStyle = options.color || '#fff'; ctx.fillText(line, xx, yy); }
   });
   ctx.restore(); return { face: f, bounds, size: px, lines, elided };
 }
-function engrave(ctx, text, x, y, size, align = 'center', weight = '600') { return faceText(ctx, text, x, y, size, { align, weight }); }
+function engrave(ctx, text, x, y, size, align = 'center', weight = '600', cut) { return faceText(ctx, text, x, y, size, { align, weight, cut }); }
 
 function chamberEngraving(ctx, x, y, size) {
   const r = faceAt(ctx, x + size / 2, y + size / 2); if (!r) return;
@@ -5236,7 +5246,6 @@ function gauge(ctx, cx, cy, r, p) {
 root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, dataTag, font, refreshFonts, fontRevision, THEMES, mulberry, woodTexture, brassGrad, brassRect, brassArc, screw, engrave, plaque, setFaces, getFaces, faceText, chamberEngraving, drawHistogram,
   paddleVictorian, paddleBW, scaleBar, gauge, sci, GAUGE_LO, GAUGE_HI };
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script data-src="src/physics-notes.js">
 (function (root) {
@@ -7595,14 +7604,15 @@ function hud(theme) {
     R.plaque(ctx, 24, 14, 300, 88, 3); R.plaque(ctx, 340, 14, 320, 88, 5); R.plaque(ctx, 676, 14, 300, 88, 9);
     R.engrave(ctx, "MAXWELL'S DEMON", 500, 36, 16, 'center', '700');
     if (single) {
-      R.engrave(ctx, scoreLabel, 174, 34, 11); R.engrave(ctx, T, 174, 60, 26, 'center', '700'); R.engrave(ctx, sub, 174, 86, 11, 'center', 'italic 500');
+      const tempCut = { highlight: 0.18, deviceRim: true };
+      R.engrave(ctx, scoreLabel, 174, 34, 11); R.engrave(ctx, T, 174, 60, 26, 'center', '700', tempCut); R.engrave(ctx, sub, 174, 86, 11, 'center', 'italic 500');
       R.engrave(ctx, `${gasTxt} · ${atomsTxt}`, 500, 60, mixed ? 11 : 12, 'center', '500');
       R.engrave(ctx, next || `Purse: ${store.coins} coins`, 500, 82, 11, 'center', 'italic 500');
       R.engrave(ctx, 'PURSE', 826, 34, 11); R.engrave(ctx, `${store.coins} coins`, 826, 60, 24, 'center', '700'); R.engrave(ctx, `paddle hits this game: ${state.hits}`, 826, 86, 11, 'center', 'italic 500');
     } else {
       R.engrave(ctx, 'PLAYER 1 · LEFT HALF / W·S', 174, 34, 11); R.engrave(ctx, String(state.points[0]), 174, 64, 34, 'center', '700');
       R.engrave(ctx, 'PLAYER 2 · RIGHT HALF / ↑↓', 826, 34, 11); R.engrave(ctx, String(state.points[1]), 826, 64, 34, 'center', '700');
-      R.engrave(ctx, `${multi ? 'mean T' : 'T'} = ${T}`, 500, 62, 22, 'center', '700');
+      R.engrave(ctx, `${multi ? 'mean T' : 'T'} = ${T}`, 500, 62, 22, 'center', '700', { highlight: 0.18, deviceRim: true });
       R.engrave(ctx, `${sub} · ${state.pure ? el(state.pure).sym + ' · ' : ''}${atomsTxt}`, 500, 86, 11, 'center', 'italic 500');
       if (next) R.engrave(ctx, next, 174, 88, 10, 'center', 'italic 500');
     }
@@ -8244,6 +8254,7 @@ window.MDGameLive = {
       mpp: P.BASE_METERS_PER_PX, cssPerInch: MDS.cssPerInch,
     };
   },
+  hudReadout: () => ({ scoreText: state.hud.scoreText || '', bestText: state.hud.bestText || '', maxText: state.hud.maxText || '' }),
   gas: () => state.atoms.map((a) => ({ z: a.z, T: a.T, v: Math.hypot(a.vx, a.vy) * P.METERS_PER_PX })),
   sortGas: () => (SORT.S.on ? { T0: SORT.S.T0, Tc: SORT.S.Tc, Th: SORT.S.Th, Tstd: SORT.S.Tstd, M: SORT.S.M, pace: SORT.S.pace, spread: SORT.S.diff.spread, mean: SORT.S.diff.mean, w: SORT.SB.w, h: SORT.SB.h } : null),
 };

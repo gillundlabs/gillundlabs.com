@@ -118,7 +118,8 @@ try {
       await boot(view, theme);
       await evalJs("document.getElementById('b-begin').click()");
       await evalJs("document.getElementById('b-single').click()");
-      await sleep(80);
+      await evalJs('(async () => { await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); })()');
+      await sleep(40);
       const sample = await evalJs(`(() => {
         const c = MDGameLive.crossing();
         const g = MDGameLive.gas();
@@ -134,7 +135,9 @@ try {
           cssPerInch: MDScale.cssPerInch,
           c, T: a ? a.T : 0, v: a ? a.v : 0, vFromT, free: free.length,
           canvas: { w: box.width, h: box.height },
-          hudT: a ? MDPhysics.formatT(a.T, 2) : '',
+          displayedTemperature: (MDGameLive.hudReadout && MDGameLive.hudReadout().scoreText) || '',
+          canvasString: MDPhysics.formatT(a ? a.T : 0),
+          roundedSummary: a ? MDPhysics.formatT(a.T, 2) : '',
           expectT: H.startT * c.factor,
         };
       })()`);
@@ -147,6 +150,7 @@ try {
       const T = sample.T;
       if (Math.abs(T - sample.expectT) / sample.expectT > 1e-6) fail(`${theme} ${view.name} T ${T} != ${sample.expectT}`);
       if (sample.free && Math.abs(sample.v - sample.vFromT) / sample.vFromT > 1e-6) fail(`${theme} ${view.name} speed ${sample.v} != √(3kT/m)`);
+      if (sample.displayedTemperature !== sample.canvasString) fail(`${theme} ${view.name} HUD drew ${JSON.stringify(sample.displayedTemperature)}, not ${JSON.stringify(sample.canvasString)}`);
       if (sample.theme !== theme) fail(`${theme} ${view.name} theme is ${sample.theme}`);
       const t = sample.c.L / sample.vFromT;
       readouts.push({
@@ -156,12 +160,15 @@ try {
         calibrationCssPxPerInch: sample.cssPerInch, calibration: sample.scale,
         canvasCssWidth: sample.canvas.w, canvasCssHeight: sample.canvas.h,
         chamberWidthMm: sample.c.L * 1000,
-        temperatureReadout: sample.hudT, temperatureNK: T * 1e9,
+        temperatureReadout: sample.displayedTemperature,
+        displayedTemperature: sample.displayedTemperature,
+        numericTemperatureNK: T * 1e9,
+        roundedSummaryNotDisplayed: sample.roundedSummary,
         speedMmPerS: sample.vFromT * 1000, crossingTimeS: t,
         v_mm_s: sample.vFromT * 1000, t_s: t, hud: sample.hudT, font: sample.font, free: sample.free,
       });
       await shot(`maxwell-${view.name}-${theme}`);
-      console.log(theme, view.name, 'L', (sample.c.L * 1000).toFixed(2), 'mm', 'T', sample.hudT, 't', t.toFixed(4), 's', sample.free ? 'free' : 'adsorbed');
+      console.log(theme, view.name, 'L', (sample.c.L * 1000).toFixed(2), 'mm', 'displayed', JSON.stringify(sample.displayedTemperature), 't', t.toFixed(4), 's', sample.free ? 'free' : 'adsorbed');
     }
   }
 
@@ -196,7 +203,7 @@ try {
     game: "Maxwell's Demon",
     mode: 'single',
     gas: 'hydrogen',
-    note: 'Fresh-run HUD temperature at the rendered chamber. Calibration is the CSS pixels per inch the game used.',
+    note: 'displayedTemperature is the exact string drawn on the canvas (there is no DOM temperature node). numericTemperatureNK is the physical value. roundedSummaryNotDisplayed is formatT(T, 2) and is not the HUD string.',
     views: viewsOnly,
     resizeHold: { T_nK: before.T * 1e9, T_after_resize_nK: mid.T * 1e9, freshRunReadout: after.hud, fresh_nK: after.T * 1e9 },
     failures,

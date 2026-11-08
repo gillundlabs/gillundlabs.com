@@ -161,6 +161,8 @@ const T1 = (H.mass * (vPx * oldMpp) ** 2) / (3 * P.K_B);
 const T2 = (H.mass * (vPx2 * newMpp) ** 2) / (3 * P.K_B);
 check(Math.abs(T1 - T2) / T1 < 1e-12, 'rescaling pixel velocity by old/new m/px does not change T');
 check(game.includes('onRescale = (f) => { for (const a of state.atoms) { a.vx *= f; a.vy *= f; }'), 'active atoms keep physical speed on resize');
+check(game.includes('highlight: 0.18, deviceRim: true'), 'principal temperature engraving uses a quieter catch-light');
+check(script('src/render.js').includes('cut.highlight != null ? cut.highlight : 0.55'), 'other engraving keeps the kit catch-light');
 check(game.includes('freezeRun(CH.w)'), 'paddle runs freeze pace at start');
 check(game.includes('freezeRun(SORT.SB.w)'), 'sorting runs freeze pace at start');
 check(!game.includes('runFactor = paceFor'), 'resize does not assign a new run factor');
