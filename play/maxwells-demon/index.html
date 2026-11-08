@@ -320,6 +320,9 @@
   @media (orientation: landscape) {
     #stage { width: min(calc(100vw - var(--sal) - var(--sar) - 420px), calc((var(--vh) - var(--sat) - var(--sab)) * 1000 / 680)); }
   }
+  @media (orientation: landscape) and (max-width: 720px) {
+    #stage { width: min(calc(100vw - var(--sal) - var(--sar) - 112px), calc((var(--vh) - var(--sat) - var(--sab)) * 1000 / 680)); justify-self: start; margin-left: max(8px, var(--sal)); }
+  }
   @media (orientation: portrait) {
     #controls { top: auto; bottom: calc(var(--sab) + 56px); right: 50%; transform: translateX(50%); flex-direction: row; width: auto; }
     #controls button { min-width: 84px; width: auto; max-width: min(240px, 70vw); white-space: normal !important; overflow-wrap: anywhere !important; }
@@ -494,7 +497,10 @@
   .fv-small { font-size: 13px; text-align: center; } .fv-legal { font-size: 11px; line-height: 1.35; opacity: .85; text-align: center; margin-top: 10px; }
   .fv-legal a { padding: 8px 2px; }
   .shop-tier { font-size: 13px; margin: 8px 0 0; } .shop-tier button { padding: 2px 10px !important; font-size: 12px !important; min-height: 32px; }
-  #shop-list td button.fv-btn { font-size: 11px; }
+  body[data-theme="victorian"] #shop-list td button.fv-btn {
+    overflow-wrap: normal !important; word-break: keep-all !important; hyphens: none;
+    min-width: 7.6em; letter-spacing: .04em; line-height: 1.15;
+  }
   #dev-badge { position: fixed; z-index: 20; left: calc(var(--sal) + 6px); bottom: calc(var(--sab) + 6px); padding: 3px 8px; font: 700 11px var(--vls-font-mono); letter-spacing: .1em; color: #fff; background: #b3261e; border: 1px solid #fff; border-radius: 3px; pointer-events: none; }
   #trial-badge { position: fixed; z-index: 5; left: calc(var(--sal) + 8px); top: calc(var(--sat) + 8px);
     padding: 10px 16px; font: 500 13px var(--vls-font-engraved); letter-spacing: .06em;
@@ -628,6 +634,12 @@
   body[data-theme="victorian"] #shop-list td button,
   body[data-theme="victorian"] .shop-tier button,
   body[data-theme="victorian"] .stepper button { padding-top: 10px !important; padding-bottom: 10px !important; }
+  body[data-theme="victorian"] #shop-list td button.fv-btn {
+    white-space: normal !important; overflow: visible !important;
+    overflow-wrap: normal !important; word-break: keep-all !important; hyphens: manual !important;
+    min-width: 7.2em; letter-spacing: .03em; line-height: 1.25;
+    padding: 9px 12px 11px !important;
+  }
   @media (orientation: portrait) { #controls { max-height: 22vh; align-items: flex-start; } }
   .keep-together { display: inline-block; white-space: nowrap; max-width: 100%; }
   body[data-theme="victorian"] #p-title {
@@ -1885,7 +1897,51 @@
   const T_SCALE = 0.08;
   const START_SPEED = Math.sqrt((3 * K_B * 40e-9) / (1.008 * AMU));
   const UNLOCK_MARGIN = 2e-6 * T_SCALE;
-  const DEFAULT_METERS_PER_PX = START_SPEED / 222; BASE_MPP = METERS_PER_PX = DEFAULT_METERS_PER_PX;
+  // 222 px/s is the reference pace: hydrogen at 40 nK (T = m v² / 3 k_B) crosses
+  // one logical pixel in 1/222 s when METERS_PER_PX is DEFAULT_METERS_PER_PX.
+  const REF_PX_PER_S = 222;
+  const DEFAULT_METERS_PER_PX = START_SPEED / REF_PX_PER_S; BASE_MPP = METERS_PER_PX = DEFAULT_METERS_PER_PX;
+  // Reference chamber: wall-to-wall width of the paddle chamber and of the sorting
+  // box, both 880 logical pixels. L_ref is that width at the reference scale.
+  // A fresh run on a rendered chamber of physical width L (logical width ×
+  // BASE metres per pixel, magnification 1) uses T = T_ref (L / L_ref)².
+  // Speed stays √(T/m). Crossing time L/v equals L_ref/START_SPEED = 880/222 s.
+  // Do not fold magnification into L: the chamber-size knob divides T by M² once,
+  // on top of this factor.
+  const REF_CHAMBER_PX = 880;
+  const REF_CROSSING_M = REF_CHAMBER_PX * DEFAULT_METERS_PER_PX;
+  const REF_CROSSING_S = REF_CHAMBER_PX / REF_PX_PER_S;
+  function crossingPace(lengthM) {
+    if (!(lengthM > 0) || !isFinite(lengthM)) return 1;
+    return lengthM / REF_CROSSING_M;
+  }
+  function crossingFactor(lengthM) { const p = crossingPace(lengthM); return p * p; }
+  function stageMetersPerPx(cssWidth, cssPerInch) {
+    if (!(cssWidth > 0) || !(cssPerInch > 0) || !isFinite(cssWidth) || !isFinite(cssPerInch)) return null;
+    return (cssWidth / 1000) * (0.0254 / cssPerInch);
+  }
+  function referenceEquivalent(T, factor) {
+    const f = factor > 0 && isFinite(factor) ? factor : 1;
+    return T / f;
+  }
+  // Records are the peak temperature divided by this run's fresh-start factor:
+  // the same play, stated as a temperature in the reference chamber. The fresh
+  // start itself is not a performance. Saved numbers are left as stored.
+  function performanceRecord(peakT, startT, factor, saved) {
+    const peakEq = referenceEquivalent(peakT, factor);
+    const startEq = referenceEquivalent(startT, factor);
+    const played = peakT > startT * (1 + 1e-12);
+    const prev = saved > 0 && isFinite(saved) ? saved : 0;
+    const beat = played && peakEq > prev;
+    return { peakEq, startEq, played, beat, stored: beat ? peakEq : prev };
+  }
+  // mode 'preset' scales the reference heating step with (L/L_ref)².
+  // mode 'absolute' uses settingT on every screen, including 20 nK.
+  function heatingKick(mode, settingT, presetT, factor) {
+    const f = factor > 0 && isFinite(factor) ? factor : 1;
+    const preset = mode === 'preset';
+    return { preset, mean: preset ? presetT * f : settingT };
+  }
 
   const SHELL_CAP = [2, 8, 8, 18];
   function shellsFor(Z) {
@@ -2004,10 +2060,11 @@
     const [f, u] = m >= 0.01 ? [100, 'cm'] : m >= 1e-3 ? [1000, 'mm'] : [1e6, 'µm'], x = m * f;
     return `${x >= 10 ? x.toFixed(0) : x.toFixed(1)} ${u}`;
   }
-  function formatSpeed(vPx) {
-    const v = vPx * METERS_PER_PX;
-    return v >= 1 ? `${v.toFixed(2)} m/s` : v >= 0.01 ? `${(v * 100).toFixed(1)} cm/s` : `${(v * 1000).toFixed(2)} mm/s`;
+  function formatMetresPerSecond(v) {
+    const a = Math.abs(v);
+    return a >= 1 ? `${v.toFixed(2)} m/s` : a >= 0.01 ? `${(v * 100).toFixed(1)} cm/s` : `${(v * 1000).toFixed(2)} mm/s`;
   }
+  function formatSpeed(vPx) { return formatMetresPerSecond(vPx * METERS_PER_PX); }
 
   function histogramCheck(lawId, { n = 200000, bins = 36, rand = Math.random } = {}) {
     const lo = -Math.PI / 2, hi = Math.PI / 2, w = (hi - lo) / bins;
@@ -2030,6 +2087,8 @@
 
   return {
     DEFAULT_METERS_PER_PX, K_B, AMU, TIME_SCALE, START_SPEED, T_SCALE, GRAVITY, GRAVITY_LABEL, pressure, BEST_LAB_VACUUM_PA, UNLOCK_MARGIN, SHELL_CAP, setMetersPerPx, setMagnification, formatLength,
+    REF_PX_PER_S, REF_CHAMBER_PX, REF_CROSSING_M, REF_CROSSING_S, crossingPace, crossingFactor, formatMetresPerSecond,
+    stageMetersPerPx, referenceEquivalent, performanceRecord, heatingKick,
     get BASE_METERS_PER_PX() { return BASE_MPP; }, get CHAMBER_MAG() { return MAG; },
     get METERS_PER_PX() { return METERS_PER_PX; }, get START_SPEED_PX() { return START_SPEED / METERS_PER_PX; },
     ELEMENTS, EXIT_LAWS, DEFAULT_EXIT_LAW,
@@ -2039,7 +2098,6 @@
     formatT, formatSpeed, histogramCheck,
   };
 });
-
 </script>
 <script data-src="src/scale.js">
 (function (root) {
@@ -2159,6 +2217,7 @@ if (typeof module === 'object' && module.exports) module.exports = root.MDScale;
     gravity: 'micro',
     sortDoorControl: 'hold',
     sortPreview: true,
+    wallHeat: 'preset',
   };
   const RANGES = { wallTemp: [0.8e-9, 400e-9], vacuum: [1, 20], residenceMean: [0, 1.5], sortN: [20, 200] };
 
@@ -2202,6 +2261,11 @@ if (typeof module === 'object' && module.exports) module.exports = root.MDScale;
     st.sortPreview = st.sortPreview !== false;
     if (!P.EXIT_LAWS[st.exitLaw]) st.exitLaw = DEFAULTS.exitLaw;
     if (st.theme !== 'bw') st.theme = 'victorian';
+    // Released saves store an absolute wall temperature and have no wallHeat flag.
+    // Do not guess whether an unreleased copy meant the scaled preset. Only an
+    // explicit 'preset' scales; a missing flag keeps the stored kelvin as the kick.
+    if (raw && raw.settings && raw.settings.wallHeat !== 'preset' && raw.settings.wallHeat !== 'absolute') st.wallHeat = 'absolute';
+    if (st.wallHeat !== 'preset') st.wallHeat = 'absolute';
     return s;
   }
   function save(s) { try { root.localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {  } }
@@ -2209,7 +2273,6 @@ if (typeof module === 'object' && module.exports) module.exports = root.MDScale;
 
   root.MDSettings = { KEY, DEFAULTS, RANGES, load, save, reset };
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script data-src="src/config.js">
 (function (root) {
@@ -5050,11 +5113,21 @@ function font(key = 'engraved') { return type[key]; }
 function fontRevision() { return typeRevision; }
 if (root.document && root.document.fonts) root.document.fonts.addEventListener('loadingdone', () => { typeRevision++; });
 refreshFonts();
-function cutText(ctx,text,x,y,size,align,weight,family) {
+function cutText(ctx, text, x, y, size, align, weight, family, cut) {
   ctx.save(); ctx.font = `${weight} ${size}px ${family}`; ctx.textAlign = align; ctx.textBaseline = 'middle';
-  ctx.letterSpacing = `${Math.max(.5,size*.08)}px`;
-  ctx.fillStyle = 'rgba(255,240,190,0.55)'; ctx.fillText(text,x,y+1);
-  ctx.fillStyle = root.VLS.tokens.palette.engraving; ctx.fillText(text,x,y); ctx.restore();
+  ctx.letterSpacing = `${Math.max(.5, size * .08)}px`;
+  const scale = Math.abs(ctx.getTransform().a) || 1;
+  const ink = (cut && cut.ink) || root.VLS.tokens.palette.engraving;
+  const principal = !!(cut && cut.deviceRim);
+  const drop = principal ? Math.min(size * 0.08, 1 / scale) : 1;
+  const hi = cut && cut.highlight != null ? cut.highlight : 0.55;
+  ctx.fillStyle = `rgba(255,240,190,${hi})`; ctx.fillText(text, x, y + drop);
+  if (principal) {
+    ctx.lineJoin = 'round'; ctx.miterLimit = 2;
+    ctx.lineWidth = Math.min(size * 0.12, Math.max(0.8, 1.35 / scale));
+    ctx.strokeStyle = ink; ctx.strokeText(text, x, y);
+  }
+  ctx.fillStyle = ink; ctx.fillText(text, x, y); ctx.restore();
 }
 
 const faces = new WeakMap();
@@ -5104,7 +5177,7 @@ function faceText(ctx, text, x, y, size, options = {}) {
   const family = options.font || font(), min = Math.min(size, options.minSize || 10);
   const engraved = options.engraved !== false;
   if (!rect) {
-    if (engraved) cutText(ctx, text, x, y, size, align, weight, family);
+    if (engraved) cutText(ctx, text, x, y, size, align, weight, family, options.cut);
     else { ctx.save(); ctx.font = `${weight} ${size}px ${family}`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = options.color || '#fff'; ctx.fillText(text, x, y); ctx.restore(); }
     return null;
   }
@@ -5147,12 +5220,12 @@ function faceText(ctx, text, x, y, size, options = {}) {
   lines.forEach((line, i) => {
     const m = ms[i], xx = Math.max(f.x + m.actualBoundingBoxLeft, Math.min(f.x + f.w - m.actualBoundingBoxRight, x)), yy = y0 + i * lh;
     bounds.push({ left: xx - m.actualBoundingBoxLeft, right: xx + m.actualBoundingBoxRight, top: yy - m.actualBoundingBoxAscent, bottom: yy + m.actualBoundingBoxDescent + (engraved ? 1 : 0) });
-    if (engraved) cutText(ctx, line, xx, yy, px, align, weight, family);
+    if (engraved) cutText(ctx, line, xx, yy, px, align, weight, family, options.cut);
     else { ctx.fillStyle = options.color || '#fff'; ctx.fillText(line, xx, yy); }
   });
   ctx.restore(); return { face: f, bounds, size: px, lines, elided };
 }
-function engrave(ctx, text, x, y, size, align = 'center', weight = '600') { return faceText(ctx, text, x, y, size, { align, weight }); }
+function engrave(ctx, text, x, y, size, align = 'center', weight = '600', cut) { return faceText(ctx, text, x, y, size, { align, weight, cut }); }
 
 function chamberEngraving(ctx, x, y, size) {
   const r = faceAt(ctx, x + size / 2, y + size / 2); if (!r) return;
@@ -5217,7 +5290,6 @@ function gauge(ctx, cx, cy, r, p) {
 root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, dataTag, font, refreshFonts, fontRevision, THEMES, mulberry, woodTexture, brassGrad, brassRect, brassArc, screw, engrave, plaque, setFaces, getFaces, faceText, chamberEngraving, drawHistogram,
   paddleVictorian, paddleBW, scaleBar, gauge, sci, GAUGE_LO, GAUGE_HI };
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script data-src="src/physics-notes.js">
 (function (root) {
@@ -5262,6 +5334,11 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     };
   })();
   const gameLive = () => root.MDGameLive || { sortMag: () => 1, padSpeed: 640 };
+  const liveFactor = () => {
+    const g = root.MDGameLive && root.MDGameLive.crossing && root.MDGameLive.crossing();
+    if (g && g.factor > 0) return g.factor;
+    return P.crossingFactor(P.REF_CHAMBER_PX * P.BASE_METERS_PER_PX);
+  };
   const chamberM = () => Math.max(1, +gameLive().sortMag() || 1);
   const magLim = () => root.MDSorting.magLimits(root.MDEntropy, P.BASE_METERS_PER_PX);
   const magCold = () => root.MDSorting.magColdest(root.MDEntropy, P.BASE_METERS_PER_PX);
@@ -5275,9 +5352,15 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     mmpx: () => (P.BASE_METERS_PER_PX * 1000).toFixed(2),
     chamberM: () => String(chamberM()),
     chamberMmpx: () => (P.BASE_METERS_PER_PX / chamberM() * 1000).toPrecision(2),
-    chamberTH: () => P.formatT(GN.TSort / chamberM() ** 2, 2),
-    padRatio: () => (gameLive().padSpeed / (P.START_SPEED / P.BASE_METERS_PER_PX)).toFixed(1),
-    magFloor: () => P.formatT(magLim().tFloor, 2),
+    chamberTH: () => P.formatT(GN.TSort * liveFactor() / chamberM() ** 2, 2),
+    startTH: () => P.formatT(P.ELEMENTS[0].startT * liveFactor(), 2),
+    startTKr: () => P.formatT(P.ELEMENTS[P.ELEMENTS.length - 1].startT * liveFactor(), 2),
+    startV: () => P.formatMetresPerSecond(P.START_SPEED * Math.sqrt(liveFactor())),
+    screenL: () => P.formatLength(P.REF_CHAMBER_PX * P.BASE_METERS_PER_PX),
+    refL: () => P.formatLength(P.REF_CROSSING_M),
+    refCross: () => `${P.REF_CROSSING_S.toFixed(2)} s`,
+    padRatio: () => (gameLive().padSpeed / P.REF_PX_PER_S).toFixed(1),
+    magFloor: () => P.formatT(magLim().tFloor * liveFactor(), 2),
     magAbs: () => String(magLim().absCap),
     magColdMean: () => P.formatT(magCold().Tmean, 2),
     magColdGroup: () => P.formatT(magCold().Tcold, 2),
@@ -5318,7 +5401,7 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     p.label('fast ones gather here', w / 4 + 6, h - 34, { size: 17 }).label('slow ones gather here', 3 * w / 4 - 4, h - 34, { size: 17 });
   }
   function sketchThermo(ctx, w, h, theme) {
-    const M = chamberM(), Tc = M > 1 ? GN.TSort / (M * M) : 0, Tlow = Math.min(GN.TH, Tc || GN.TH);
+    const f = liveFactor(), M = chamberM(), Tc = M > 1 ? GN.TSort * f / (M * M) : 0, Tf = GN.TH * f, Tlow = Math.min(Tf, Tc || Tf);
     const p = sciPen(ctx, { theme, seed: 9 }), x0 = 70, top = 24, bot = h - 22, eMin = Math.min(-8, Math.floor(Math.log10(Tlow)) - (Math.log10(Tlow) % 1 > -0.3 ? 1 : 0));
     const lg = (T) => Math.log10(T), tMax = lg(1000), tMin = eMin, Y = (T) => top + ((tMax - lg(T)) / (tMax - tMin)) * (bot - top);
     p.line(x0, top, x0, bot, 2).line(x0 + 14, top, x0 + 14, bot - 10, 1.4).circle(x0 + 7, bot + 2, 11, 1.6);
@@ -5327,7 +5410,7 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     const stepE = -eMin > 9 ? 2 : 1;
     for (let e = 3; e >= eMin; e -= (e > 0 ? 1 : stepE)) { const y = Y(10 ** e); p.line(x0 - 8, y, x0, y, 1); p.label(pow10(e), x0 - 12, y, { size: 13, align: 'right', font: 'serif' }); }
     const marks = [[293, '293 K  room'], [77, '77 K  liquid nitrogen boils'], [4.2, '4.2 K  liquid helium boils'], [2.7, '2.7 K  cosmic microwave background'],
-      [146e-6, '146 µK  Doppler limit, rubidium'], [170e-9, '170 nK  first BEC (1995)'], [GN.TH, GN.tH + '  your first hydrogen atom']];
+      [146e-6, '146 µK  Doppler limit, rubidium'], [170e-9, '170 nK  first BEC (1995)'], [Tf, P.formatT(Tf, 2) + '  fresh hydrogen on this screen']];
     if (Tc) marks.push([Tc, `${P.formatT(Tc, 2)}  hydrogen, Sorting ×${M}`]);
     marks.forEach(([T, txt], i) => { const y = Y(T), dy = i === 3 ? 10 : i === 2 ? -6 : i === 6 ? (Tc ? -2 : 8) : i === 5 ? -8 : i === 7 ? 8 : 0; p.line(x0 + 16, y, x0 + 40, y + dy, 1); p.label(txt, x0 + 46, y + dy, { size: 17, align: 'left' }); });
     const vr = Tc ? vsRecord(Tc) : 1;
@@ -5502,9 +5585,9 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
       cf: 'Maxwell to Tait, 11 Dec. 1867 (Cambridge Digital Library, PH-CAVENDISH-P-00092); E. Lutz &amp; S. Ciliberto, "Information: From Maxwell\'s demon to Landauer\'s eraser", <i>Physics Today</i> 68(9), 30 (2015); A. Bérut <i>et al.</i>, <i>Nature</i> 483, 187 (2012).' },
     { id: 'temperature', title: 'Temperature is motion', date: '5 June<br>1995', sketch: sketchThermo, h: 300, alt: 'Sketch: a thermometer with a logarithmic kelvin scale marking room temperature, liquid nitrogen and helium, the cosmic microwave background, the rubidium Doppler limit, the first BEC and the game\'s starting temperature.',
       body: `<p>For a gas, temperature measures how hard its atoms are jiggling. For atoms that only fly about (no spinning or vibrating to worry about), the average kinetic energy is ½m⟨v²⟩ = (3/2)k<sub>B</sub>T. So T = m⟨v²⟩ / (3k<sub>B</sub>). Here k<sub>B</sub> = 1.380649 × 10⁻²³ J/K is the Boltzmann constant, an exact number since the SI was redefined in 2019.</p>
-        <p>By that formula, a hydrogen atom at room temperature (293 K) has a root-mean-square speed of about 2.7 km/s. At ${GN.tH}, where your first atom starts, it is about ${GN.v}. (1 nK = 10⁻⁹ K; 1 µK = 10⁻⁶ K.)</p>
+        <p>By that formula, a hydrogen atom at room temperature (293 K) has a root-mean-square speed of about 2.7 km/s. At ${GN.tH}, the fresh start in the reference chamber, it moves at about ${GN.v}. On this screen a fresh hydrogen atom starts at <span data-live="startTH">${GN.tH}</span>, about <span data-live="startV">${GN.v}</span>. (1 nK = 10⁻⁹ K; 1 µK = 10⁻⁶ K.)</p>
         <p>Real labs get there with laser cooling (Nobel Prize 1997: Chu, Cohen-Tannoudji and Phillips), which brings atoms down to microkelvins. On 5 June 1995 a JILA team led by Eric Cornell and Carl Wieman cooled rubidium-87 further, by evaporation, until a Bose–Einstein condensate appeared near 170 nK. Wolfgang Ketterle's MIT group made one from sodium a few months later, and the three shared the 2001 Nobel Prize.</p>`,
-      model: 'Strictly, temperature belongs to a crowd of atoms in equilibrium, not to one atom. The game labels each atom with T = m v²/(3k<sub>B</sub>) from its own speed. That is a convention, not a measurement. The game is also flat (2D) but still uses the 3D formula; a truly two-dimensional gas would use T = m⟨v²⟩/(2k<sub>B</sub>). <b>Real speeds on a real screen:</b> the game works out how many millimetres one pixel is on your screen (exactly in the iPhone and Android apps; in a browser it assumes a typical phone, tablet or monitor and says so under the chamber, and Settings → Calibrate screen lets you measure it with a bank card). So an atom at a given temperature crosses the glass at the same real millimetres per second everywhere, and a bigger screen simply holds a bigger chamber. <b>Against the coldest lab gas:</b> <span data-live="recordTempNote">with Sorting\'s Chamber size knob turned up, the game runs gases at picokelvin; see "How the game knows a millimetre" for how this screen compares with the coldest gas ever measured (an effective 38 pK, 2021).</span>',
+      model: 'Strictly, temperature belongs to a crowd of atoms in equilibrium, not to one atom. The game labels each atom with T = m v²/(3k<sub>B</sub>) from its own speed. That is a convention, not a measurement. The game is also flat (2D) but still uses the 3D formula; a truly two-dimensional gas would use T = m⟨v²⟩/(2k<sub>B</sub>). <b>Real speeds on a real screen:</b> the game works out how many millimetres one pixel is on your screen (exactly in the iPhone and Android apps; in a browser it assumes a typical phone, tablet or monitor and says so under the chamber, and Settings → Calibrate screen lets you measure it with a bank card). So an atom at a given temperature crosses the glass at the same real millimetres per second everywhere. A fresh run on a wider chamber starts hotter, with the square of the width, so the time to cross that width stays the same. The temperature on the dial is the real temperature of that speed. <b>Against the coldest lab gas:</b> <span data-live="recordTempNote">with Sorting\'s Chamber size knob turned up, the game runs gases at picokelvin; see "How the game knows a millimetre" for how this screen compares with the coldest gas ever measured (an effective 38 pK, 2021).</span>',
       cf: 'NIST CODATA, "Boltzmann constant" (physics.nist.gov/cuu); M. H. Anderson <i>et al.</i>, <i>Science</i> 269, 198 (1995); The Nobel Prize in Physics 2001, popular information (nobelprize.org); D. A. Steck, <i>Rubidium 87 D Line Data</i> (steck.us/alkalidata).' },
     { id: 'surfaces', title: 'Sticking, and leaving', date: '1930', sketch: sketchLobe, h: 300, live: true, tap: (st) => { st.law = st.law === 'cos2' ? 'cos' : 'cos2'; st.atoms = []; }, alt: 'Sketch: a polar plot above a hatched surface showing the cos θ lobe and a dashed cos² θ lobe about the surface normal, with atoms flying off the surface. Tap to switch laws.',
       body: `<p>When an atom hits a surface it often doesn't bounce at all. Weak van der Waals forces can hold it there: it is <i>adsorbed</i>. It rattles in place until a random jolt from the vibrating surface kicks it loose. That is <i>desorption</i>.</p>
@@ -5517,10 +5600,10 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
       body: `<p>A wall is not still: its atoms vibrate at the wall's own temperature. An atom that sits on it long enough trades energy with those vibrations until it shares that temperature. When it leaves, it carries the wall's temperature away, whatever it arrived with.</p>
         <p>In 1911 Martin Knudsen measured how complete this trade is with the <i>accommodation coefficient</i> α = (E<sub>out</sub> − E<sub>in</sub>) / (E<sub>wall</sub> − E<sub>in</sub>). α = 1 means the atom leaves fully at the wall temperature; α = 0 means it keeps its own energy. A cold atom on a warm wall heats up, and a hot atom on a cold wall cools down. On average the atom is pulled toward the wall temperature, not pushed past it.</p>
         <p>That is why real ultracold atoms never touch anything. Lab walls are at room temperature, or a few kelvin inside a cryostat. One fully accommodating touch would make a ${GN.tH} atom about ${GN.cryo} times hotter in a 4 K cryostat, and about ${GN.room} times hotter at room temperature. Instead, atoms are held by magnetic fields or beams of light in the middle of the vacuum.</p>`,
-      model: "In the game, every visit to a wall or paddle adds a random temperature kick, exponentially distributed with an average equal to the 'wall temperature' setting. The atom never cools. Real walls do the opposite of a ratchet: they drag the atom toward their own temperature. The game's ratchet is where your score comes from. And an atom stuck to your paddle rides along with it, but leaves with none of the paddle's own velocity: a real moving wall would hand it some (see \"Moving walls and pistons\").",
+      model: "In the game, every visit to a wall or paddle adds a random temperature kick, exponentially distributed. The default average is 20 nK in the reference chamber and scales with the chamber width, so the same number of bounces reaches the next element. A temperature you set yourself stays that absolute temperature on every screen. The atom never cools. Real walls do the opposite of a ratchet: they drag the atom toward their own temperature. The game's ratchet is where your score comes from. And an atom stuck to your paddle rides along with it, but leaves with none of the paddle's own velocity: a real moving wall would hand it some (see \"Moving walls and pistons\").",
       cf: 'M. Knudsen, "Die molekulare Wärmeleitung der Gase und der Akkommodationskoeffizient", <i>Ann. Phys.</i> 339(4), 593–656 (1911); Thermopedia, "Accommodation coefficient" (thermopedia.com).' },
     { id: 'collisions', title: 'Atoms bumping into atoms', toc: 'Atoms bumping', date: '1995', sketch: sketchSWave, h: 280, live: true, alt: 'Sketch: two atoms approach the centre of mass from opposite sides; afterwards they leave back to back along a randomly chosen direction, drawn again every second.',
-      body: `<p>At everyday temperatures, two atoms collide a bit like billiard balls. Ultracold, quantum mechanics takes over. Each atom behaves as a wave with de Broglie wavelength λ = h / (mv). For hydrogen at ${GN.tH}, where the game starts it, moving at the matching root-mean-square speed, that is about ${GN.lamDB}, thousands of times larger than the nanometre-scale reach of the forces between atoms. (Other pages quote the <i>thermal</i> wavelength h / √(2π m k<sub>B</sub>T), the standard yardstick for a whole gas. It is a different definition, smaller by √(2π/3) ≈ 1.45: about ${GN.lamTh} at the same temperature. Both are right; they answer different questions.)</p>
+      body: `<p>At everyday temperatures, two atoms collide a bit like billiard balls. Ultracold, quantum mechanics takes over. Each atom behaves as a wave with de Broglie wavelength λ = h / (mv). For hydrogen at ${GN.tH} in the reference chamber, moving at that fresh-start speed, λ is about ${GN.lamDB}. On another chamber the fresh start is hotter or colder with the square of the width, and this wavelength changes with it. It is thousands of times larger than the nanometre-scale reach of the forces between atoms. (Other pages quote the <i>thermal</i> wavelength h / √(2π m k<sub>B</sub>T), the standard yardstick for a whole gas. It is a different definition, smaller by √(2π/3) ≈ 1.45: about ${GN.lamTh} at the same reference temperature. Both are right; they answer different questions.)</p>
         <p>When the wave is that much bigger than its target, only the simplest, perfectly round scattering wave survives: the <i>s-wave</i> (zero angular momentum). An s-wave has no favourite direction. So, seen from the pair's centre of mass, the atoms fly apart at a completely random angle. Momentum and energy are still conserved: the centre of mass carries on as before and the relative speed is unchanged. Only the direction is new.</p>
         <p>The whole collision boils down to one number, the <i>scattering length</i> a. At low energy two different (distinguishable) atoms have cross-section σ = 4πa². Two identical bosons get double, 8πa², because their waves interfere constructively. At higher energy the unitarity limit caps it: for identical bosons σ = 8πa² / (1 + k²a²). Scattering lengths are quoted in Bohr radii (a₀ ≈ 0.053 nm): about 1.2–1.3 a₀ for spin-polarised hydrogen and about 100 a₀ for rubidium-87.</p>
         <p>These collisions are what make evaporative cooling work: they keep re-sharing energy among the atoms left behind after the hottest ones are let go. That is how the first condensates were made in 1995.</p>
@@ -5544,13 +5627,13 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     { id: 'elements', title: 'The elements and their masses', toc: 'Elements & masses', date: '1869', sketch: sketchMasses, h: 230, alt: 'Sketch: a hand-drawn bar chart of the atomic masses of hydrogen to krypton, rising from 1 u to about 84 u.',
       body: `<p>Dmitri Mendeleev published his periodic table in 1869. The game's 36 elements run from hydrogen (Z = 1) to krypton (Z = 36), the end of the table's fourth row.</p>
         <p>Masses are in daltons (unified atomic mass units). 1 u is one twelfth of the mass of a carbon-12 atom: 1.66053906892 × 10⁻²⁷ kg (CODATA 2022). The game uses IUPAC standard atomic weights, such as hydrogen 1.008, helium 4.0026 and krypton 83.798. These are averages over each element's natural isotopes. Chlorine's 35.45, for example, mixes about three-quarters chlorine-35 with one-quarter chlorine-37.</p>
-        <p>Mass matters for speed. At the same temperature, the root-mean-square speed goes as 1/√m, so krypton moves about 9 times slower than hydrogen. The game does it the other way round. Every element starts at the same speed (about ${GN.v}), so heavier atoms start hotter: krypton at about ${GN.tKr}, ${GN.krRatio} times hydrogen's ${GN.tH} (their mass ratio).</p>`,
+        <p>Mass matters for speed. At the same temperature, the root-mean-square speed goes as 1/√m, so krypton moves about 9 times slower than hydrogen. The game does it the other way round. Every element starts at the same speed (on this screen about <span data-live="startV">${GN.v}</span>), so heavier atoms start hotter: krypton at about <span data-live="startTKr">${GN.tKr}</span>, ${GN.krRatio} times hydrogen's temperature (their mass ratio).</p>`,
       model: 'A real atom has one definite isotope mass; nobody traps a "standard atomic weight". Many of these elements are solids at room temperature. Real cold-atom labs mostly use the alkali metals (Li, Na, K, Rb, Cs) and a handful of others such as Sr, Yb, Cr, Er, Dy and metastable He. Element prices, coins and unlocks are, regrettably, not physics.',
       cf: 'IUPAC CIAAW, "Standard atomic weights" (ciaaw.org); NIST CODATA 2022, "atomic mass constant" (physics.nist.gov/cuu); Wikipedia, "Periodic table".' },
     { id: 'entropy', title: 'Sorting, and the entropy it removes', toc: 'Sorting & entropy', date: '1912', sketch: sketchLedger, h: 260, alt: 'Sketch: a balance. The left pan holds the gas entropy removed by sorting; the right pan holds the ledger of bits, k_B ln 2 each. Net equals ΔS minus the ledger.',
       body: `<p>Entropy counts the ways. Boltzmann's idea, in Planck's notation S = k<sub>B</sub> ln W, is carved on Boltzmann's grave in Vienna: the more microscopic arrangements W that look the same from outside, the higher the entropy. A gas whose fast and slow atoms are mixed evenly through both chambers has the most ways, so it has the most entropy.</p>
         <p>For an ideal gas, Otto Sackur and Hugo Tetrode (1911–1912) turned this into a formula. In the game's flat world it reads S = N k<sub>B</sub> [ ln(A / (N λ²)) + 2 ], with N atoms in area A and λ = h / √(2π m k<sub>B</sub>T) the thermal de Broglie wavelength. (In three dimensions the 2 becomes 5/2 and A becomes a volume.) For a mixture, each element gets its own term with its own N and λ. Each chamber's temperature comes from its atoms' mean kinetic energy: in 2D, ⟨KE⟩ = k<sub>B</sub>T per atom.</p>
-        <p>For hydrogen at the Sorting mode's standard ${GN.tSort} (a 2D temperature, the same speeds as ${GN.tH} in the 3D convention), λ is about ${GN.lamThSort}, and each atom carries about 16 to 18 k<sub>B</sub> of entropy (the chamber's real area, and so this number, depends on your screen; the score only uses differences, which don't). There are two ways to lower the total. <b>Sort by speed:</b> with the energy fixed, a hot chamber plus a cold one has less entropy than two warm ones. Putting the fastest 50 of 100 hydrogen atoms in A and the slowest 50 in B removes about 33 k<sub>B</sub>. <b>Sort by number:</b> crowding atoms onto one side also lowers S. All 100 in one chamber at the same temperature removes N k<sub>B</sub> ln 2 ≈ 69 k<sub>B</sub>. The score counts both.</p>
+        <p>For hydrogen at the reference chamber's standard Sorting start, ${GN.tSort} (a 2D temperature, the same speeds as ${GN.tH} in the 3D convention), λ is about ${GN.lamThSort}, and each atom in one half of that chamber carries about 16 k<sub>B</sub> of entropy. On another chamber the fresh start is hotter or colder with the square of the width, so both λ and the entropy per atom follow the screen. The score only uses differences, which do not. There are two ways to lower the total. <b>Sort by speed:</b> with the energy fixed, a hot chamber plus a cold one has less entropy than two warm ones. Putting the fastest 50 of 100 hydrogen atoms in A and the slowest 50 in B removes about 33 k<sub>B</sub>. <b>Sort by number:</b> crowding atoms onto one side also lowers S. All 100 in one chamber at the same temperature removes N k<sub>B</sub> ln 2 ≈ 69 k<sub>B</sub>. The score counts both.</p>
         <p><b>A hot gas and a cold one.</b> The Sorting box starts as an even mixture of two gases of the same atoms: half at a cold temperature T<sub>c</sub> and half at a hot T<sub>h</sub>, each with its own Maxwell–Boltzmann spread of speeds. The <i>spread</i> r = T<sub>h</sub>/T<sub>c</sub> is how much order there is to harvest. At fixed N and A the entropy depends on temperature only through N k<sub>B</sub> ln T, so separating them perfectly (hot in one chamber, cold in the other) removes N k<sub>B</sub> ln[(1 + r)/(2√r)]. For 100 hydrogen atoms at r = 10 that is 100 ln(11/2√10) ≈ 55 k<sub>B</sub>; at Demon's spread r = 30 it is about 104 k<sub>B</sub>; at r = 1 it is nothing. The <i>mean</i> temperature only sets how fast everything moves; it drops out of the formula. Collisions slowly merge the two gases into one (watch the speed histograms in each chamber), so the early seconds are worth the most.</p>
         <p>With only 100 atoms, a chamber's temperature is a statistical estimate. For 50 atoms it wobbles by about ±14 % (T/√N). Even with no demon and the door left open, ΔS drifts by a k<sub>B</sub> or so (about ±1.4 k<sub>B</sub> in the long run) as atoms wander through at random.</p>
         <p><b>The ledger.</b> Each time you open the door, the demon has made a decision and must record it: one bit. Wiping that bit later costs at least k<sub>B</sub> ln 2 ≈ 0.69 k<sub>B</sub> = 9.57 × 10⁻²⁴ J/K (page 11). Your score is the net: the gas's ΔS minus the ledger. It can go negative.</p>`,
@@ -5651,7 +5734,6 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
   root.addEventListener('resize', () => { if (built && raf) redrawAll(); });
   root.MDNotes = { sciOptions: SCI_INK, PAGES, GN, LIVE, sciPen, open, close, setPlain, redrawAll, isPlain: () => plain };
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script data-src="src/physics-notes-more.js">
 (function (root) {
@@ -5889,7 +5971,7 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     { id: 'waves', title: 'When atoms become waves', date: '1924', sketch: sketchWaves, h: 230,
       alt: 'Sketch: four boxes, getting colder from left to right. Hot atoms are small balls; cold atoms are wave packets; colder still, the packets overlap; finally a single giant wave, the condensate.',
       body: `<p>In his 1924 doctoral thesis, Louis de Broglie proposed that every particle has a wave, with wavelength λ = h / p, where p is its momentum and h = 6.62607015 × 10⁻³⁴ J s is Planck's constant (exact since 2019). The idea was soon confirmed. Clinton Davisson and Lester Germer saw electrons diffract from a nickel crystal in 1927. Immanuel Estermann and Otto Stern diffracted helium atoms in 1930. In 1999 Anton Zeilinger's group in Vienna diffracted buckyballs, C₆₀ molecules of 60 carbon atoms each, whose wavelength was about 2.5 picometres.</p>
-        <p>For a gas the useful size is the <i>thermal</i> de Broglie wavelength, λ = h / √(2π m k<sub>B</sub>T). For hydrogen at room temperature it is about 0.1 nm, roughly the size of the atom itself and far smaller than the gaps between atoms, so the atoms behave like tiny billiard balls. Cool the gas and λ grows as 1/√T: about 1.7 µm for hydrogen at 1 µK, and about ${GN.lamTh} at ${GN.tH}, where the game starts it. (The page "Atoms bumping into atoms" quotes h/(mv) for a single atom at the root-mean-square speed, about ${GN.lamDB}: a different definition, larger by √(2π/3) ≈ 1.45.)</p>
+        <p>For a gas the useful size is the <i>thermal</i> de Broglie wavelength, λ = h / √(2π m k<sub>B</sub>T). For hydrogen at room temperature it is about 0.1 nm, roughly the size of the atom itself and far smaller than the gaps between atoms, so the atoms behave like tiny billiard balls. Cool the gas and λ grows as 1/√T: about 1.7 µm for hydrogen at 1 µK, and about ${GN.lamTh} at ${GN.tH} in the reference chamber. That is the fresh start there; a wider chamber starts hotter and this wavelength is shorter. (The page "Atoms bumping into atoms" quotes h/(mv) for a single atom at the root-mean-square speed, about ${GN.lamDB}: a different definition, larger by √(2π/3) ≈ 1.45.)</p>
         <p>Quantum behaviour takes over when the waves of neighbouring atoms overlap, that is, when the number of atoms in a cube of side λ (the <i>phase-space density</i> nλ³) approaches one. Einstein's theory says that identical bosons start to condense at nλ³ = 2.612. MIT's hydrogen condensate of 1998 appeared at about 50 µK and 1.8 × 10¹⁴ atoms per cm³. Put those numbers in and nλ³ comes out at about 2.7.</p>`,
       analogy: 'Hot atoms are like pebbles: small, hard and easy to count. Cold atoms are more like ripples on a pond, which spread until they run into each other.',
       model: "The game draws atoms as little solar systems with sharp edges and moves each one as a point along an exact path. Nothing ever diffracts or interferes; the wave nature enters only through the collision rule (random-angle s-wave scattering).",
@@ -5980,11 +6062,12 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
       cf: 'R. Brown, <i>Phil. Mag.</i> 4, 161 (1828); A. Einstein, <i>Ann. Phys.</i> 17, 549 (1905); J. Perrin, "Mouvement brownien et réalité moléculaire", <i>Ann. Chim. Phys.</i> 18, 5 (1909); The Nobel Prize in Physics 1926 (nobelprize.org).' },
 
     { id: 'millimetre', title: 'How the game knows a millimetre', date: 'Nov.<br>2026', sketch: sketchScale, h: 240,
-      alt: 'Sketch: a bank card on the screen above a millimetre ruler marked 85.60 mm; beside it a phone and a monitor, each with an arrow of the same real length: the same temperature gives the same speed in millimetres per second.',
-      body: `<p>A temperature is a speed: T = m v² / (3k<sub>B</sub>) needs v in metres per second. But a game moves atoms in pixels per second. To turn one into the other, the game has to know how many millimetres one pixel covers on <i>your</i> screen. Then an atom at a given temperature crosses the same number of real millimetres each second on a phone and on a 27-inch monitor. (The chamber is bigger on a bigger screen, so atoms take longer to cross it: a deliberate trade, physics first.)</p>
+      alt: 'Sketch: a bank card on the screen above a millimetre ruler marked 85.60 mm; beside it a phone and a monitor. The same temperature is the same speed. A fresh start is hotter in the wider chamber, so both take the same time to cross.',
+      body: `<p>A temperature is a speed: T = m v² / (3k<sub>B</sub>) needs v in metres per second. The game keeps that relation exact. It does not choose a pixel speed on its own: the speed is always the speed that belongs to the temperature on the dial and to how many millimetres one pixel covers on <i>your</i> screen. An atom at a given temperature therefore crosses the same number of real millimetres each second on a phone and on a monitor.</p>
+        <p><b>The same time to cross.</b> A fresh run sets its starting temperature from the chamber actually drawn, not from the browser window and not from the brass around the glass. The crossing length L is that glass, wall to wall, in metres. The reference chamber is <span data-live="refL">the reference width</span> across: 880 game pixels at the scale where hydrogen at ${GN.tH} moves at ${GN.v} and takes <span data-live="refCross">3.96 s</span> to cross. On a chamber of width L the fresh start is T = T<sub>ref</sub> (L / L<sub>ref</sub>)², and the speed is faster by L / L<sub>ref</sub>, so the crossing time stays that same value. This screen's chamber is <span data-live="screenL">this width</span> wide, and fresh hydrogen starts at <span data-live="startTH">${GN.tH}</span>. The height does not get its own factor. The paddle chamber is 880 by 500 game pixels and the sorting box is 880 by 440, so the time to cross the height is 500/880 or 440/880 of the width time, on every screen. A half-circle uses the same width: the straight span from the curved wall to the open side. Two-player paddles stand in from the walls, so the time between the paddles is that fixed inset over 880 of the width time. Resizing the window does not reheat a gas that is already flying; the next fresh run uses the new width. A wall temperature set in Settings stays the temperature you set. Sorting's hot-to-cold spread stays a ratio, and its mean control stays a factor on this fresh start.</p>
         <p><b>Where the number comes from.</b> In the iPhone and iPad app, the game reads the model name and looks up Apple's published pixel density. An iPhone 15, for example, has 460 pixels per inch at 3 pixels per point, so 153.3 points per inch. In the Android app it asks the system for the panel's measured dots per inch and divides by the display density. In a web browser there is no reliable way to measure the screen, so the game assumes an average. Phones get 160 CSS pixels per inch: Android's "density-independent pixel" is defined as 1/160 inch, and iPhones sit between about 153 and 165. Tablets get 132, which is every full-size iPad. Monitors get 100: a 24-inch 1080p screen is about 92 and a 27-inch 1440p screen about 109. (CSS itself defines 96 pixels to the inch, but browsers do not measure it, so it is only a convention.)</p>
         <p><b>Measuring it yourself.</b> Settings → Calibrate screen asks you to match an outline to a bank card. Cards are made to an international standard, ISO/IEC 7810 ID-1, exactly 85.60 mm wide, so the card is a ruler most people carry. On this screen the game is using <span data-live="mmpx">0.14</span> mm per game pixel (<span data-live="scaleSource">default</span>).</p>
-        <p><b>Making the chamber smaller.</b> Sorting has one more control, Chamber size. At ×M the real chamber is M times smaller than your screen, so one game pixel covers M times fewer millimetres. To keep the atoms crossing the screen at the same pace, every temperature is set M² times lower: the speed in pixels per second stays the same while the real speed drops M times, and temperature goes as speed squared. Everything the game shows is then the real value for the small chamber: its size, the temperatures (picokelvin at large M), the pressure. The assumed depth, the chamber's real height, shrinks M times as well, so the volume shrinks M³ times. Sorting's score does not change with M. The game's 2D entropy goes as ln(A/(Nλ²)), and λ² = h²/(2π m k<sub>B</sub>T), so it depends on area × temperature; both fall M² times, so every atom's entropy drops by the same 4 k<sub>B</sub> ln M at the start and at the end of a round, and the difference, your score, is untouched. The game's limits on this screen: the mean start temperature stays above about <span data-live="magFloor">60 pK</span>, and M stays at or below ×<span data-live="magAbs">110</span>. Both limits scale a little with the screen, so the smallest chamber is about the same challenge on every device. They are the game's limits, not nature's, and they do not keep it above real records. On this screen the coldest start allowed is a hydrogen gas averaging about <span data-live="magColdMean">60 pK</span>, and with the widest temperature spread its cold group starts near <span data-live="magColdGroup">4 pK</span>. The coldest gas ever measured reached an effective 38 pK (Bremen, 2021). <span data-live="recordMmNote">Compare the two figures above with it.</span> Your current setting is ×<span data-live="chamberM">1</span>: <span data-live="chamberMmpx">0.14</span> mm per game pixel, where hydrogen's standard Sorting start is <span data-live="chamberTH">60 nK</span>.</p>`,
+        <p><b>Making the chamber smaller.</b> Sorting has one more control, Chamber size. At ×M the real chamber is M times smaller than the chamber drawn on your screen, so one game pixel covers M times fewer millimetres. L in the rule above is always that drawn chamber at ×1, and this knob does not apply the width rule a second time. It divides the fresh-start temperature by M²: the speed in pixels per second stays the same while the real speed drops M times, and temperature goes as speed squared. Everything the game shows is then the real value for the small chamber: its size, the temperatures (picokelvin at large M), the pressure. The assumed depth, the chamber's real height, shrinks M times as well, so the volume shrinks M³ times. Sorting's score does not change with M. The game's 2D entropy goes as ln(A/(Nλ²)), and λ² = h²/(2π m k<sub>B</sub>T), so it depends on area × temperature; both fall M² times, so every atom's entropy drops by the same 4 k<sub>B</sub> ln M at the start and at the end of a round, and the difference, your score, is untouched. The game's limits on this screen: the mean start temperature stays above about <span data-live="magFloor">60 pK</span>, and M stays at or below ×<span data-live="magAbs">110</span>. The largest M scales gently with the screen. The fresh-start temperature scales as the square of the drawn width, and the knob divides by M² once, so the pace at a given M matches the pace at ×1. They are the game's limits, not nature's, and they do not keep it above real records. On this screen the coldest start allowed is a hydrogen gas averaging about <span data-live="magColdMean">60 pK</span>, and with the widest temperature spread its cold group starts near <span data-live="magColdGroup">4 pK</span>. The coldest gas ever measured reached an effective 38 pK (Bremen, 2021). <span data-live="recordMmNote">Compare the two figures above with it.</span> Your current setting is ×<span data-live="chamberM">1</span>: <span data-live="chamberMmpx">0.14</span> mm per game pixel, where hydrogen's standard Sorting start is <span data-live="chamberTH">60 nK</span>.</p>`,
       analogy: 'A map\'s scale bar: "1 cm = 1 km" is what lets you turn a distance on paper into a walk. The game\'s scale bar is the line under the chamber.',
       model: "On the web the scale is an average, not a measurement. Phone screens vary by a few per cent and monitors by about ±25 %, and browser zoom is not corrected. Because T goes as v², a 10 % error in the scale means the atoms move at speeds that, on your real screen, belong to a temperature 21 % different from the label. The atoms themselves are still drawn about 10⁷ to 10⁸ times too big (see \"The atom in the picture\"); only speeds, temperatures and the chamber's size use the true scale.",
       cf: 'ISO/IEC 7810:2019, <i>Identification cards: Physical characteristics</i> (ID-1: 85.60 × 53.98 mm); C. Deppner <i>et al.</i>, <i>Phys. Rev. Lett.</i> 127, 100401 (2021) (38 pK); Android Developers, "Support different pixel densities" (dp = 1/160 inch); Apple, iPhone 15 Technical Specifications (460 ppi); W3C, <i>CSS Values and Units Module Level 3</i>, §6.2 (1in = 96px); this game\'s <code>src/scale.js</code>.' },
@@ -6028,7 +6111,6 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
   ];
   MD.PAGES.push(...MORE);
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script data-src="src/sorting.js">
 (function (root) {
@@ -6072,6 +6154,9 @@ function magLimits(E, base) {
   return { r, tFloor: MAG_TFLOOR / (r * r), absCap: Math.max(1, Math.floor(MAG_ABS * r + 1e-9)) };
 }
 function magCap(masses, mean, E, base) {
+  // M limits stay on the reference temperature (START_SPEED, not the screen
+  // factor). The fresh-run (L/L_ref)² factor is applied once in start(), and
+  // this cap's 1/M² is applied once there as well.
   const P = E.P || root.MDPhysics, r = magR(P, base);
   const Tm = E.startTemperature(masses) * mean;
   return Math.max(1, Math.min(Math.floor(MAG_ABS * r + 1e-9), Math.floor(Math.sqrt(Tm / MAG_TFLOOR) * r + 1e-9)));
@@ -6079,7 +6164,10 @@ function magCap(masses, mean, E, base) {
 function magColdest(E, base) {
   const P = E.P || root.MDPhysics, m = [P.ELEMENTS[0].mass]; let Tm = Infinity;
   for (const mean of MEANS) { const M = magCap(m, mean, E, base); Tm = Math.min(Tm, E.startTemperature(m) * mean / (M * M)); }
-  const sp = Math.max(...SPREADS); return { Tmean: Tm, Tcold: E.twoTemps(Tm, sp).Tc, spread: sp };
+  const b = base || P.BASE_METERS_PER_PX;
+  const f = P.crossingFactor ? P.crossingFactor(P.REF_CHAMBER_PX * b) : 1;
+  Tm *= f;
+  const sp = Math.max(...SPREADS); return { Tmean: Tm, Tcold: E.twoTemps(Tm, sp).Tc, spread: sp, factor: f };
 }
 const RECORD_T = 38e-12;
 function vsRecord(T, P) { P = P || root.MDPhysics; return P.formatT(T, 2) === P.formatT(RECORD_T, 2) ? 0 : T < RECORD_T ? -1 : 1; }
@@ -6114,7 +6202,10 @@ function create(env) {
     const masses = []; for (const z of S.zs) for (let i = 0; i < S.mix[z]; i++) masses.push(P.ELEMENTS[z - 1].mass);
     S.M = P.CHAMBER_MAG;
     S.previewHot = 0;
-    S.Tstd = E.startTemperature(masses, P.START_SPEED / S.M);
+    // pace is L/L_ref from the unmagnified rendered width. Dividing by M once
+    // here makes T ∝ pace² / M². Do not also shrink L by M.
+    S.pace = opts.pace > 0 && isFinite(+opts.pace) ? +opts.pace : 1;
+    S.Tstd = E.startTemperature(masses, P.START_SPEED * S.pace / S.M);
     S.T0 = S.Tstd * S.diff.mean;
     const tt = E.twoTemps(S.T0, S.diff.spread); S.Tc = tt.Tc; S.Th = tt.Th;
     S.idealKB = E.idealSortKB(S.N, S.diff.spread); S.deficitKB = S.N * E.bimodalDeficit(S.diff.spread);
@@ -6588,7 +6679,7 @@ function create(env) {
     draw(`${S.diff.walls === 'thermal' ? 'GAS + WALLS' : 'GAS'} ΔS ${E.formatKB(S.gas)}`, cx(faces[1]), yBody + 22, 11, '500', faces[1], 'center');
   }
   function summary() {
-    return { difficulty: S.diff.id, key: S.diff.key, label: S.diff.label, blurb: S.diff.blurb, spread: S.diff.spread, mean: S.diff.mean, Tc: S.Tc, Th: S.Th, idealKB: S.idealKB, deficitKB: S.deficitKB, N: S.N, mix: { ...S.mix }, T0: S.T0, S0: S.S0, Snow: S.Snow, gas: S.gas, wall: S.wall, walls: S.diff.walls, g: S.g, M: S.M || 1, qMax: S.qMax || 0, a2: S.a2, ledger: S.ledger, opens: S.opens, net: S.net, bestNet: S.bestNet, time: S.time,
+    return { difficulty: S.diff.id, key: S.diff.key, label: S.diff.label, blurb: S.diff.blurb, spread: S.diff.spread, mean: S.diff.mean, Tc: S.Tc, Th: S.Th, idealKB: S.idealKB, deficitKB: S.deficitKB, N: S.N, mix: { ...S.mix }, T0: S.T0, Tstd: S.Tstd, pace: S.pace || 1, S0: S.S0, Snow: S.Snow, gas: S.gas, wall: S.wall, walls: S.diff.walls, g: S.g, M: S.M || 1, qMax: S.qMax || 0, a2: S.a2, ledger: S.ledger, opens: S.opens, net: S.net, bestNet: S.bestNet, time: S.time,
       ch: S.ch.map((c) => ({ N: c.N, T: c.T, S: c.S })), crossings: [...S.crossings] };
   }
   function pressure() {
@@ -6602,7 +6693,6 @@ function create(env) {
 }
 root.MDSorting = Object.freeze({ create, magCap, magLimits, magColdest, RECORD_T, vsRecord, MAG_ABS, MAG_TFLOOR, MAG_SCREEN_EXP, MAG_SCREEN_CURVE, CONTACT_P, DIFFICULTIES, SPREADS, MEANS, MEAN_LABEL, resolve, blurb, RANGE, DEFAULT_N, RADIUS_FACTOR, COLS, QB });
 })(typeof self !== 'undefined' ? self : this);
-
 </script>
 <script data-src="src/oracle-demon.js">
 (function (root, factory) {
@@ -6813,12 +6903,13 @@ const ctx = canvas.getContext('2d');
 let dpr = 1;
 function resizeCanvas() {
   const r = canvas.getBoundingClientRect();
+  if (!(r.width > 0) || !(r.height > 0)) return;
   const cap = QUALITY[quality].dprCap;
   const devicePx = Math.min(cap, window.devicePixelRatio || 1);
-  const bw = Math.max(1, Math.round((r.width || W) * devicePx)), bh = Math.max(1, Math.round((r.height || H) * devicePx));
+  const bw = Math.max(1, Math.round(r.width * devicePx)), bh = Math.max(1, Math.round(r.height * devicePx));
   if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; for (const k in bgCache) delete bgCache[k]; }
   dpr = bw / W;
-  if (!PIN_SCALE) applyScale(MDS.mmPerCssPx() * ((r.width || W) / W) / 1000);
+  if (!PIN_SCALE) applyScale(MDS.mmPerCssPx() * (r.width / W) / 1000);
 }
 function applyScale(m) {
   const old = P.METERS_PER_PX; if (!(m > 0) || Math.abs(m / P.BASE_METERS_PER_PX - 1) < 1e-9) return;
@@ -6863,6 +6954,7 @@ const el = (z) => ELEMENTS[z - 1];
 const state = {
   screen: 'title', mode: 'attract', atoms: [], paddles: [], clock: 0, simTime: 0,
   score: 0, maxT: 0, best: 0, hits: 0, coinsEarned: 0, points: [0, 0], lost: 0, started: 0,
+  runPace: 0, runFactor: 0,
   respawns: [], hist: new Array(36).fill(0), flashes: [], toast: null, toastT: 0, unlocked: [], hud: {},
   nAtoms: 1, pure: 1, contacts: new Map(), spent: 0, bought: 0,
 };
@@ -6909,8 +7001,32 @@ function tierText() {
   return ACC.trialExpired() ? 'Free version (trial used)' : 'Free version';
 }
 
+function chamberLengthM(logicalPx) { return logicalPx * P.BASE_METERS_PER_PX; }
+function paceFor(logicalPx) { return P.crossingPace(chamberLengthM(logicalPx)); }
+function factorNow() { const p = paceFor(CH.w); return p * p; }
+function factorShown() {
+  if (state.runFactor > 0 && (inRun() || state.screen === 'over')) return state.runFactor;
+  return factorNow();
+}
+function freezeRun(logicalPx) {
+  state.runPace = paceFor(logicalPx);
+  state.runFactor = state.runPace * state.runPace;
+  state.runStartT = 0;
+}
+function noteRunStart() {
+  const at = state.atoms;
+  state.runStartT = at.length ? at.reduce((s, a) => s + a.T, 0) / at.length : 0;
+}
+function wallKick() {
+  const f = state.runFactor > 0 && (inRun() || state.screen === 'over') ? state.runFactor : factorNow();
+  return P.heatingKick(settings.wallHeat, settings.wallTemp, S.DEFAULTS.wallTemp, f);
+}
+function launchSpeedPx() {
+  const pace = state.runPace > 0 ? state.runPace : paceFor(CH.w);
+  return (P.START_SPEED * pace) / P.METERS_PER_PX;
+}
 function makeAtom(z, x, y, dirAngle) {
-  const e = el(z), v = P.START_SPEED_PX;
+  const e = el(z), v = launchSpeedPx();
   const a = { id: nextId++, z, el: e, m: e.mass, r: e.radius, x, y, vx: v * Math.cos(dirAngle), vy: v * Math.sin(dirAngle), T: 0, stuck: null };
   a.T = P.speedToTemperature(Math.hypot(a.vx, a.vy), a.m);
   a.model = A.buildModel(z);
@@ -7045,6 +7161,7 @@ function setupPaddleGame(mode) {
   state.atoms = []; state.respawns = []; state.flashes = []; state.unlocked = []; state.toast = null; state.toastT = 0; state.bonus = 0;
   state.hits = 0; state.coinsEarned = 0; state.points = [0, 0]; state.lost = 0; state.simTime = 0;
   state.best = 0; state.maxT = 0; state.hist.fill(0);
+  freezeRun(CH.w);
   const mid = CH.y + CH.h / 2 - PAD.len / 2;
   state.paddles = mode === 'single'
     ? [{ side: 'R', x: CH.x + CH.w - PAD.gap - PAD.w, face: CH.x + CH.w - PAD.gap - PAD.w, nx: -1, y: mid, len: PAD.len }]
@@ -7052,14 +7169,16 @@ function setupPaddleGame(mode) {
        { side: 'R', x: CH.x + CH.w - PAD.gap - PAD.w, face: CH.x + CH.w - PAD.gap - PAD.w, nx: -1, y: mid, len: PAD.len }];
   for (const z of zs) for (let i = 0; i < state.mix[z]; i++) spawn(z, mode);
   state.atoms.sort(() => Math.random() - 0.5);
+  noteRunStart();
 }
 function startSort(watch) {
   state.watch = null; $('watch-bar').hidden = true;
   state.mode = 'sort'; state.screen = 'playing'; state.shape = 'rect';
   state.atoms = []; state.paddles = []; state.respawns = []; state.flashes = []; state.unlocked = []; state.toast = null; state.toastT = 0;
   state.coinsEarned = 0; state.bonus = 0; state.simTime = 0; state.ach2Seen = false; hideAch2Note();
+  freezeRun(SORT.SB.w);
   P.setMagnification(sortMag());
-  SORT.start({ mix: sortMix(), difficulty: settings.sortDifficulty, custom: sortCustom() });
+  SORT.start({ mix: sortMix(), difficulty: settings.sortDifficulty, custom: sortCustom(), pace: state.runPace });
   document.body.classList.add('sorting');
   if (watch) return startWatchRun();
   const doorHelp = settings.sortDoorControl === 'toggle' ? 'Tap / Space: door open/shut.' : 'Hold / Space: open door. Release: shut.';
@@ -7158,6 +7277,7 @@ function endSort(reason) {
 function startAttract() {
   SORT.stop(); document.body.classList.remove('sorting'); P.setMagnification(1);
   state.mode = 'attract'; state.shape = 'rect'; state.paddles = []; state.atoms = []; state.respawns = [];
+  freezeRun(CH.w);
   for (const z of [1, 2, 6, 10, 18, 26, 36]) spawn(z, 'attract');
 }
 function endGame(reason) {
@@ -7165,18 +7285,26 @@ function endGame(reason) {
   state.screen = 'over';
   const key = state.pure ? `${state.mode}:${state.pure}` : `${state.mode}:mix`;
   const prevBest = store.best[key] || 0;
-  if (state.best > prevBest) store.best[key] = state.best;
-  state.bonus = Math.floor(state.best / (1e-6 * P.T_SCALE) + 1e-9);
+  const rec = P.performanceRecord(state.best, state.runStartT || 0, state.runFactor || 1, prevBest);
+  if (rec.beat) store.best[key] = rec.stored;
+  const coinFactor = state.runFactor > 0 ? state.runFactor : 1;
+  state.bonus = Math.floor(state.best / (1e-6 * P.T_SCALE * coinFactor) + 1e-9);
   store.coins += state.bonus; state.coinsEarned += state.bonus;
   persist();
   $('over-title').textContent = state.mode === 'single' ? (reason || 'All atoms have escaped') : 'Match ended';
   const rows = [[state.pure ? 'Element' : 'Gas mixture', state.pure ? `${el(state.pure).name} (${el(state.pure).sym}, ${el(state.pure).u} u)` : `${mixText(state.mix)}${state.bought ? ` + ${state.bought} bought` : ''}`]];
   if (state.mode === 'two') rows.push(['Points', `P1 ${state.points[0]} : ${state.points[1]} P2`]);
   rows.push(['Final score (best T)', formatT(state.best)], ['Hottest single atom', formatT(state.maxT)],
-    ['Previous record', prevBest ? formatT(prevBest) : '—'], ['Paddle hits', `${state.hits}`], ['Coins earned', `${state.coinsEarned} (incl. ${state.bonus} temperature bonus)`], ['Atoms bought', `${state.bought}`], ['Coins spent', `${state.spent}`],
+    ['This run, reference chamber', formatT(rec.peakEq)],
+    ['Saved record, reference chamber', prevBest ? formatT(prevBest) : '—'], ['Paddle hits', `${state.hits}`], ['Coins earned', `${state.coinsEarned} (incl. ${state.bonus} temperature bonus)`], ['Atoms bought', `${state.bought}`], ['Coins spent', `${state.spent}`],
     ['Purse', `${store.coins} coins`], ['Time in play', `${state.simTime.toFixed(1)} s`]);
   $('over-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
-  $('over-note').textContent = (state.best > prevBest ? (state.pure ? 'A new record for this element! ' : 'A new mixed-gas record! ') : '') +
+  const recordNote = rec.beat
+    ? (state.pure ? 'A new reference-chamber record for this element. ' : 'A new reference-chamber mixed-gas record. ')
+    : rec.played
+      ? 'No new record. The saved record is the peak divided by this run’s fresh-start factor, the temperature that same play would reach in the reference chamber. '
+      : 'No record. The fresh start on a wider screen is not itself a record; records compare heating above that start, stated in the reference chamber. ';
+  $('over-note').textContent = recordNote +
     (state.unlocked.length ? `Unlocked by temperature: ${state.unlocked.map((z) => el(z).name).join(', ')}.` : nextUnlockText()) + trialEndNote();
   afterRun();
   showPanel('over');
@@ -7193,7 +7321,7 @@ function nextUnlockText() {
   if (store.unlockedZ >= ELEMENTS.length) return 'Every element is unlocked.';
   if (store.unlockedZ >= capZ()) return `${el(store.unlockedZ + 1).name} and heavier elements can be earned with the Full Version.`;
   const n = el(store.unlockedZ + 1);
-  return `Next: ${n.name} unlocks at ${formatT(n.unlockT)} with ${el(store.unlockedZ).name}, or costs ${n.cost} coins.`;
+  return `Next: ${n.name} unlocks at ${formatT(n.unlockT * factorShown())} with ${el(store.unlockedZ).name}, or costs ${n.cost} coins.`;
 }
 
 function adsorb(a, nx, ny, paddle) {
@@ -7203,7 +7331,7 @@ function adsorb(a, nx, ny, paddle) {
 }
 function desorb(a) {
   const s = a.stuck;
-  a.T += P.sampleHeating(settings.wallTemp);
+  a.T += P.sampleHeating(wallKick().mean);
   const d = P.desorbVelocity(s.nx, s.ny, a.T, a.m, settings.exitLaw);
   a.vx = d.vx; a.vy = d.vy; a.stuck = null;
   if (state.desorbLog) state.desorbLog.push({ nx: s.nx, ny: s.ny, vx: a.vx, vy: a.vy, x: a.x, y: a.y });
@@ -7353,7 +7481,7 @@ function buyAtom(z = settings.element) {
     x = xa + Math.random() * (xb - xa); y = w === 'T' ? CH.y + r : CH.y + CH.h - r; ny = w === 'T' ? 1 : -1;
   }
   const a = makeAtom(z, x, y, 0);
-  const d = P.desorbVelocity(nx, ny, e.startT, e.mass, settings.exitLaw);
+  const d = P.desorbVelocity(nx, ny, e.startT * (state.runFactor > 0 ? state.runFactor : factorNow()), e.mass, settings.exitLaw);
   a.vx = d.vx; a.vy = d.vy; setT(a);
   state.atoms.push(a);
   if (state.pure && z !== state.pure) state.pure = 0;
@@ -7387,7 +7515,7 @@ function updateScore() {
   for (const a of at) { const p = per[a.z] || (per[a.z] = { n: 0, sum: 0, max: 0 }); p.n++; p.sum += a.T; p.max = Math.max(p.max, a.T); }
   for (const z in per) per[z].mean = per[z].sum / per[z].n;
   state.per = per;
-  while (store.unlockedZ < capZ() && per[store.unlockedZ] && per[store.unlockedZ].mean >= el(store.unlockedZ + 1).unlockT) {
+  while (store.unlockedZ < capZ() && per[store.unlockedZ] && per[store.unlockedZ].mean >= el(store.unlockedZ + 1).unlockT * (state.runFactor > 0 ? state.runFactor : 1)) {
     store.unlockedZ++; state.unlocked.push(store.unlockedZ); persist(); stat('unlock', { z: store.unlockedZ, route: 'temperature' });
     toast(`${el(store.unlockedZ).name} unlocked by temperature. Select it in the shop.`);
   }
@@ -7527,25 +7655,26 @@ function hud(theme) {
   const T = formatT(state.score), bestT = formatT(state.best), maxT = formatT(state.maxT);
   const multi = state.atoms.length > 1 || state.nAtoms > 1;
   const scoreLabel = multi ? 'MEAN TEMPERATURE · SCORE' : 'TEMPERATURE · SCORE';
-  const next = store.unlockedZ < ELEMENTS.length && state.per && state.per[store.unlockedZ] ? `${el(store.unlockedZ + 1).sym} unlocks at ${formatT(el(store.unlockedZ + 1).unlockT)}` : '';
+  const next = store.unlockedZ < ELEMENTS.length && state.per && state.per[store.unlockedZ] ? `${el(store.unlockedZ + 1).sym} unlocks at ${formatT(el(store.unlockedZ + 1).unlockT * (state.runFactor > 0 ? state.runFactor : 1))}` : '';
   const atomsTxt = single ? `${state.atoms.length} of ${state.nAtoms + state.bought} atom${state.nAtoms + state.bought > 1 ? 's' : ''} trapped` : `${state.atoms.length} atom${state.atoms.length === 1 ? '' : 's'} in play`;
   const sub = `best ${bestT}${multi ? ` · hottest atom ${maxT}` : ''}`;
   state.hud = { scoreText: T, bestText: bestT, maxText: maxT };
   const lawTxt = settings.exitLaw === 'cos' ? 'cos θ' : 'cos² θ';
-  const foot = `${lawTxt} law · wall ${formatT(settings.wallTemp)} · τ ${settings.residenceMean.toFixed(2)} s · purse ${store.coins}`;
+  const foot = `${lawTxt} law · wall kick ${formatT(wallKick().mean)} · τ ${settings.residenceMean.toFixed(2)} s · purse ${store.coins}`;
   const help = single ? 'drag, W/S, ↑/↓ or mouse · ❚❚/P pause' : 'drag your half or W/S · ↑/↓ · ❚❚/P pause';
   if (!bw) {
     R.plaque(ctx, 24, 14, 300, 88, 3); R.plaque(ctx, 340, 14, 320, 88, 5); R.plaque(ctx, 676, 14, 300, 88, 9);
     R.engrave(ctx, "MAXWELL'S DEMON", 500, 36, 16, 'center', '700');
     if (single) {
-      R.engrave(ctx, scoreLabel, 174, 34, 11); R.engrave(ctx, T, 174, 60, 26, 'center', '700'); R.engrave(ctx, sub, 174, 86, 11, 'center', 'italic 500');
+      const tempCut = { highlight: 0.18, deviceRim: true };
+      R.engrave(ctx, scoreLabel, 174, 34, 11); R.engrave(ctx, T, 174, 60, 26, 'center', '700', tempCut); R.engrave(ctx, sub, 174, 86, 11, 'center', 'italic 500');
       R.engrave(ctx, `${gasTxt} · ${atomsTxt}`, 500, 60, mixed ? 11 : 12, 'center', '500');
       R.engrave(ctx, next || `Purse: ${store.coins} coins`, 500, 82, 11, 'center', 'italic 500');
       R.engrave(ctx, 'PURSE', 826, 34, 11); R.engrave(ctx, `${store.coins} coins`, 826, 60, 24, 'center', '700'); R.engrave(ctx, `paddle hits this game: ${state.hits}`, 826, 86, 11, 'center', 'italic 500');
     } else {
       R.engrave(ctx, 'PLAYER 1 · LEFT HALF / W·S', 174, 34, 11); R.engrave(ctx, String(state.points[0]), 174, 64, 34, 'center', '700');
       R.engrave(ctx, 'PLAYER 2 · RIGHT HALF / ↑↓', 826, 34, 11); R.engrave(ctx, String(state.points[1]), 826, 64, 34, 'center', '700');
-      R.engrave(ctx, `${multi ? 'mean T' : 'T'} = ${T}`, 500, 62, 22, 'center', '700');
+      R.engrave(ctx, `${multi ? 'mean T' : 'T'} = ${T}`, 500, 62, 22, 'center', '700', { highlight: 0.18, deviceRim: true });
       R.engrave(ctx, `${sub} · ${state.pure ? el(state.pure).sym + ' · ' : ''}${atomsTxt}`, 500, 86, 11, 'center', 'italic 500');
       if (next) R.engrave(ctx, next, 174, 88, 10, 'center', 'italic 500');
     }
@@ -7743,7 +7872,7 @@ function recordClause(Tm) {
   return '';
 }
 function magText() {
-  const cap = sortMagCap(), M = sortMag(), base = P.BASE_METERS_PER_PX, Tm = E.startTemperature(sortMixMasses()) * sortCfg().mean / (M * M), lim = window.MDSorting.magLimits(E, base);
+  const pace = paceFor(SORT.SB.w), cap = sortMagCap(), M = sortMag(), base = P.BASE_METERS_PER_PX, Tm = E.startTemperature(sortMixMasses()) * sortCfg().mean * pace * pace / (M * M), lim = window.MDSorting.magLimits(E, base);
   const sl = $('m-mag'); sl.max = String(cap); sl.value = String(M); sl.disabled = cap <= 1;
   const L = (px) => P.formatLength(px * base / M);
   $('m-maginfo').textContent = `${M > 1 ? `×${M} magnification: the real box is ${L(SORT.SB.w)} × ${L(SORT.SB.h)}` : `×1, the real size of your screen: ${L(SORT.SB.w)} × ${L(SORT.SB.h)}`}, mean start temperature ${P.formatT(Tm, 2)}. `
@@ -7800,11 +7929,11 @@ $('b-over-title').onclick = goTitle;
 let previewAtom = null, previewRaf = 0;
 function openShop(from) { shopReturn = from; enforceAccess(); buildShop(); showPanel('shop'); previewLoop(); }
 function buildShop() {
-  const sel = settings.element, rows = ['<tr><th>Z</th><th>Element</th><th>Mass (u)</th><th>Starts at</th><th>Unlock by temperature</th><th>…or by sorting</th><th>Cost</th><th>Best (1P / 2P)</th><th></th><th>Starting mix</th></tr>'];
+  const sel = settings.element, rows = ['<tr><th>Z</th><th>Element</th><th>Mass (u)</th><th>Starts at</th><th>Unlock by temperature</th><th>…or by sorting</th><th>Cost</th><th>Ref. best (1P / 2P)</th><th></th><th>Starting mix</th></tr>'];
   const tot = mixTotal(settings.mix);
   for (const e of ELEMENTS) {
     const owned = e.Z <= store.unlockedZ, usable = e.Z <= usableMaxZ(), beyond = e.Z > capZ(), buyable = e.Z === store.unlockedZ + 1 && !beyond;
-    const how = e.Z === 1 ? 'free' : `${formatT(e.unlockT)} with ${el(e.Z - 1).sym}`;
+    const how = e.Z === 1 ? 'free' : `${formatT(e.unlockT * factorShown())} with ${el(e.Z - 1).sym}`;
     const howSort = e.Z === 1 ? '' : `net ΔS ≥ ${E.sortUnlockKB(e.Z)} k_B with ${el(e.Z - 1).sym}`;
     const best = `${store.best['single:' + e.Z] ? formatT(store.best['single:' + e.Z]) : '—'} / ${store.best['two:' + e.Z] ? formatT(store.best['two:' + e.Z]) : '—'}`;
     let act;
@@ -7815,12 +7944,13 @@ function buildShop() {
     else act = '<span class="muted">not yet found</span>';
     const n = settings.mix[e.Z] || 0;
     const mixCell = usable ? `<span class="stepper"><button data-mix="${e.Z}" data-d="-1" ${n === 0 || tot <= 1 ? "disabled" : ""} aria-label="fewer ${e.name}">−</button><b>${n}</b><button data-mix="${e.Z}" data-d="1" ${tot >= MAX_ATOMS ? 'disabled' : ''} aria-label="more ${e.name}">+</button></span>` : '';
-    rows.push(`<tr class="${e.Z === sel ? 'sel' : ''} ${owned ? '' : 'muted'}"><td>${e.Z}</td><td>${e.sym} · ${e.name}</td><td>${e.u}</td><td>${formatT(e.startT)}</td><td>${how}</td><td>${howSort}</td><td>${e.cost} coins</td><td>${best}</td><td>${act}</td><td>${mixCell}</td></tr>`);
+    rows.push(`<tr class="${e.Z === sel ? 'sel' : ''} ${owned ? '' : 'muted'}"><td>${e.Z}</td><td>${e.sym} · ${e.name}</td><td>${e.u}</td><td>${formatT(e.startT * factorShown())}</td><td>${how}</td><td>${howSort}</td><td>${e.cost} coins</td><td>${best}</td><td>${act}</td><td>${mixCell}</td></tr>`);
   }
   $('shop-list').innerHTML = rows.join('');
   $('shop-tier').innerHTML = ACC.isFull() ? '' : `<b>${tierText()}.</b> In the free version hydrogen, helium and lithium can be unlocked; beryllium to krypton are earned the same way (in order, with coins, temperature or entropy) once you have the <button class="fv-btn" data-full="1">Full version</button>.`;
   const e = el(sel);
-  $('shop-info').innerHTML = `<b>Purse: ${store.coins} coins</b> · unlocked ${store.unlockedZ} of 36<br>Starting mix: <b>${mixText(settings.mix)}</b> (${tot} of max ${MAX_ATOMS}; this total is the vacuum level). In play, one more ${e.sym} atom costs ${atomPrice(e.Z)} coin${atomPrice(e.Z) > 1 ? 's' : ''}.<br>Selected: <b>${e.name}</b> (Z = ${e.Z}, ${e.u} u = ${e.mass.toExponential(4)} kg), shells ${e.shells.join('·')}, radius ${e.radius} px.<br>It starts at ${formatT(e.startT)}, moving ${P.formatSpeed(P.START_SPEED_PX)} (${P.START_SPEED_PX.toFixed(0)} px/s).`;
+  const vPx = (P.START_SPEED * Math.sqrt(factorShown())) / P.METERS_PER_PX;
+  $('shop-info').innerHTML = `<b>Purse: ${store.coins} coins</b> · unlocked ${store.unlockedZ} of 36<br>Starting mix: <b>${mixText(settings.mix)}</b> (${tot} of max ${MAX_ATOMS}; this total is the vacuum level). In play, one more ${e.sym} atom costs ${atomPrice(e.Z)} coin${atomPrice(e.Z) > 1 ? 's' : ''}.<br>Selected: <b>${e.name}</b> (Z = ${e.Z}, ${e.u} u = ${e.mass.toExponential(4)} kg), shells ${e.shells.join('·')}, radius ${e.radius} px.<br>It starts at ${formatT(e.startT * factorShown())}, moving ${P.formatSpeed(vPx)} (${vPx.toFixed(0)} px/s).`;
   previewAtom = { x: 60, y: 60, model: A.buildModel(e.Z), stuck: null };
 }
 $('p-shop').addEventListener('click', (ev) => { const b = ev.target.closest('button[data-full]'); if (b) { cancelAnimationFrame(previewRaf); openFull('shop'); } });
@@ -7859,7 +7989,7 @@ const MODE_INFO = {
   sort: { title: "Sorting: Maxwell's original demon", rules: () => $('b-sort-description').textContent },
   two: { title: 'Two players (pong)', rules: () => $('b-two-description').textContent },
 };
-function startPreviewSort() { P.setMagnification(sortMag()); SORT.start({ mix: sortMix(), difficulty: settings.sortDifficulty, custom: sortCustom(), warmup: 1 }); }
+function startPreviewSort() { freezeRun(SORT.SB.w); P.setMagnification(sortMag()); SORT.start({ mix: sortMix(), difficulty: settings.sortDifficulty, custom: sortCustom(), warmup: 1, pace: state.runPace }); }
 function autoDoor() {
   const S2 = SORT.S; let want = false;
   for (const a of S2.atoms) { if (a.stuck) continue; const dx = a.x - SORT.PX; if (dx > 0 && dx < 40 && a.vx < 0 && a.y > SORT.GY0 && a.y < SORT.GY1) { want = true; break; } }
@@ -7987,7 +8117,8 @@ const wallFromSlider = (u) => S.RANGES.wallTemp[0] * Math.pow(S.RANGES.wallTemp[
 const sliderFromWall = (T) => Math.log(T / S.RANGES.wallTemp[0]) / Math.log(S.RANGES.wallTemp[1] / S.RANGES.wallTemp[0]);
 function openSettings(from) { settingsReturn = from; fillSettings(); showPanel('settings'); }
 function fillSettings() {
-  $('s-theme').value = settings.theme; $('s-law').value = settings.exitLaw; $('s-wall').value = sliderFromWall(settings.wallTemp);
+  const shownWall = settings.wallHeat === 'preset' ? S.DEFAULTS.wallTemp : settings.wallTemp;
+  $('s-theme').value = settings.theme; $('s-law').value = settings.exitLaw; $('s-wall').value = sliderFromWall(shownWall);
   $('s-vac').value = settings.vacuum; $('s-res').value = settings.residenceMean; $('s-hist').checked = settings.showAngleHistogram;
   $('s-sortn').value = settings.sortN; $('s-door').value = settings.sortDoorControl; $('s-preview').checked = settings.sortPreview !== false;
   $('s-grav').value = settings.gravity; $('s-stats').checked = settings.shareStats;
@@ -7995,15 +8126,18 @@ function fillSettings() {
   const ho = $('s-shape').querySelector('option[value="half"]'); ho.disabled = halfLocked(); ho.textContent = 'Half-circle: semicircular end, diameter = chamber height' + (halfLocked() ? ' (Full version)' : ''); labels();
 }
 function labels() {
-  $('l-wall').textContent = `${formatT(wallFromSlider(+$('s-wall').value))} mean ΔT per wall or paddle interaction`;
+  const kick = wallKick();
+  $('l-wall').textContent = kick.preset
+    ? `Default heating step ${formatT(S.DEFAULTS.wallTemp)} in the reference chamber. This screen’s kick is ${formatT(kick.mean)}. Move the slider to choose one absolute temperature for every screen.`
+    : `${formatT(settings.wallTemp)} absolute mean ΔT. This screen’s kick is ${formatT(kick.mean)}.`;
   const v = +$('s-vac').value;
   $('l-vac').textContent = `${v} atom${v > 1 ? 's' : ''} in the chamber${v === 1 ? ' (best vacuum)' : ''}: ${mixText(v === settings.vacuum ? settings.mix : rescaleMix(settings.mix, v))}${state.screen === 'paused' ? '. Applies to the next game.' : ''}`;
   const sn = +$('s-sortn').value; $('l-sortn').textContent = `${sn} atoms: ${mixText(rescaleMix(settings.mix, sn))}`;
   $('l-res').textContent = `${(+$('s-res').value).toFixed(2)} s mean (exponential)`;
-  $('l-scale').textContent = `Atoms move at the same real speed on every screen, so the chamber's real size follows the screen: now ${cmTxt(CH.w)} × ${cmTxt(CH.h)} cm (${MDS.describe()}).`;
+  $('l-scale').textContent = `Fresh hydrogen starts at ${formatT(P.ELEMENTS[0].startT * factorNow())} across this ${P.formatLength(chamberLengthM(CH.w))} chamber, so the width takes the same time to cross as the reference chamber. Gas already in play keeps its temperature. ${MDS.describe()}.`;
 }
 function applySettings() {
-  Object.assign(settings, { theme: $('s-theme').value, exitLaw: $('s-law').value, wallTemp: wallFromSlider(+$('s-wall').value),
+  Object.assign(settings, { theme: $('s-theme').value, exitLaw: $('s-law').value,
     residenceMean: +$('s-res').value, showAngleHistogram: $('s-hist').checked, collisionModel: $('s-coll').value, realisticRate: $('s-real').checked, chamberShape: $('s-shape').value,
     sortN: +$('s-sortn').value, sortDoorControl: $('s-door').value, sortPreview: $('s-preview').checked, gravity: $('s-grav').value, shareStats: $('s-stats').checked });
   if (!settings.shareStats) STATS.setEnabled(false);
@@ -8011,7 +8145,13 @@ function applySettings() {
   if (v !== settings.vacuum) { settings.mix = rescaleMix(settings.mix, v); settings.vacuum = mixTotal(settings.mix); }
   persist(); labels();
 }
-for (const id of ['s-theme', 's-law', 's-wall', 's-vac', 's-res', 's-hist', 's-coll', 's-real', 's-shape', 's-sortn', 's-door', 's-preview', 's-grav', 's-stats']) $(id).addEventListener('input', applySettings);
+function onWallChosen() {
+  settings.wallHeat = 'absolute';
+  settings.wallTemp = wallFromSlider(+$('s-wall').value);
+  persist(); labels();
+}
+for (const id of ['s-theme', 's-law', 's-vac', 's-res', 's-hist', 's-coll', 's-real', 's-shape', 's-sortn', 's-door', 's-preview', 's-grav', 's-stats']) $(id).addEventListener('input', applySettings);
+$('s-wall').addEventListener('input', onWallChosen);
 const calW = () => $('s-calw');
 $('s-calib').onclick = () => { $('s-calbox').hidden = false; calW().value = Math.round(MDS.cssPerInch * MDS.CARD_MM / 25.4); $('s-card').style.width = `${calW().value}px`; };
 calW().addEventListener('input', () => { $('s-card').style.width = `${calW().value}px`; });
@@ -8094,7 +8234,7 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 $('b-pausebtn').addEventListener('click', () => pause());
 $('b-buy').addEventListener('click', () => buyAtom());
 $('b-cycle').addEventListener('click', () => cycleBuyElement(1));
-addEventListener('resize', () => { resizeCanvas(); fitAtomicLabels(); scheduleInstrumentLayout(); });
+addEventListener('resize', () => { resizeCanvas(); fitAtomicLabels(); scheduleInstrumentLayout(); if ($('p-settings').classList.contains('show')) labels(); });
 addEventListener('orientationchange', () => setTimeout(() => { resizeCanvas(); scheduleInstrumentLayout(); }, 200));
 
 if (window.Capacitor && window.Capacitor.Plugins) {
@@ -8105,7 +8245,7 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !wind
 }
 
 onRescale = (f) => { for (const a of state.atoms) { a.vx *= f; a.vy *= f; } if (SORT.S.on) SORT.rescale(f); };
-MDS.onChange(() => resizeCanvas());
+MDS.onChange(() => { resizeCanvas(); if ($('p-settings').classList.contains('show')) labels(); });
 
 function remountKitPlaques(scope) {
   const root = scope && scope.querySelectorAll ? scope : document;
@@ -8174,6 +8314,21 @@ function fitPlaqueChromeToContent(el) {
 window.MDGameLive = {
   sortMag: () => sortMag(), padSpeed: PAD.speed,
   sortPreviewHelpCount: () => (state.mode === 'sort' && SORT.S.on && SORT.previewHelpCount ? SORT.previewHelpCount() : 0),
+  crossing: () => {
+    const L = chamberLengthM(CH.w), pace = P.crossingPace(L);
+    return {
+      L, pace, factor: pace * pace, logicalW: CH.w, heightM: chamberLengthM(CH.h), logicalH: CH.h,
+      sortW: SORT.SB.w, sortH: SORT.SB.h, sortL: chamberLengthM(SORT.SB.w),
+      halfSpanM: chamberLengthM(CH.w),
+      paddleGapPx: CH.w - 2 * (PAD.gap + PAD.w),
+      Lref: P.REF_CROSSING_M, tRef: P.REF_CROSSING_S,
+      runPace: state.runPace || 0, runFactor: state.runFactor || 0,
+      mpp: P.BASE_METERS_PER_PX, cssPerInch: MDS.cssPerInch,
+    };
+  },
+  hudReadout: () => ({ scoreText: state.hud.scoreText || '', bestText: state.hud.bestText || '', maxText: state.hud.maxText || '' }),
+  gas: () => state.atoms.map((a) => ({ z: a.z, T: a.T, v: Math.hypot(a.vx, a.vy) * P.METERS_PER_PX })),
+  sortGas: () => (SORT.S.on ? { T0: SORT.S.T0, Tc: SORT.S.Tc, Th: SORT.S.Th, Tstd: SORT.S.Tstd, M: SORT.S.M, pace: SORT.S.pace, spread: SORT.S.diff.spread, mean: SORT.S.diff.mean, w: SORT.SB.w, h: SORT.SB.h } : null),
 };
 
 STATS.init({ enabled: () => settings.shareStats !== false, context: () => ({ app: C.APP_VERSION || '1.0.0', platform: statsPlatform() }) });
@@ -8183,7 +8338,6 @@ requestAnimationFrame(frame);
 PUR.onChange(() => refreshAccessUi());
 PUR.init({ creditCoins: (n) => { store.coins += n; persist(); } }).then(() => { $('dev-badge').hidden = !PUR.isDev; refreshAccessUi(); });
 })();
-
 </script>
 </body>
 </html>
