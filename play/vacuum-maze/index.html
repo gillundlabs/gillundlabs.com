@@ -626,6 +626,24 @@
   #pc-canvas { width: 100%; max-width: 420px; height: auto; display: block; margin: 4px auto; background: #1a0e06; border-radius: 6px; }
   body[data-theme="bw"] #pc-canvas { background: #000; }
   #p-notebook { width: min(820px, calc(100vw - var(--sal) - var(--sar) - 16px)); }
+  /* One book, like Maxwell's notes panel and Fantastic Apparatus's laboratory notes:
+     the bar stays put and the pages scroll underneath it. */
+  #p-notebook.show {
+    display: flex; flex-direction: column; overflow: hidden;
+    height: calc(var(--vh) - var(--sat) - var(--sab) - 16px);
+    max-height: calc(var(--vh) - var(--sat) - var(--sab) - 16px);
+  }
+  #p-notebook .nb-bar { flex: 0 0 auto; position: relative; z-index: 2; }
+  #nb-body.scrollable {
+    flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto;
+    -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y;
+    scroll-snap-type: y proximity; user-select: text; -webkit-user-select: text;
+  }
+  #nb-body .vls-page { scroll-snap-align: start; scroll-margin-top: 8px; }
+  #nb-body .notes-end { text-align: center; font-style: italic; opacity: .65; margin: 16px 0 28px; }
+  @media (prefers-reduced-motion: reduce) {
+    #nb-body.scrollable { scroll-behavior: auto; scroll-snap-type: none; }
+  }
   .nb-toc { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; margin: 8px 0; }
   .nb-toc button { text-align: left; font-size: 13px !important; padding: 6px 10px !important; }
   .nb-toc .vm-new-label { display: block; color: var(--vls-ink-red); font-weight: 700; }
@@ -820,8 +838,8 @@
   }
 
   /* Notebook Contents: typeset Old Standard italic — no Caveat hand on ivory TOC (Manager r5). */
-  body[data-theme="victorian"] #nb-body.vls-notebook > .sub,
-  body[data-theme="victorian"] #nb-body.vls-notebook > .nb-toc > h4 {
+  body[data-theme="victorian"] #nb-body .vls-page > .sub,
+  body[data-theme="victorian"] #nb-body .nb-toc > h4 {
     font-family: var(--vls-font-ivory) !important;
     font-style: italic !important;
     font-weight: 400 !important;
@@ -829,21 +847,21 @@
     letter-spacing: normal !important;
     color: var(--vls-engraving) !important;
   }
-  body[data-theme="victorian"] #nb-body.vls-notebook > .nb-toc > h4 {
+  body[data-theme="victorian"] #nb-body .nb-toc > h4 {
     font-size: 18px; margin: 12px 0 4px; opacity: .95;
   }
-  body[data-theme="victorian"] #nb-body.vls-notebook > .sub {
+  body[data-theme="victorian"] #nb-body .vls-page > .sub {
     font-size: 15px; opacity: .9; text-align: left;
     margin-top: 12px; /* same gap under button row as above Basics (h4) */
   }
 
-  /* Notebook contents: ivory tiles + Old Standard; one-line titles; dimmed locked. */
+  /* Notebook contents: ivory tiles + Old Standard. Full titles wrap; a tile scrolls to its page. */
   body[data-theme="victorian"] .nb-toc,
   body[data-theme="bw"] .nb-toc {
     grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 8px;
   }
-  body[data-theme="victorian"] .nb-toc button,
-  body[data-theme="bw"] .nb-toc button {
+  body[data-theme="victorian"] .nb-toc :is(button, a, .toc-locked),
+  body[data-theme="bw"] .nb-toc :is(button, a, .toc-locked) {
     background: #f1ecdf !important; background-image: none !important;
     border: 1px solid var(--vls-paper-edge) !important; border-bottom: 1px solid var(--vls-brass-dark) !important;
     border-radius: 2px !important; box-shadow: none !important; text-shadow: none !important;
@@ -853,7 +871,7 @@
     padding: 10px 12px !important; min-height: 44px;
     white-space: normal !important; overflow: hidden !important;
   }
-  body[data-theme="bw"] .nb-toc button {
+  body[data-theme="bw"] .nb-toc :is(button, a, .toc-locked) {
     background: #111 !important; color: #fff !important; border-color: #fff !important;
   }
   body[data-theme="victorian"] .nb-toc button > .vm-button-face {
@@ -871,13 +889,13 @@
   body[data-theme="victorian"] .nb-toc .nb-tile-title {
     display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
     font-family: var(--vls-font-ivory) !important; font-weight: 700; font-size: 14px;
-    white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis;
+    white-space: normal !important; overflow: visible !important; text-overflow: clip;
     text-transform: none !important; letter-spacing: normal !important;
   }
   body[data-theme="bw"] .nb-toc .nb-tile-title {
     display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
     font-family: var(--vls-font-sans) !important; font-weight: 600; font-size: 13px;
-    white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis;
+    white-space: normal !important; overflow: visible !important; text-overflow: clip;
     text-transform: none !important; letter-spacing: normal !important; color: #fff !important;
   }
   body[data-theme="victorian"] .nb-toc .nb-tile-status {
@@ -892,9 +910,14 @@
     opacity: .75; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis;
     text-transform: none !important; color: #ccc !important;
   }
-  body[data-theme="victorian"] .nb-toc button.locked,
-  body[data-theme="victorian"] .nb-toc button.later {
-    opacity: 0.55; filter: none;
+  body[data-theme="victorian"] .nb-toc :is(button.locked, button.later, .toc-locked),
+  body[data-theme="bw"] .nb-toc :is(button.locked, button.later, .toc-locked) {
+    opacity: 0.55; filter: none; cursor: default;
+  }
+  .nb-toc a { cursor: pointer; text-decoration: none; }
+  .nb-toc :is(a, .toc-locked) {
+    display: grid !important; gap: 2px; align-content: start; justify-items: stretch;
+    width: 100%; box-sizing: border-box;
   }
 
   body[data-theme="victorian"] :is(.panel, .ed-head, #ed-blurb, #hint-plaque) {
@@ -1070,10 +1093,12 @@
     <div class="row"><button id="mm-back">◂ Back</button></div>
   </div>
 
-  <div class="panel scrollable" id="p-notebook" data-vls-ivory="vm/panel/notebook">
-    <h2>Laboratory notebook</h2>
+  <div class="panel" id="p-notebook" data-vls-ivory="vm/panel/notebook" role="dialog" aria-labelledby="nb-title">
+    <div class="nb-bar">
+    <h2 id="nb-title">Laboratory notebook</h2>
     <div class="row" style="margin-top:0"><button id="b-nb-toc">Contents</button><button id="b-nb-plain">Plain type</button><button id="b-nb-acc">Accuracy notes</button><button id="b-nb-back">Close ◂</button></div>
-    <div id="nb-body" class="vls-notebook"></div>
+    </div>
+    <div id="nb-body" class="vls-notebook scrollable" tabindex="0"></div>
   </div>
 
   <div class="panel wide scrollable" id="p-settings" data-vls-ivory="vm/panel/settings">
@@ -5852,7 +5877,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     body: ['A phone\'s accelerometer feels gravity. When the screen is tipped by an angle θ from flat, the part of gravity that lies along the screen is g·sin θ.',
       'That is the pull the atom feels: g∥ = g·sin θ, with the phone\'s tilt equal to the chamber\'s. Standing the phone upright (θ = 90°) gives the full 9.81 m/s² on Earth; lying flat (θ = 0) there is no pull at all. Start with the phone near level and the acceleration is gentle, as in a physical tilt maze; tip further and the pull grows with sin θ.'],
     simplification: 'The game is flat (2D): it keeps only the pull along the chamber and ignores gravity straight down into the screen. At the game\'s few nanokelvin a real chamber under full g would hold a hydrogen atom within a few micrometres of the tube floor (its gravitational scale height k_B·T/m·g is only 2–7 µm in this edition\'s levels), hopping a few micrometres at a time instead of flying across the tube at several mm/s.',
-    analogy: 'Like a marble on a tea tray: tip the tray and the marble rolls downhill, more steeply the more you tip it.',
     game: 'The real apparatus would not tip with your hand; the game imagines the whole maze lying on your screen. Wall and start temperatures, not a scaled tilt, keep the atom at about a quarter of Maxwell\'s Demon\'s pace (see "Why the walls are colder than a microkelvin").',
     cf: 'W3C, <i>DeviceOrientation Event Specification</i> (devicemotion, accelerationIncludingGravity).',
     sketch(p) { p.line(40, 150, 280, 150, 1.2); p.line(60, 150, 250, 80, 2.2); p.ellipse(60, 150, 40, 40, 1, -0.35, 0); p.label('θ', 116, 144); p.circle(180, 101, 9, 1.6); p.arrow(180, 112, 180, 165, 1.4); p.label('g', 190, 160); p.arrow(180, 112, 152, 122, 1.4); p.label('g·sin θ', 130, 112); p.label('the tray (your screen)', 210, 70); } });
@@ -5868,7 +5892,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     body: ['A gas molecule that hits a real (rough, dirty) surface does not bounce like a billiard ball. It forgets where it came from and leaves in a random direction.',
       'Directions near the surface normal are most likely: the chance falls off as the cosine of the angle θ from the normal. Martin Knudsen showed this experimentally in 1909–1915.',
       'So a wall can just as easily send the atom back the way it came; that is why tilting matters so much.'],
-    analogy: 'A wall lit by a lamp looks equally bright from every angle; light scattered from a matte surface follows the same cosine law (Lambert\'s law).',
     simplification: 'The game is flat (2D) and draws each hit from the Cercignani–Lampis kernel (see "Walls trade energy"). Fully diffusing walls give exactly this cosine law; the default walls keep part of the incoming direction, so exits lean a little toward the mirror direction. Atoms arriving at the wall\'s own temperature still leave with the cosine law.',
     cf: 'M. Knudsen, <i>Ann. Phys.</i> 28, 75 (1909) and 48, 1113 (1915); F. Celestini &amp; F. Mortessagne, <i>Phys. Rev. E</i> 77, 021202 (2008).',
     sketch(p) { p.line(40, 160, 280, 160, 2.2); p.hatch(40, 160, 240, 10, 7); p.circle(160, 100, 60, 1.6); p.arrow(160, 160, 160, 48, 1.2); p.label('normal', 165, 32, { align: 'start' }); for (const a of [-1.1, -0.6, 0.3, 0.8]) p.arrow(160, 160, 160 + Math.sin(a) * 120 * Math.cos(a), 160 - Math.cos(a) * 120 * Math.cos(a), 1); p.label('length ∝ cos θ', 257, 80); molecule(p, 90, 120); p.arrow(80, 100, 150, 155, 1, 6); } });
@@ -5878,7 +5901,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       'The game uses the Cercignani–Lampis kernel. Two accommodation coefficients, αₙ for the motion into the wall and σₜ for the motion along it, say how strongly a hit pulls the atom toward the wall: 0 is a perfect mirror, 1 forgets the incoming velocity completely.',
       'With the default αₙ = σₜ = 0.5, the outgoing velocity is drawn around a point between the incoming velocity and the wall\'s thermal value, with a spread set by the wall temperature. A fast atom usually loses energy and a slow one usually gains, but either can go the other way. Over several hits the atom settles to the wall temperature.',
       'Atoms that arrive with the wall\'s own temperature leave with it (detailed balance), so a wall never heats or cools a gas that is already at its temperature.'],
-    analogy: 'Like a ball thrown at a lumpy, slightly soft wall: it comes back slower and in a somewhat random direction, but still remembers a little of how it was thrown.',
     simplification: 'Real coefficients depend on the gas, the surface, its cleanliness and the impact energy. Light atoms on clean metals accommodate poorly (energy coefficients of a few hundredths for helium on clean tungsten); on ordinary, contaminated "engineering" surfaces values of roughly 0.3–0.9 are typical. 0.5 is a middle value: nobody has measured accommodation for micro- or nanokelvin atoms.',
     game: 'Settings → Wall accommodation sets αₙ = σₜ, and you can switch to Maxwell\'s older model (each hit either a mirror bounce or fully diffuse). The game is flat, so only one direction along the wall is kept. The short stick to the wall before leaving is a pacing device; a real scattering event is effectively instantaneous.',
     cf: 'C. Cercignani &amp; M. Lampis, <i>Transp. Theory Stat. Phys.</i> 1, 101 (1971); R. G. Lord, <i>Phys. Fluids A</i> 3, 706 (1991); F. O. Goodman, <i>Prog. Surf. Sci.</i> 5, 261 (1974); F. C. Saxena &amp; S. C. Joshi, <i>Thermal Accommodation and Adsorption Coefficients of Gases</i>, Hemisphere (1989).',
@@ -5888,7 +5910,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     body: ['Real vacuum tubes sit at room temperature, 295 K. A hydrogen atom leaving such a wall moves at about 2.7 km/s (rms). Thrown straight up, it would coast about 370 km before Earth\'s gravity stopped it (about 395 km if you allow for gravity weakening with height), so tilting a tube by a few degrees could never steer it.',
       'So the game makes its walls fantastically cold — about a sixteenth of the temperature at which Maxwell\'s Demon releases its atoms, so the atom moves at about a quarter of that game\'s pace. Each level\'s wall temperature is T_w = κ·m·g_pace·D / k_B, with g_pace = g / 16000: the energy of falling one bore diameter D under a reference pull of one sixteen-thousandth of the world\'s surface gravity, times a level factor κ (0.98–1.11 in this edition\'s 30 levels; up to 1.56 in later chapters). An atom leaving the wall then moves at a mean speed of √(8κg_pace D/π), about 13% faster than √(2 g_pace D) at κ = 1. In this edition\'s levels that is 7–13 mm/s on Earth, 5–8 mm/s on Mars and 3–5 mm/s on the Moon (6–18, 3–11 and 2–7 mm/s across all 100 planned levels), about a quarter of the 31 mm/s at which Maxwell\'s Demon releases its atoms. The chamber pull itself is not scaled: the atom feels the full g·sin θ (see "Tilting the apparatus").',
       'For hydrogen on Earth that gives 1 nK in a DN16CF tube and 11 nK in a DN160CF tube (at κ = 1); this edition\'s 30 levels span 3–8 nK (2–15 nK across all 100 planned levels), about a sixteenth of the 40 nK at which Maxwell\'s Demon starts its hydrogen. On the Moon the walls are six times colder still. Heavier atoms get proportionally warmer walls: krypton in a DN63CF tube on Earth needs about 371 nK.'],
-    analogy: 'Like playing marbles on a tilted table: the walls set how fast the marble leaves each bounce, while the tilt sets how hard gravity pulls between bounces.',
     simplification: 'No real wall is this cold. Dilution refrigerators reach a few millikelvin, and real cold-atom experiments keep their atoms in traps away from the 295 K walls: an atom that touches the wall is lost. Under full Earth gravity the same nanokelvin temperatures give a gravitational scale height of only tens of micrometres, so a real atom would sit on the tube floor; the game is flat and ignores that direction (see "Tilting the apparatus").',
     game: 'Cold traps and bake-out tape arrive with the free-update chapters (and become level-editor parts then); there, the real 77/295 and 443/295 temperature ratios are applied to these nanokelvin walls, not to 295 K.',
     cf: 'k<sub>B</sub> = 1.380649 × 10⁻²³ J/K (SI, exact); hydrogen mass 1.008 u (CIAAW); F. Pobell, <i>Matter and Methods at Low Temperatures</i>, Springer (2007) (dilution refrigerators).',
@@ -5904,7 +5925,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     body: ['In high vacuum molecules never meet each other, only the walls. A molecule that enters a tube bounces from wall to wall in random (cosine) directions, and most of them end up coming back out of the end they went in.',
       'The chance of getting through is the transmission probability W, computed by Pieter Clausing in 1932. For a round tube: length = diameter, W ≈ 0.51; length = 5 diameters, W ≈ 0.19; length = 10 diameters, W ≈ 0.11; length = 25 diameters, W ≈ 0.048. Long tubes approach W ≈ 4d/3L.',
       'The tube\'s conductance is W times that of a hole of the same size, about 11.6 L/s per cm² for air at 20 °C. For a long tube that gives C ≈ 12.1·d³/L L/s (d and L in cm): halve the diameter and the pipe passes eight times less.'],
-    analogy: 'A pinball that has to get down a long corridor by bouncing off the walls at random: most of the time it bounces back out where it came in.',
     game: 'The maze is a flat (2D) version of this problem, with gravity added. With the tablet flat, the atom would wander like Clausing\'s molecules; tilting is how you beat the odds. The game\'s default walls also keep part of the incoming direction (see "Walls trade energy"), which helps atoms through.',
     cf: 'P. Clausing, <i>Ann. Phys.</i> 12, 961 (1932) (English: <i>J. Vac. Sci. Technol.</i> 8, 636 (1971)); M. Knudsen, <i>Ann. Phys.</i> 28, 75 (1909); Jousten (2016), ch. 4. Values above checked with a 200,000-molecule Monte Carlo.',
     sketch(p) {} });
@@ -5925,7 +5945,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   add({ id: 'mfp', title: 'Why a lone atom?', unlock: 'win', group: 'Basics',
     body: ['At 10⁻¹⁰ mbar an air molecule travels hundreds of kilometres between collisions with other molecules. Inside a pipe it only ever meets walls.',
       'So in ultra-high vacuum every molecule really does make its own way through the pipes alone, bouncing from wall to wall: molecular flow. That is the world of this game.'],
-    analogy: 'One moth in a long, empty corridor: it bumps into the walls again and again, but never into another moth.',
     cf: 'Jousten (2016), ch. 3–4: mean free path λ ≈ 6.6×10⁻³ cm·mbar / p for air at 20 °C.',
     sketch(p) { tube(p, 30, 290, 95, 40); p.poly([[50, 70], [90, 134], [140, 56], [175, 134], [230, 60], [280, 120]], 1.1); molecule(p, 50, 70); p.label('wall to wall, never molecule to molecule', 160, 175); } });
 
@@ -6015,12 +6034,12 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // ---- pumps
   const PUMP = {
     rotary: { title: 'Rotary-vane pump', body: ['An off-centre rotor turns inside a cylinder. Vanes in slots slide out against the wall, trapping gas, squeezing it, and pushing it out through an oil-covered exhaust valve.', 'Oil seals the gaps and cools the pump. A two-stage pump reaches about 10⁻³ mbar from atmosphere: a roughing pump.'],
-      analogy: 'A revolving door with sliding panels: each turn carries a pocket of air from one side to the other.', cf: 'Jousten (2016), ch. 7 (oil-sealed rotary pumps).',
+      cf: 'Jousten (2016), ch. 7 (oil-sealed rotary pumps).',
       sketch(p) { p.circle(160, 95, 70, 2); p.circle(160, 115, 48, 1.8); p.line(160, 115, 160, 25, 2.4); p.line(160, 115, 160, 163, 2.4); p.label('rotor', 160, 132); p.label('vanes', 205, 40); p.arrow(60, 40, 102, 62, 1.2); p.label('in', 50, 35); p.arrow(220, 62, 265, 40, 1.2); p.label('out (under oil)', 270, 30); } },
     scroll: { title: 'Scroll pump', body: ['Two interleaved spirals: one fixed, one orbiting without spinning. Crescent-shaped pockets of gas form at the rim and are squeezed toward the centre, where they are exhausted.', 'No oil touches the gas, so it is a clean "dry" roughing pump, typically reaching around 10⁻² mbar.'],
       cf: 'Jousten (2016), ch. 7 (dry pumps).', sketch(p) { p.curve((a) => [160 + (4 + a * 4.2) * Math.cos(a), 95 + (4 + a * 4.2) * Math.sin(a)], 0, 6 * Math.PI, 160, 1.6); p.curve((a) => [166 + (4 + a * 4.2) * Math.cos(a + Math.PI), 95 + (4 + a * 4.2) * Math.sin(a + Math.PI)], 0, 6 * Math.PI, 160, 1); p.arrow(280, 40, 240, 60, 1.2); p.label('gas in at the rim', 270, 25); p.label('out at centre', 160, 182); } },
     turbo: { title: 'Turbomolecular pump', body: ['Rows of angled blades spin at 24,000–90,000 rpm, so the blade tips move at a few hundred metres a second, as fast as the molecules themselves.', 'A molecule hitting a moving blade is more likely to be knocked down toward the outlet than back up. Rows of fixed blades in between guide it on. A backing pump removes the gas at the bottom.'],
-      analogy: 'Like a tennis player swatting balls: whatever direction they arrive from, most get sent the same way.', cf: 'W. Becker, <i>Vakuum-Technik</i> 7, 149 (1958); Jousten (2016), ch. 12.',
+      cf: 'W. Becker, <i>Vakuum-Technik</i> 7, 149 (1958); Jousten (2016), ch. 12.',
       sketch(p) { p.rect(90, 20, 140, 150, 2); for (let r = 0; r < 6; r++) for (let x = 100; x < 220; x += 18) p.line(x, 35 + r * 20, x + (r % 2 ? -10 : 10), 45 + r * 20, 1.2); p.line(160, 30, 160, 160, 2.6); p.label('rotor rows', 265, 50); p.label('stator rows', 265, 80); p.arrow(160, 5, 160, 25, 1.2); p.arrow(232, 160, 280, 160, 1.2); p.label('to backing pump', 270, 182); } },
     ion: { title: 'Sputter-ion pump', body: ['Rows of open steel tubes (anodes) sit between two titanium plates in a strong magnetic field (about 0.1–0.2 T) with several kilovolts across them: Penning cells.', 'Trapped electrons spiral round and ionise any gas molecule; the ion slams into the titanium, burying itself and sputtering fresh titanium that grabs more gas. No moving parts; it works down to about 10⁻¹¹ mbar.'],
       simplification: 'Noble gases are pumped only slowly by the simple (diode) type; "noble diode" and triode designs fix this.', cf: 'L. D. Hall, <i>Rev. Sci. Instrum.</i> 29, 367 (1958); Jousten (2016), ch. 15.',
@@ -6089,7 +6108,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     for (const t of e.body) { const p = doc.createElement('p'); p.textContent = t; page.appendChild(p); }
     const NB = VLS && VLS.notebook;
     const slip = (kind, text, label) => { if (NB) page.appendChild(NB.note(kind, `<p>${esc(text)}</p>`, label ? { label } : {})); else { const a = doc.createElement('aside'); a.className = 'vls-note vls-' + kind; a.textContent = (label || kind) + ': ' + text; page.appendChild(a); } };
-    if (e.analogy) slip('analogy', e.analogy);
     if (e.simplification) slip('simplification', e.simplification);
     if (e.game) slip('simplification', e.game, 'How the game differs');
     if (NB) page.appendChild(NB.cf(e.cf)); else { const c = doc.createElement('p'); c.className = 'vls-cf'; c.innerHTML = 'cf. ' + e.cf; page.appendChild(c); }
@@ -8133,78 +8151,92 @@ $('shop-packs').onclick = async (ev) => {
   fillShop();
 };
 // ---- notebook
-let nbView = 'toc';
+// One scrollable book: contents, then every found page, then the accuracy notes.
+// A contents tile scrolls to its page (Maxwell's notes-book and Fantastic Apparatus's laboratory notes).
 let editionIds = null;
 const edition = () => editionIds || (editionIds = NB.editionEntries(Array.from({ length: RELEASED }, (_, i) => getLevel(i))));
-// powers of ten in rendered HTML (outside SVG sketches) go through the kit's VLS.expHtml: 10<sup class="vls-exp">−N</sup>
 const EXP_RUN = /[⁻⁺]?[⁰¹²³⁴⁵⁶⁷⁸⁹]/;
+const nbEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 function legibleExp(root) {
   for (const el of root.querySelectorAll('p, li, td, th, dd, dt, h1, h2, h3, h4, aside, figcaption, small, span, div')) {
     if (el.closest('svg') || el.querySelector('svg, p, li, div, aside') || !EXP_RUN.test(el.innerHTML)) continue;
     el.innerHTML = VLS.expHtml(el.innerHTML);
   }
 }
-function openNotebook(from, entryId) { nbReturn = from; showPanel('notebook'); VLS.notebook.setPlain($('p-notebook'), settings.plainNotebook); if (entryId && store.notebook[entryId]) showEntry(entryId); else showToc(); }
-// One-line TOC face titles (Old Standard on ivory). Full title stays on the entry page / aria-label.
-const TOC_SHORT = {
-  'Why the walls are colder than a microkelvin': 'Walls colder than a µK',
-  'Falling in a tube: parabolas between bounces': 'Falling in a tube',
-  'How much gets through a pipe: Clausing\'s transmission probability': 'Clausing',
-  'Square or arced elbows? Conductance round a bend': 'Elbows & bends',
-  'Gravity on Earth, Mars and the Moon': 'Earth, Mars & Moon',
-  'Saturation and how hard light can push': 'Saturation & push',
-  'Apertures and differential pumping': 'Apertures & pumping',
-  'Walls trade energy with the atom': 'Walls trade energy',
-  'Non-evaporable getter (NEG)': 'NEG getter',
-  'Titanium sublimation pump': 'Ti sublimation pump',
-  'Lyman-α: light for hydrogen': 'Lyman-α',
-  'Cold traps and cryoshrouds': 'Cold traps',
-  'Real sizes: ConFlat flanges': 'ConFlat flanges',
-  'Pushing atoms with light': 'Pushing with light',
-  'Doppler shift and detuning': 'Doppler & detuning',
-  'Capacitance manometer': 'Capacitance gauge',
-};
-function tocTitle(full) {
-  if (TOC_SHORT[full]) return TOC_SHORT[full];
-  if (full.length <= 22) return full;
-  const cut = full.split(/[:?]/)[0].trim();
-  if (cut.length >= 8 && cut.length <= 22) return cut;
-  return full.slice(0, 20).replace(/\s+\S*$/, '') + '…';
+function notebookMotion() { return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'; }
+function scrollNotebook(id, behavior) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: behavior || 'auto', block: 'start' });
 }
-function showToc() {
-  nbView = 'toc'; const groups = {};
+const ACC_NAMES = { 'lasers-li': 'Lithium laser data', citations: 'Sources', levels: 'Level captions', 'levels-later': 'Level captions (later chapters)' };
+function renderNotebook() {
+  const book = $('nb-body');
+  const groups = {};
   for (const e of NB.ENTRIES) (groups[e.group] = groups[e.group] || []).push(e);
-  // only entries this edition's levels can unlock count as "to find"; the rest are marked as coming in the free updates
   const ed = edition();
-  // the count matches what is listed: this edition's entries plus any already unlocked (e.g. from an older save)
-  const shown = NB.ENTRIES.filter((e) => ed.has(e.id) || store.notebook[e.id]), n = shown.filter((e) => store.notebook[e.id]).length, later = NB.ENTRIES.length - shown.length;
-  let html = `<p class="sub">${n} of ${shown.length} entries found. New entries appear as you meet each pump, gauge and idea.${later ? ` ${later} more arrive with the free updates.` : ''}</p><div class="nb-toc">`;
+  const shown = NB.ENTRIES.filter((e) => ed.has(e.id) || store.notebook[e.id]);
+  const n = shown.filter((e) => store.notebook[e.id]).length;
+  const later = NB.ENTRIES.length - shown.length;
+  book.replaceChildren();
+  const contents = document.createElement('article');
+  contents.className = 'vls-page vm-entry';
+  contents.id = 'note-contents';
+  let html = `<h2>Contents</h2><p class="sub">${n} of ${shown.length} entries found. New entries appear as you meet each pump, gauge and idea.${later ? ` ${later} more arrive with the free updates.` : ''}</p><div class="nb-toc">`;
   for (const [g, list] of Object.entries(groups)) {
-    html += `<h4>${g}${list.every((e) => !ed.has(e.id) && !store.notebook[e.id]) ? ' (free update)' : ''}</h4>`;
+    html += `<h4>${nbEsc(g)}${list.every((e) => !ed.has(e.id) && !store.notebook[e.id]) ? ' (free update)' : ''}</h4>`;
     for (const e of list) {
-      const short = tocTitle(e.title);
+      const title = nbEsc(e.title);
       if (store.notebook[e.id]) {
-        html += `<button data-entry="${e.id}" class="${store.notebookNew[e.id] ? 'new' : ''}" aria-label="${e.title}"><span class="nb-tile-title">${short}</span>${store.notebookNew[e.id] ? '<span class="nb-tile-status vm-new-label">•new</span>' : ''}</button>`;
+        const neu = store.notebookNew[e.id] ? '<span class="nb-tile-status vm-new-label">•new</span>' : '';
+        html += `<a href="#note-${nbEsc(e.id)}" data-entry="${nbEsc(e.id)}" aria-label="${title}"><span class="nb-tile-title">${title}</span>${neu}</a>`;
       } else if (ed.has(e.id)) {
-        html += `<button disabled class="locked" aria-label="${e.title} (not yet found)"><span class="nb-tile-title">${short}</span><span class="nb-tile-status">not yet found</span></button>`;
+        html += `<span class="toc-locked" aria-label="${title} (not yet found)"><span class="nb-tile-title">${title}</span><span class="nb-tile-status">not yet found</span></span>`;
       } else {
-        html += `<button disabled class="later" aria-label="${e.title} (arrives in a free update)"><span class="nb-tile-title">${short}</span><span class="nb-tile-status">arrives in a free update</span></button>`;
+        html += `<span class="toc-locked" aria-label="${title} (arrives in a free update)"><span class="nb-tile-title">${title}</span><span class="nb-tile-status">arrives in a free update</span></span>`;
       }
     }
   }
-  $('nb-body').innerHTML = VLS.expHtml(html + '</div>');
+  contents.innerHTML = html + '</div>';
+  book.appendChild(contents);
+  for (const e of shown) {
+    if (!store.notebook[e.id]) continue;
+    const page = NB.renderEntry(e, document, VLS);
+    page.id = 'note-' + e.id;
+    book.appendChild(page);
+  }
+  const acc = document.createElement('article');
+  acc.className = 'vls-page vm-entry';
+  acc.id = 'note-accuracy';
+  acc.innerHTML = VLS.expHtml(`<h2>Accuracy notes</h2><p>Every entry was checked against the sources cited on its page. These claims are the ones we are least sure of, or that vary from one source or instrument to another (notes for entries that arrive in the free updates come with them):</p><ul class="nb-uncertain">${NB.UNCERTAIN.filter(([id]) => NB.byId[id] ? ed.has(id) || store.notebook[id] : id === 'lasers-li' ? ed.has('laser') : id === 'levels-later' ? ed.size === NB.ENTRIES.length : true).map(([id, t]) => `<li><b>${NB.byId[id] ? NB.byId[id].title : ACC_NAMES[id] || 'General'}:</b> ${t}</li>`).join('')}</ul>`);
+  book.appendChild(acc);
+  const end = document.createElement('p');
+  end.className = 'notes-end';
+  end.textContent = '— end of the notebook —';
+  book.appendChild(end);
+  legibleExp(book);
 }
-function showEntry(id) {
-  nbView = id; const e = NB.byId[id]; delete store.notebookNew[id]; persist();
-  $('nb-body').innerHTML = ''; $('nb-body').appendChild(NB.renderEntry(e, document, VLS)); legibleExp($('nb-body'));
+function openNotebook(from, entryId) {
+  nbReturn = from;
+  showPanel('notebook');
+  VLS.notebook.setPlain($('p-notebook'), settings.plainNotebook);
+  const jump = entryId && store.notebook[entryId] ? entryId : null;
+  if (jump && store.notebookNew[jump]) { delete store.notebookNew[jump]; persist(); }
+  renderNotebook();
+  const book = $('nb-body');
+  if (book.focus) book.focus({ preventScroll: true });
+  requestAnimationFrame(() => scrollNotebook(jump ? 'note-' + jump : 'note-contents', 'auto'));
 }
-const ACC_NAMES = { 'lasers-li': 'Lithium laser data', citations: 'Sources', levels: 'Level captions', 'levels-later': 'Level captions (later chapters)' };   // notes not tied to one entry
-function showAccuracy() {
-  nbView = 'acc';
-  $('nb-body').innerHTML = VLS.expHtml(`<article class="vls-page vm-entry"><h2>Accuracy notes</h2><p>Every entry was checked against the sources cited on its page. These claims are the ones we are least sure of, or that vary from one source or instrument to another (notes for entries that arrive in the free updates come with them):</p><ul class="nb-uncertain">${NB.UNCERTAIN.filter(([id]) => NB.byId[id] ? edition().has(id) || store.notebook[id] : id === 'lasers-li' ? edition().has('laser') : id === 'levels-later' ? edition().size === NB.ENTRIES.length : true).map(([id, t]) => `<li><b>${NB.byId[id] ? NB.byId[id].title : ACC_NAMES[id] || 'General'}:</b> ${t}</li>`).join('')}</ul></article>`);
-}
-$('nb-body').onclick = (ev) => { const b = ev.target.closest('button[data-entry]'); if (b) showEntry(b.dataset.entry); };
-$('b-nb-toc').onclick = showToc; $('b-nb-acc').onclick = showAccuracy;
+$('nb-body').addEventListener('click', (ev) => {
+  const a = ev.target.closest('a[data-entry]');
+  if (!a || !$('nb-body').contains(a)) return;
+  ev.preventDefault();
+  const id = a.dataset.entry;
+  if (store.notebookNew[id]) { delete store.notebookNew[id]; persist(); const mark = a.querySelector('.vm-new-label'); if (mark) mark.remove(); }
+  scrollNotebook('note-' + id, notebookMotion());
+});
+$('b-nb-toc').onclick = () => scrollNotebook('note-contents', notebookMotion());
+$('b-nb-acc').onclick = () => scrollNotebook('note-accuracy', notebookMotion());
 $('b-nb-plain').onclick = () => { settings.plainNotebook = !settings.plainNotebook; persist(); VLS.notebook.setPlain($('p-notebook'), settings.plainNotebook); };
 $('b-nb-back').onclick = () => showPanel(nbReturn);
 
@@ -8298,6 +8330,19 @@ function runCheck(kernel, A) {
 
 // ------------------------------------------------------------------ input events
 addEventListener('keydown', (e) => {
+  if ($('p-notebook').classList.contains('show')) {
+    const book = $('nb-body');
+    const inBook = e.target === book || (e.target.closest && e.target.closest('#nb-body'));
+    if (e.code === 'Escape') { e.preventDefault(); $('b-nb-back').click(); return; }
+    if (inBook && (e.code === 'ArrowDown' || e.code === 'PageDown' || e.code === 'ArrowUp' || e.code === 'PageUp')) {
+      e.preventDefault();
+      const page = e.code === 'PageDown' || e.code === 'PageUp';
+      const dir = e.code === 'ArrowUp' || e.code === 'PageUp' ? -1 : 1;
+      book.scrollBy({ top: dir * (page ? book.clientHeight * 0.85 : 48), behavior: notebookMotion() });
+      return;
+    }
+    return;
+  }
   if (e.target.closest && e.target.closest('.panel') && e.target.tagName !== 'BUTTON') return;
   keys.add(e.code);
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
