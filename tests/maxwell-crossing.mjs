@@ -254,7 +254,17 @@ check(notes.includes("reference chamber's standard Sorting start, 60 nK"), 'publ
 check(!notes.includes("Sorting mode's standard 60 nK"), 'public entropy note drops the stale wording');
 check(html.includes('let PIN_SCALE = false'), 'scale pin stays off in the release');
 check(html.includes('#dev-badge { display: none !important; }'), 'dev badge stays hidden');
-check(!/easter|hidden reward|ACH2/i.test(script('src/physics-notes.js') + script('src/physics-notes-more.js')), 'notes do not describe a hidden reward');
+const noteSrc = script('src/physics-notes.js') + script('src/physics-notes-more.js');
+check(!/easter|hidden reward|ACH2/i.test(noteSrc), 'notes do not describe a hidden reward');
+check(!/\banalogy\s*:/.test(noteSrc) && !noteSrc.includes('pg.analogy'), 'in-game notebook no longer carries Analogy post-its');
+check(!notes.includes('vls-analogy') && !notes.includes('>Analogy<'), 'public notebook no longer carries Analogy post-its');
+check((notes.match(/>In the game</g) || []).length === 28, 'In the game notes stay on every published page');
+{
+  const ids = new Set([...notes.matchAll(/id="(note-[^"]+)"/g)].map((m) => m[1]));
+  const hrefs = [...notes.matchAll(/href="#(note-[^"]+)"/g)].map((m) => m[1]);
+  const dangling = hrefs.filter((h) => !ids.has(h));
+  check(dangling.length === 0 && hrefs.includes('note-bec') && ids.has('note-bec'), 'every notebook index link resolves, including the condensate page');
+}
 
 const out = {
   formula: 'T = T_ref * (L / L_ref)^2 / M^2',
