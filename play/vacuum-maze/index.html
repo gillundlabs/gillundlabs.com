@@ -6011,7 +6011,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     const seg = (x0, y0, x1, y1) => { const L = Math.hypot(x1 - x0, y1 - y0) || 1, n = Math.max(2, Math.ceil(L / 12)), bow = wob() * 1.4, pts = [];
       for (let i = 0; i <= n; i++) { const t = i / n, s = Math.sin(Math.PI * t) * bow; pts.push([x0 + (x1 - x0) * t - ((y1 - y0) / L) * s, y0 + (y1 - y0) * t + ((x1 - x0) / L) * s]); } return pts; };
     const p = {
-      line(x0, y0, x1, y1, w) { stroke(seg(x0, y0, x1, y1), w); return p; },
+      line(x0, y0, x1, y1, w, extra) { stroke(seg(x0, y0, x1, y1), w, extra); return p; },
       poly(pts, w, closed) { let all = []; const P = closed ? pts.concat([pts[0]]) : pts; for (let i = 1; i < P.length; i++) all = all.concat(seg(...P[i - 1], ...P[i]).slice(i > 1 ? 1 : 0)); stroke(all, w); return p; },
       rect(x, y, w, h, lw) { return p.poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], lw, true); },
       curve(f, t0, t1, n = 40, w) { const pts = []; for (let i = 0; i <= n; i++) pts.push(f(t0 + ((t1 - t0) * i) / n)); stroke(pts, w); return p; },
@@ -6166,14 +6166,11 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       const main = draw(k, x0, yMain, 1.15);
       const rad = k * 3.2, sealY = yMain(21.6);
       p.circle(x0, sealY, rad, 0.8);
-      // Callout leaves the circle in the open bore, crosses above the metal, and meets the inset corner.
       const box = { x: 96, y: 182, w: 160, h: 196 };
-      const leaveA = -1.45;
-      const lx = x0 + rad * Math.cos(leaveA), ly = sealY + rad * Math.sin(leaveA);
-      p.line(lx, ly, lx, 6, 0.7);
-      p.line(lx, 6, 308, 6, 0.7);
-      p.line(308, 6, 308, box.y, 0.7);
-      p.line(308, box.y, box.x + box.w, box.y, 0.7);
+      // Detail callout: two short lines in the gap under the joint, on the circle's left and right edges, down to the inset.
+      const yBelow = yMain(G.od) + 10;
+      p.line(x0 - rad, yBelow, x0 - rad, box.y, 0.7, 'data-callout="seal"');
+      p.line(x0 + rad, yBelow, x0 + rad, box.y, 0.7, 'data-callout="seal"');
       p.rect(box.x, box.y, box.w, box.h, 1.05);
       const ki = k * 5, ix = box.x + 80, iy = (r) => box.y + 66 + (r - 21.6) * ki;
       p.clip('seal', box.x + 1, box.y + 1, box.w - 2, box.h - 2);
@@ -6183,9 +6180,9 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       p.note('bore', 12, 26, x0 - 26, yMain(17.5), { ...lead, align: 'start' });
       p.note('flange', 6, 72, main.X(-9), yMain(22.2), { ...lead, align: 'start' });
       p.note('M6', main.X(G.outer + G.washT + G.nutT) + 14, yMain(G.bolt) - G.headR * k - 20, main.X(G.outer + G.washT + G.nutT * 0.4), yMain(G.bolt) - G.headR * k, { ...lead, align: 'start' });
-      p.note('5×', box.x + 2, box.y - 20, box.x + 16, box.y, { ...lead, align: 'start' });
+      p.label('5×', box.x + 1, box.y - 13, { size: 11, align: 'start', rotate: 0 });
       p.note('2 mm copper', 6, iy(22.5), ix - ki, iy(22.5), { ...lead, align: 'start' });
-      p.note('20° knife', 150, box.y - 20, ix + G.tip * ki, iy(G.knife), { ...lead, align: 'start' });
+      p.note('20° knife', 176, box.y - 20, ix + G.tip * ki, iy(G.knife), { ...lead, align: 'start' });
       p.note('gap', box.x + box.w + 14, iy(25.4), ix, iy(25.4), { ...lead, align: 'start' });
     } });
 
