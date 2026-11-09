@@ -7,7 +7,13 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="../../favicon.ico" sizes="32x32"><link rel="icon" type="image/png" href="../../assets/img/favicon-192.png"><link rel="apple-touch-icon" href="../../assets/img/apple-touch-icon.png">
 <link rel="stylesheet" href="../../assets/tokens.css"><link rel="stylesheet" href="../../assets/ivory/ivory.css"><link rel="stylesheet" href="../../assets/site.css">
-<style>.vls-notebook .vls-cf{overflow-wrap:anywhere;word-break:break-word}</style>
+<style>
+.vls-notebook .vls-cf{overflow-wrap:anywhere;word-break:break-word}
+@media (max-width:480px){
+  .vls-notebook #note-contents,.vls-notebook .notes-toc,.vls-notebook .notes-toc li{max-width:100%;min-width:0}
+  .vls-notebook .notes-toc a{white-space:normal;overflow-wrap:anywhere}
+}
+</style>
 <script src="../../assets/config.js" defer></script><script src="../../assets/tokens.js" defer></script><script src="../../assets/apparatus.js" defer></script><script src="../../assets/ivory/ivory.js" defer></script><script src="../../assets/plaque-boot.js" defer></script></head>
 <body class="nbpage"><a class="skip" href="#main">Skip to content</a>
 <header class="bar"><a class="brand" href="../../"><img src="../../assets/img/logo.png" alt="" width="40" height="40"><span>Gillund Labs</span></a>
