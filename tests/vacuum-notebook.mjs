@@ -32,6 +32,13 @@ if ((site.match(/vls-simplification/g) || []).length < 16) fail('site simplifica
 if (!play.includes('function renderNotebook') || !play.includes('scrollIntoView')) fail('scrollable book navigation missing');
 if (!play.includes('id="nb-body" class="vls-notebook scrollable"')) fail('notebook scroller missing');
 if (/tea tray|tennis player swatting|revolving door with sliding panels|lumpy, slightly soft wall/.test(play + site)) fail('analogy sentence still published');
+if (/SK\['scale'\]/.test(play)) fail('SK scale still overrides the entry sketch');
+if (play.includes('hatchPoly') || /\.hatch\(/.test(play)) fail('notebook still has hatch drawing');
+{
+  const p9 = site.slice(site.indexOf('id="p9"'), site.indexOf('id="p10"'));
+  const fig = p9.slice(p9.indexOf('<figure'), p9.indexOf('</figure>'));
+  if (!fig.includes('2 mm copper') || !fig.includes('M6') || fig.includes('knife-edge') || fig.includes('bore (vacuum)')) fail('site notebook still shows the old flange figure');
+}
 
 const chrome = spawn('google-chrome', [
   '--headless=new', '--no-sandbox', '--disable-gpu', '--hide-scrollbars',
@@ -126,6 +133,24 @@ try {
   if (!opened.scrollable || !opened.taller) fail('book does not scroll');
   if (!opened.closeInView) fail('close control not on screen');
   if (opened.best !== 42.5) fail('best rewritten on open');
+
+  const flange = await ev(`(() => {
+    const page = document.getElementById('note-scale');
+    const svg = page && page.querySelector('svg.vm-sketch');
+    const text = svg ? svg.textContent : '';
+    return {
+      present: !!svg,
+      paths: svg ? svg.querySelectorAll('path').length : 0,
+      copper: text.includes('2 mm copper'),
+      knife: text.includes('20° knife'),
+      bolt: text.includes('M6'),
+      old: ['knife-edge', 'copper gasket', 'bore (vacuum)', '2¾'].filter((s) => text.includes(s)),
+    };
+  })()`);
+  console.log('flange svg', JSON.stringify(flange));
+  if (!flange.present || !flange.copper || !flange.knife || !flange.bolt) fail('rendered flange sketch is not the DN40 drawing ' + JSON.stringify(flange));
+  if (flange.old.length) fail('old flange labels still rendered ' + flange.old.join(','));
+  if (flange.paths > 40) fail('rendered flange sketch still has hatch paths ' + flange.paths);
 
   const jumped = await ev(`(() => {
     const book = document.getElementById('nb-body');

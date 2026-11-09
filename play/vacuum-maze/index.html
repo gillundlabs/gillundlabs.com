@@ -5984,18 +5984,9 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       circle(cx, cy, rr, w) { return p.ellipse(cx, cy, rr, rr, w); },
       arrow(x0, y0, x1, y1, w = 1.4, head = 8) { p.line(x0, y0, x1, y1, w); const a = Math.atan2(y1 - y0, x1 - x0); for (const s of [-1, 1]) p.line(x1, y1, x1 - head * Math.cos(a + s * 0.42), y1 - head * Math.sin(a + s * 0.42), w); return p; },
       dot(x, y, rr = 2.2) { out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rr}" fill="currentColor" stroke="none"/>`); return p; },
-      hatch(x, y, w, h, gap = 6, ang = 1) { for (let k = -h; k < w; k += gap) { const x0 = Math.max(x, x + k), y0 = x0 === x ? y - k * ang : y, x1 = Math.min(x + w, x + k + h), y1 = y + (x1 - (x + k)); stroke(seg(x0, y0 + (x0 - x - Math.max(0, k)) * 0, x1, y1), 0.7); } return p; },
+      
       label(text, x, y, o = {}) { const rot = o.rotate == null ? (r() - 0.5) * 3 : o.rotate; out.push(`<text data-k="${nText++}" x="${x}" y="${y}" font-size="${o.size || 13}" font-family='${HAND_FONT}' text-anchor="${o.align || 'middle'}" transform="rotate(${rot.toFixed(1)} ${x} ${y})" fill="currentColor" stroke="none">${esc(text)}</text>`); return p; },
-      // hatch the inside of one or more closed polygons (even-odd rule, so a ring = outer + inner polygon), at angle ang
-      hatchPoly(rings, gap = 6, ang = Math.PI / 4, w = 0.7) {
-        const ca = Math.cos(-ang), sa = Math.sin(-ang), rot = ([x, y]) => [x * ca - y * sa, x * sa + y * ca], back = ([x, y]) => [x * ca + y * sa, -x * sa + y * ca];
-        const R = rings.map((r) => r.map(rot)); let y0 = Infinity, y1 = -Infinity; for (const r of R) for (const [, y] of r) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-        for (let y = y0 + gap / 2; y < y1; y += gap) {
-          const xs = []; for (const r of R) for (let i = 0; i < r.length; i++) { const [ax, ay] = r[i], [bx, by] = r[(i + 1) % r.length]; if ((ay <= y) !== (by <= y)) xs.push(ax + ((y - ay) * (bx - ax)) / (by - ay)); }
-          xs.sort((a, b) => a - b); for (let i = 0; i + 1 < xs.length; i += 2) { if (xs[i + 1] - xs[i] < 1.5) continue; const A = back([xs[i] + 0.8, y]), B = back([xs[i + 1] - 0.8, y]); stroke(seg(A[0], A[1], B[0], B[1]), w); }
-        }
-        return p;
-      },
+      
       // a label with a thin leader line to the thing it names
       note(text, tx, ty, px, py, o = {}) {
         const size = o.size || 11, align = o.align || (tx < 60 ? 'start' : tx > 260 ? 'end' : tx < px ? 'end' : 'start'), w = textW(text, size);
@@ -6019,7 +6010,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   const DEG = Math.PI / 180;
 
   // shared sketch fragments
-  const tube = (p, x0, x1, y, h = 22) => { p.line(x0, y - h, x1, y - h, 2); p.line(x0, y + h, x1, y + h, 2); p.hatch(x0, y - h - 6, x1 - x0, 6, 7); p.hatch(x0, y + h, x1 - x0, 6, 7); };
+  const tube = (p, x0, x1, y, h = 22) => { p.line(x0, y - h, x1, y - h, 2); p.line(x0, y + h, x1, y + h, 2); };
   const molecule = (p, x, y) => p.circle(x, y, 3.2, 1.2);
 
   // ---------------------------------------------------------------- entries
@@ -6041,7 +6032,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       'With less gravity a falling atom picks up speed more slowly, so the same maze takes longer, and every tilt matters less.'],
     game: '"Arcade" mode lets you pick any gravity you like; times there are kept separately and earn fewer coins.',
     cf: 'NASA Goddard Space Flight Center, <i>Planetary Fact Sheets</i> (Earth, Mars, Moon).',
-    sketch(p) { const bars = [['Earth', 9.81], ['Mars', 3.71], ['Moon', 1.62]]; bars.forEach(([n, g], i) => { const x = 70 + i * 90, h = g * 12; p.rect(x - 18, 160 - h, 36, h, 1.6); p.hatch(x - 18, 160 - h, 36, h, 8); p.label(n, x, 178); p.label(`${g} m/s²`, x, 152 - h); }); p.line(30, 160, 300, 160, 1.2); } });
+    sketch(p) { const bars = [['Earth', 9.81], ['Mars', 3.71], ['Moon', 1.62]]; bars.forEach(([n, g], i) => { const x = 70 + i * 90, h = g * 12; p.rect(x - 18, 160 - h, 36, h, 1.6); p.label(n, x, 178); p.label(`${g} m/s²`, x, 152 - h); }); p.line(30, 160, 300, 160, 1.2); } });
 
   add({ id: 'cosine', title: 'Knudsen\'s cosine law', unlock: 'contact', group: 'Basics',
     body: ['A gas molecule that hits a real (rough, dirty) surface does not bounce like a billiard ball. It forgets where it came from and leaves in a random direction.',
@@ -6049,7 +6040,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       'So a wall can just as easily send the atom back the way it came; that is why tilting matters so much.'],
     simplification: 'The game is flat (2D) and draws each hit from the Cercignani–Lampis kernel (see "Walls trade energy"). Fully diffusing walls give exactly this cosine law; the default walls keep part of the incoming direction, so exits lean a little toward the mirror direction. Atoms arriving at the wall\'s own temperature still leave with the cosine law.',
     cf: 'M. Knudsen, <i>Ann. Phys.</i> 28, 75 (1909) and 48, 1113 (1915); F. Celestini &amp; F. Mortessagne, <i>Phys. Rev. E</i> 77, 021202 (2008).',
-    sketch(p) { p.line(40, 160, 280, 160, 2.2); p.hatch(40, 160, 240, 10, 7); p.circle(160, 100, 60, 1.6); p.arrow(160, 160, 160, 48, 1.2); p.label('normal', 165, 32, { align: 'start' }); for (const a of [-1.1, -0.6, 0.3, 0.8]) p.arrow(160, 160, 160 + Math.sin(a) * 120 * Math.cos(a), 160 - Math.cos(a) * 120 * Math.cos(a), 1); p.label('length ∝ cos θ', 257, 80); molecule(p, 90, 120); p.arrow(80, 100, 150, 155, 1, 6); } });
+    sketch(p) { p.line(40, 160, 280, 160, 2.2); p.circle(160, 100, 60, 1.6); p.arrow(160, 160, 160, 48, 1.2); p.label('normal', 165, 32, { align: 'start' }); for (const a of [-1.1, -0.6, 0.3, 0.8]) p.arrow(160, 160, 160 + Math.sin(a) * 120 * Math.cos(a), 160 - Math.cos(a) * 120 * Math.cos(a), 1); p.label('length ∝ cos θ', 257, 80); molecule(p, 90, 120); p.arrow(80, 100, 150, 155, 1, 6); } });
 
   add({ id: 'accommodation', title: 'Walls trade energy with the atom', unlock: 'contact', group: 'Basics',
     body: ['A hit on a wall is a small, random exchange of energy with the vibrating metal. Physicists describe it with a scattering kernel: the odds of every possible outgoing velocity, given the incoming one.',
@@ -6089,7 +6080,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       'Weakly bound atoms leave in well under a nanosecond; water stuck to steel can stay for hours, which is why vacuum systems are baked.'],
     game: 'The game makes the wait about a tenth of a second so you can see it; for real it would be far too short to notice.',
     cf: 'J. Frenkel, <i>Z. Phys.</i> 26, 117 (1924); P. A. Redhead, <i>Vacuum</i> 12, 203 (1962).',
-    sketch(p) { p.line(40, 130, 280, 130, 2.2); p.hatch(40, 130, 240, 10, 7); p.curve((x) => [x, 128 - 70 * Math.exp(-((x - 160) ** 2) / 1200) + 0], 60, 260, 50, 1); molecule(p, 160, 120); p.arrow(160, 112, 160, 70, 1, 6); p.label('E (binding)', 205, 80); p.label('τ = τ₀ e^(E/kT)', 100, 40); } });
+    sketch(p) { p.line(40, 130, 280, 130, 2.2); p.curve((x) => [x, 128 - 70 * Math.exp(-((x - 160) ** 2) / 1200) + 0], 60, 260, 50, 1); molecule(p, 160, 120); p.arrow(160, 112, 160, 70, 1, 6); p.label('E (binding)', 205, 80); p.label('τ = τ₀ e^(E/kT)', 100, 40); } });
 
   add({ id: 'scale', title: 'Real sizes: ConFlat flanges', unlock: 'start', group: 'Basics',
     body: ['UHV tubing is joined with ConFlat (CF) flanges: a sharp knife-edge on each flange bites into a soft copper gasket, making an all-metal seal that survives baking to about 450 °C.',
@@ -6120,16 +6111,16 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       p.poly([[xOf(-outer - 4), yB - 5 * k], [xOf(-outer - 1), yB - 5 * k], [xOf(-outer), yB - 4 * k], [xOf(-outer), yB + 4 * k], [xOf(-outer - 1), yB + 5 * k], [xOf(-outer - 4), yB + 5 * k]], 1.25, true);
       p.rect(xOf(outer), yB - 6 * k, 1.6 * k, 12 * k, 1.15);
       p.poly([[xOf(outer + 1.6), yB - 5 * k], [xOf(outer + 1.6 + 4), yB - 5 * k], [xOf(outer + 1.6 + 5), yB - 4 * k], [xOf(outer + 1.6 + 5), yB + 4 * k], [xOf(outer + 1.6 + 4), yB + 5 * k], [xOf(outer + 1.6), yB + 5 * k]], 1.25, true);
-      p.label('2 mm copper', 148, yOf(22));
-      p.label('20° knife', 250, yOf(20));
-      p.label('gap', 148, yOf(27));
-      p.label('M6', 148, yOf(32));
+      p.label('2 mm copper', 148, 12, { size: 11 });
+      p.label('20° knife', 262, 28, { size: 11 });
+      p.label('gap', 36, 178, { size: 11, align: 'start' });
+      p.label('M6', 250, 178, { size: 11 });
     } });
 
   add({ id: 'mfp', title: 'Why a lone atom?', unlock: 'win', group: 'Basics',
     body: ['At 10⁻¹⁰ mbar an air molecule travels hundreds of kilometres between collisions with other molecules. Inside a pipe it only ever meets walls.',
       'So in ultra-high vacuum every molecule really does make its own way through the pipes alone, bouncing from wall to wall: molecular flow. That is the world of this game.'],
-    cf: 'Jousten (2016), ch. 3–4: mean free path λ ≈ 6.6×10⁻³ cm·mbar / p for air at 20 °C.',
+    cf: 'Jousten (2016), ch. 3–4: mean free path λ ≈ 6.6×10⁻³ cm·mbar / for air at 20 °C.',
     sketch(p) { tube(p, 30, 290, 95, 40); p.poly([[50, 70], [90, 134], [140, 56], [175, 134], [230, 60], [280, 120]], 1.1); molecule(p, 50, 70); p.label('wall to wall, never molecule to molecule', 160, 175); } });
 
   // ---- mechanics
@@ -6138,13 +6129,13 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       'Open, it leaves the full bore clear; shut, it holds a vacuum on one side against air on the other.'],
     game: 'Here the gates open and shut on a timer. Real ones are worked by hand, air pressure (pneumatic) or a motor, when the operator or a controller decides.',
     cf: 'Jousten (2016), ch. 18 (valves).',
-    sketch(p) { tube(p, 20, 300, 110, 30); p.rect(150, 30, 20, 110, 1.8); p.hatch(150, 30, 20, 110, 6); p.rect(135, 15, 50, 25, 1.4); p.arrow(195, 60, 195, 25, 1.2); p.label('gate slides up to open', 252, 40); p.label('chamber', 70, 170); p.label('load-lock', 245, 170); } });
+    sketch(p) { tube(p, 20, 300, 110, 30); p.rect(150, 30, 20, 110, 1.8); p.rect(135, 15, 50, 25, 1.4); p.arrow(195, 60, 195, 25, 1.2); p.label('gate slides up to open', 252, 40); p.label('chamber', 70, 170); p.label('load-lock', 245, 170); } });
 
   add({ id: 'aperture', title: 'Apertures and differential pumping', unlock: 'kind:aperture', group: 'Apparatus',
     body: ['A small hole between two chambers lets few molecules through: in molecular flow a thin aperture of area A passes gas at a rate C = v̄A/4 (about 11.6 litres per second per cm² for air at room temperature).',
       'Put a pump on each side of a small hole and one side can be kept far emptier than the other. Molecular-beam machines and electron microscopes use chains of these stages.'],
     cf: 'Jousten (2016), ch. 4 (conductance of an orifice in molecular flow).',
-    sketch(p) { tube(p, 20, 300, 95, 45); p.rect(155, 50, 10, 30, 1.6); p.rect(155, 110, 10, 30, 1.6); p.hatch(155, 50, 10, 30, 4); p.hatch(155, 110, 10, 30, 4); p.arrow(110, 95, 200, 95, 1.2); p.label('small hole', 160, 30); p.label('higher p', 70, 170); p.label('lower p', 250, 170); for (const [x, y] of [[50, 70], [80, 110], [100, 80], [60, 120], [250, 80]]) molecule(p, x, y); } });
+    sketch(p) { tube(p, 20, 300, 95, 45); p.rect(155, 50, 10, 30, 1.6); p.rect(155, 110, 10, 30, 1.6); p.arrow(110, 95, 200, 95, 1.2); p.label('small hole', 160, 30); p.label('higher p', 70, 170); p.label('lower p', 250, 170); for (const [x, y] of [[50, 70], [80, 110], [100, 80], [60, 120], [250, 80]]) molecule(p, x, y); } });
 
   add({ id: 'cold', title: 'Cold traps and cryoshrouds', unlock: 'kind:cold', group: 'Apparatus',
     body: ['A wall cooled by liquid nitrogen sits at 77 K (−196 °C). Water and many other vapours freeze onto it and stay there, so cold walls act as pumps.',
@@ -6227,17 +6218,17 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       sketch(p) { p.rect(90, 20, 140, 150, 2); for (let r = 0; r < 6; r++) for (let x = 100; x < 220; x += 18) p.line(x, 35 + r * 20, x + (r % 2 ? -10 : 10), 45 + r * 20, 1.2); p.line(160, 30, 160, 160, 2.6); p.label('rotor rows', 265, 50); p.label('stator rows', 265, 80); p.arrow(160, 5, 160, 25, 1.2); p.arrow(232, 160, 280, 160, 1.2); p.label('to backing pump', 270, 182); } },
     ion: { title: 'Sputter-ion pump', body: ['Rows of open steel tubes (anodes) sit between two titanium plates in a strong magnetic field (about 0.1–0.2 T) with several kilovolts across them: Penning cells.', 'Trapped electrons spiral round and ionise any gas molecule; the ion slams into the titanium, burying itself and sputtering fresh titanium that grabs more gas. No moving parts; it works down to about 10⁻¹¹ mbar.'],
       simplification: 'Noble gases are pumped only slowly by the simple (diode) type; "noble diode" and triode designs fix this.', cf: 'L. D. Hall, <i>Rev. Sci. Instrum.</i> 29, 367 (1958); Jousten (2016), ch. 15.',
-      sketch(p) { p.rect(60, 30, 14, 130, 1.8); p.rect(246, 30, 14, 130, 1.8); p.hatch(60, 30, 14, 130, 6); p.hatch(246, 30, 14, 130, 6); for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) p.circle(110 + i * 34, 55 + j * 40, 13, 1.2); p.label('Ti', 67, 22); p.label('Ti', 253, 22); p.label('B ≈ 0.15 T →', 160, 180); p.label('anode cells (+kV)', 160, 22); } },
+      sketch(p) { p.rect(60, 30, 14, 130, 1.8); p.rect(246, 30, 14, 130, 1.8); for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) p.circle(110 + i * 34, 55 + j * 40, 13, 1.2); p.label('Ti', 67, 22); p.label('Ti', 253, 22); p.label('B ≈ 0.15 T →', 160, 180); p.label('anode cells (+kV)', 160, 22); } },
     tsp: { title: 'Titanium sublimation pump', body: ['A titanium-alloy filament is heated by a large current until titanium evaporates and coats the nearby walls.', 'The fresh film chemically binds active gases such as hydrogen, oxygen, nitrogen, CO and water. It cannot pump noble gases or methane, so it is usually paired with an ion pump.'],
-      cf: 'Jousten (2016), ch. 15 (getter pumps).', sketch(p) { p.rect(70, 25, 180, 140, 2); p.hatch(70, 25, 10, 140, 5); p.hatch(240, 25, 10, 140, 5); p.poly([[130, 40], [140, 60], [130, 80], [140, 100], [130, 120], [140, 140]], 1.6); p.poly([[180, 40], [190, 60], [180, 80], [190, 100], [180, 120], [190, 140]], 1.6); for (const a of [0.3, 1.2, 2.5, 3.6]) p.arrow(160 + 20 * Math.cos(a), 90 + 20 * Math.sin(a), 160 + 60 * Math.cos(a), 90 + 50 * Math.sin(a), 0.8, 5); p.label('Ti filaments', 160, 182); p.label('Ti film', 285, 90); } },
+      cf: 'Jousten (2016), ch. 15 (getter pumps).', sketch(p) { p.rect(70, 25, 180, 140, 2); p.poly([[130, 40], [140, 60], [130, 80], [140, 100], [130, 120], [140, 140]], 1.6); p.poly([[180, 40], [190, 60], [180, 80], [190, 100], [180, 120], [190, 140]], 1.6); for (const a of [0.3, 1.2, 2.5, 3.6]) p.arrow(160 + 20 * Math.cos(a), 90 + 20 * Math.sin(a), 160 + 60 * Math.cos(a), 90 + 50 * Math.sin(a), 0.8, 5); p.label('Ti filaments', 160, 182); p.label('Ti film', 285, 90); } },
     neg: { title: 'Non-evaporable getter (NEG)', body: ['A porous alloy such as Zr–V–Fe is heated (typically to about 400–450 °C) to "activate" it: the surface oxide dissolves into the bulk, leaving a clean, reactive metal surface.', 'Back at room temperature it soaks up hydrogen and binds CO, N₂, O₂ and water, with no power and no moving parts. CERN coats whole beam pipes with a related thin film.'],
       cf: 'C. Benvenuti et al., <i>Vacuum</i> 53, 219 (1999); SAES Getters, St 707 data sheet.', sketch(p) { for (let i = 0; i < 8; i++) p.rect(90, 30 + i * 16, 140, 9, 1.2); p.line(160, 20, 160, 170, 2.2); p.label('getter strips', 270, 50); p.label('heater', 195, 182); molecule(p, 60, 60); p.arrow(65, 64, 88, 80, 1, 5); } },
     cryo: { title: 'Cryopump', body: ['A two-stage refrigerator (usually Gifford–McMahon) chills surfaces to about 50–80 K and 10–20 K. Water freezes on the warmer stage; nitrogen, oxygen and argon on the colder one.', 'Activated charcoal on the cold stage traps hydrogen, helium and neon, which would not freeze. The pump fills up and must be warmed now and then to release what it has caught (regeneration).'],
-      cf: 'Jousten (2016), ch. 16; W. E. Gifford &amp; H. O. McMahon, <i>Adv. Cryog. Eng.</i> 5, 354 (1960).', sketch(p) { p.rect(70, 30, 180, 120, 2); p.rect(110, 60, 100, 60, 1.6); p.hatch(130, 100, 60, 20, 5); for (let x = 80; x < 240; x += 20) p.poly([[x, 25], [x + 10, 35], [x + 20, 25]], 1); p.label('50–80 K', 285, 40); p.label('10–20 K', 160, 55); p.label('charcoal', 160, 135); p.rect(150, 150, 20, 30, 1.6); p.label('cold head', 220, 175); } },
+      cf: 'Jousten (2016), ch. 16; W. E. Gifford &amp; H. O. McMahon, <i>Adv. Cryog. Eng.</i> 5, 354 (1960).', sketch(p) { p.rect(70, 30, 180, 120, 2); p.rect(110, 60, 100, 60, 1.6); for (let x = 80; x < 240; x += 20) p.poly([[x, 25], [x + 10, 35], [x + 20, 25]], 1); p.label('50–80 K', 285, 40); p.label('10–20 K', 160, 55); p.label('charcoal', 160, 135); p.rect(150, 150, 20, 30, 1.6); p.label('cold head', 220, 175); } },
     diffusion: { title: 'Diffusion pump', body: ['Oil is boiled at the bottom; its vapour rises up a central chimney and shoots downward from umbrella-shaped jets. Gas molecules that wander into the jets are carried down toward the outlet.', 'The oil condenses on water-cooled walls and runs back to the boiler. A backing pump is needed, and a cold trap above stops oil creeping into the chamber.'],
-      cf: 'W. Gaede, <i>Ann. Phys.</i> 46, 357 (1915); I. Langmuir, <i>Phys. Rev.</i> 8, 48 (1916); Jousten (2016), ch. 13.', sketch(p) { p.rect(100, 20, 120, 150, 2); p.line(160, 50, 160, 160, 2); for (const [y, w] of [[45, 26], [85, 36], [125, 46]]) { p.poly([[160 - w, y + 12], [160, y], [160 + w, y + 12]], 1.6); p.arrow(160 - w, y + 14, 160 - w - 10, y + 32, 0.8, 5); p.arrow(160 + w, y + 14, 160 + w + 10, y + 32, 0.8, 5); } p.hatch(100, 160, 120, 10, 5); p.label('boiling oil', 160, 186); p.label('vapour jets', 270, 70); p.label('cooled wall', 55, 100); } },
+      cf: 'W. Gaede, <i>Ann. Phys.</i> 46, 357 (1915); I. Langmuir, <i>Phys. Rev.</i> 8, 48 (1916); Jousten (2016), ch. 13.', sketch(p) { p.rect(100, 20, 120, 150, 2); p.line(160, 50, 160, 160, 2); for (const [y, w] of [[45, 26], [85, 36], [125, 46]]) { p.poly([[160 - w, y + 12], [160, y], [160 + w, y + 12]], 1.6); p.arrow(160 - w, y + 14, 160 - w - 10, y + 32, 0.8, 5); p.arrow(160 + w, y + 14, 160 + w + 10, y + 32, 0.8, 5); } p.label('boiling oil', 160, 186); p.label('vapour jets', 270, 70); p.label('cooled wall', 55, 100); } },
     sorption: { title: 'Sorption pump', body: ['A canister of zeolite (a "molecular sieve" with huge internal surface) is dipped in liquid nitrogen. At 77 K it adsorbs most of the air in a chamber, with no oil and no moving parts.', 'It handles helium, neon and hydrogen poorly. Heating the zeolite afterwards releases the gas so it can be used again.'],
-      cf: 'Jousten (2016), ch. 16 (adsorption pumps).', sketch(p) { p.line(160, 4, 160, 20, 2); p.line(150, 4, 170, 4, 1.6); p.poly([[90, 70], [90, 172], [230, 172], [230, 70]], 2); p.line(84, 70, 236, 70, 1.4); p.hatch(92, 120, 136, 50, 9); p.rect(130, 20, 60, 140, 1.8); for (let i = 0; i < 25; i++) p.dot(140 + (i * 7) % 40, 40 + ((i * 13) % 110), 1.6); p.label('zeolite', 95, 45); p.line(108, 48, 138, 58, 0.8); p.label('LN₂ · 77 K', 270, 140); p.label('to chamber', 215, 12, { size: 11 }); p.label('dewar', 270, 165, { size: 11 }); } },
+      cf: 'Jousten (2016), ch. 16 (adsorption pumps).', sketch(p) { p.line(160, 4, 160, 20, 2); p.line(150, 4, 170, 4, 1.6); p.poly([[90, 70], [90, 172], [230, 172], [230, 70]], 2); p.line(84, 70, 236, 70, 1.4); p.rect(130, 20, 60, 140, 1.8); for (let i = 0; i < 25; i++) p.dot(140 + (i * 7) % 40, 40 + ((i * 13) % 110), 1.6); p.label('zeolite', 95, 45); p.line(108, 48, 138, 58, 0.8); p.label('LN₂ · 77 K', 270, 140); p.label('to chamber', 215, 12, { size: 11 }); p.label('dewar', 270, 165, { size: 11 }); } },
     roots: { title: 'Roots blower', body: ['Two figure-8 lobes on parallel shafts turn in opposite directions, kept in step by gears outside the pumping chamber so they never touch. Each turn carries pockets of gas round the outside.', 'It moves large volumes quickly at medium vacuum (about 10⁻³–10 mbar) but needs a backing pump behind it.'],
       cf: 'Jousten (2016), ch. 9 (Roots pumps).', sketch(p) { p.rect(40, 40, 240, 110, 2); for (const [x, s] of [[115, 1], [205, -1]]) { p.ellipse(x, 95 - 22 * s, 18, 26, 1.6); p.ellipse(x, 95 + 22 * s, 18, 26, 1.6); } p.label('lobes never touch', 160, 175); p.arrow(160, 20, 160, 38, 1.2); p.arrow(160, 152, 160, 170, 1.2); } },
     holweck: { title: 'Holweck drag pump', body: ['A fast-spinning drum sits in a housing cut with helical grooves. Molecules that hit the moving surface pick up its sideways motion and are dragged along the grooves to the outlet.', 'Fernand Holweck built it in 1923. Today drag stages sit under the blades of many "turbo-drag" pumps so they can exhaust into a higher backing pressure.'],
@@ -6258,7 +6249,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     blank: { title: 'Blank flange', body: ['A solid CF flange closes a port that is not in use. Its knife-edge bites a copper gasket just like any other CF joint.', 'Spare blanked ports are common: they leave room to add an instrument later.'],
       cf: 'ISO 3669:2017.', sketch(p) { p.poly([[70, 40], [130, 40], [130, 150], [70, 150], [70, 108], [58, 96], [70, 84], [70, 40]], 1.6); p.poly([[150, 48], [196, 48], [196, 142], [150, 142], [150, 104], [138, 96], [150, 88]], 1.6); p.rect(124, 78, 20, 36, 1.3); p.rect(78, 52, 44, 5, 1.1); p.rect(122, 48, 12, 14, 1.2); p.label('blank', 175, 170); p.label('knife into copper', 120, 28); } },
     bellows: { title: 'Bellows', body: ['A flexible tube of welded or formed metal convolutions. It lets parts move, absorbs vibration, or takes up misalignment, while staying vacuum-tight.', 'Here it is blanked off at the far end.'],
-      cf: 'Jousten (2016), ch. 17.', sketch(p) { p.rect(40, 40, 16, 110, 1.8); p.line(20, 60, 40, 60, 1.6); p.line(20, 130, 40, 130, 1.6); const top = [], bot = []; for (let i = 0; i <= 12; i++) { const x = 56 + i * 15, o = i % 2 ? 0 : 14; top.push([x, 48 + o]); bot.push([x, 142 - o]); } p.poly(top, 1.6); p.poly(bot, 1.6); p.rect(236, 40, 16, 110, 1.8); p.rect(254, 40, 14, 110, 1.8); p.hatch(254, 40, 14, 110, 6); p.arrow(150, 112, 120, 112, 1, 6); p.arrow(150, 112, 180, 112, 1, 6); p.label('convolutions', 150, 30); p.label('flexes', 150, 100, { size: 11 }); p.label('blank', 262, 170); p.label('flange', 48, 170); } },
+      cf: 'Jousten (2016), ch. 17.', sketch(p) { p.rect(40, 40, 16, 110, 1.8); p.line(20, 60, 40, 60, 1.6); p.line(20, 130, 40, 130, 1.6); const top = [], bot = []; for (let i = 0; i <= 12; i++) { const x = 56 + i * 15, o = i % 2 ? 0 : 14; top.push([x, 48 + o]); bot.push([x, 142 - o]); } p.poly(top, 1.6); p.poly(bot, 1.6); p.rect(236, 40, 16, 110, 1.8); p.rect(254, 40, 14, 110, 1.8); p.arrow(150, 112, 120, 112, 1, 6); p.arrow(150, 112, 180, 112, 1, 6); p.label('convolutions', 150, 30); p.label('flexes', 150, 100, { size: 11 }); p.label('blank', 262, 170); p.label('flange', 48, 170); } },
     valve: { title: 'All-metal valve', body: ['An angle valve seals with metal on metal (often a copper or hardened-steel seat) so it can be baked with the rest of the system.', 'Shut, it makes a dead end; open, it might lead to a pump-out port or a gas line.'],
       cf: 'Jousten (2016), ch. 18.', sketch(p) { p.rect(110, 70, 100, 70, 1.8); p.line(160, 70, 160, 25, 2); p.ellipse(160, 22, 40, 8, 1.6); p.rect(130, 120, 60, 10, 1.4); p.label('seat (shut)', 260, 128); p.label('handwheel', 240, 22); } },
   };
@@ -6308,7 +6299,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     const lvl = 36; p.curve((x) => [x, lvl + 1.4 * Math.sin(x / 8)], 46, 192, 40, 0.9);
     const port = (a) => [sx + (R + 6) * Math.cos(a), sy + (R + 6) * Math.sin(a)];
     const [ix, iy] = port(-118 * DEG), [ex0, ey0] = port(-62 * DEG);
-    p.hatchPoly([rectPts(46, lvl + 3, 146, 177 - lvl), circPts(sx, sy, R + 6), rectPts(ix - 4, lvl + 3, 11, iy - lvl - 3), rectPts(ex0 - 7, ey0 - 9, 11, 12)], 7, Math.PI / 4, 0.45);
     p.circle(sx, sy, R, 2.2); p.circle(sx, sy, R + 6, 1.3);   // stator wall
     // ports either side of the top contact line: inlet pipe (left) rises out of the casing; exhaust (right) opens under oil
     p.line(ix - 4, iy + 1, ix - 4, 6, 1.6); p.line(ix + 7, iy + 5, ix + 7, 6, 1.6); p.arrow(ix + 1.5, 2, ix + 1.5, 16, 1, 5);
@@ -6320,7 +6310,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     p.circle(rx, ry, rr, 2); p.dot(rx, ry, 2.4);
     const va = 30 * DEG, ux = Math.cos(va), uy = Math.sin(va), reach = (sgn) => { const dx = rx - sx, dy = ry - sy, bb = sgn * (dx * ux + dy * uy), c = dx * dx + dy * dy - R * R; return -bb + Math.sqrt(bb * bb - c); };
     for (const sgn of [1, -1]) { const t = reach(sgn), nx = -uy * 2.8, ny = ux * 2.8, P = (u, s2) => [rx + sgn * ux * u + s2 * nx, ry + sgn * uy * u + s2 * ny];
-      p.poly([P(7, 1), P(t, 1), P(t, -1), P(7, -1)], 1.4, true); p.hatchPoly([[P(8, 1), P(t - 1, 1), P(t - 1, -1), P(8, -1)]], 2.6, -Math.PI / 4, 0.5); }
+      p.poly([P(7, 1), P(t, 1), P(t, -1), P(7, -1)], 1.4, true); }
     p.curve((t) => [rx + ux * (-6 + 12 * t) - uy * Math.sin(t * 6 * Math.PI) * 2.2, ry + uy * (-6 + 12 * t) + ux * Math.sin(t * 6 * Math.PI) * 2.2], 0, 1, 24, 0.8);
     p.curve((t) => [rx + (rr - 8) * Math.cos(t), ry + (rr - 8) * Math.sin(t)], 215 * DEG, 125 * DEG, 18, 1);
     p.arrow(rx + (rr - 8) * Math.cos(130 * DEG), ry + (rr - 8) * Math.sin(130 * DEG), rx + (rr - 8) * Math.cos(122 * DEG), ry + (rr - 8) * Math.sin(122 * DEG), 1, 5);
@@ -6337,7 +6327,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   SK['pump-scroll'] = (p) => {
     const cx = 112, cy = 98, a = 5.6, e = 5.5, sp = (ph, off) => (t) => [cx + off[0] + a * t * Math.cos(t + ph), cy + off[1] + a * t * Math.sin(t + ph)];
     p.circle(cx, cy, 86, 1.8); p.circle(cx, cy, 80, 1);   // housing
-    p.hatchPoly([circPts(cx, cy, 86), circPts(cx, cy, 80)], 5, Math.PI / 4, 0.5);
     p.curve(sp(0, [0, 0]), 1.2, 4.6 * Math.PI, 160, 2.4);                     // fixed scroll (thick)
     p.curve(sp(Math.PI, [e, 0]), 1.2, 4.6 * Math.PI, 160, 1.3);               // orbiting scroll
     p.curve(sp(Math.PI, [e + 2.6, 0]), 1.2, 4.6 * Math.PI, 160, 0.7);         // its second edge (wall thickness)
@@ -6355,15 +6344,14 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // rows on the housing; molecules hit by the blades are knocked downward; motor and bearings below; foreline to a backing pump.
   SK['pump-turbo'] = (p) => {
     const L = 92, Rr = 228, hub0 = 150, hub1 = 170;
-    p.rect(60, 20, 200, 10, 1.6); p.hatchPoly([rectPts(60, 20, 200, 10)], 4, Math.PI / 4, 0.5);   // inlet flange
+    p.rect(60, 20, 200, 10, 1.6); p   // inlet flange
     p.line(L, 30, L, 166, 2); p.line(Rr, 30, Rr, 166, 2); p.line(L - 6, 30, L - 6, 166, 1); p.line(Rr + 6, 30, Rr + 6, 166, 1);
-    p.hatchPoly([rectPts(L - 6, 30, 6, 136), rectPts(Rr, 30, 6, 136)], 4, Math.PI / 4, 0.45);
     p.rect(hub0, 40, hub1 - hub0, 86, 1.8);                                     // rotor hub
     for (const [y, rot] of [[46, 1], [62, 0], [78, 1], [94, 0], [110, 1]]) {
       if (rot) { for (let x = L + 6; x < hub0 - 4; x += 9) p.line(x, y + 5, x + 6, y - 5, 1.2); for (let x = hub1 + 4; x < Rr - 6; x += 9) p.line(x, y + 5, x + 6, y - 5, 1.2); p.line(hub0 - 2, y, hub0, y, 1); }
       else { for (let x = L + 4; x < hub0 - 8; x += 9) p.line(x, y - 5, x + 6, y + 5, 1); for (let x = hub1 + 8; x < Rr - 4; x += 9) p.line(x, y - 5, x + 6, y + 5, 1); }
     }
-    p.rect(hub0 - 2, 126, hub1 - hub0 + 4, 34, 1.4); p.hatchPoly([rectPts(hub0 - 2, 126, hub1 - hub0 + 4, 34)], 3.5, -Math.PI / 4, 0.5);   // motor
+    p.rect(hub0 - 2, 126, hub1 - hub0 + 4, 34, 1.4); p   // motor
     p.rect(hub0 - 14, 130, 10, 26, 1); p.rect(hub1 + 4, 130, 10, 26, 1);        // stator coils
     p.line(L - 6, 166, Rr + 6, 166, 2);
     p.line(Rr + 6, 140, 300, 140, 1.6); p.line(Rr + 6, 156, 300, 156, 1.6); p.arrow(268, 148, 300, 148, 1, 6);   // foreline
@@ -6378,10 +6366,9 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // outside. Electrons trapped in the cells (Penning discharge) ionise gas; ions slam into the titanium, bury themselves and
   // sputter fresh titanium that buries more gas.
   SK['pump-ion'] = (p) => {
-    p.rect(30, 30, 22, 130, 1.6); p.hatchPoly([rectPts(30, 30, 22, 130), rectPts(33, 86, 16, 18)], 5, Math.PI / 4, 0.5); p.label('N', 41, 100, { size: 14, rotate: 0 });   // clear window for the letter
-    p.rect(268, 30, 22, 130, 1.6); p.hatchPoly([rectPts(268, 30, 22, 130), rectPts(271, 86, 16, 18)], 5, Math.PI / 4, 0.5); p.label('S', 279, 100, { size: 14, rotate: 0 });
+    p.rect(30, 30, 22, 130, 1.6); p.label('N', 41, 100, { size: 14, rotate: 0 });   // clear window for the letter
+    p.rect(268, 30, 22, 130, 1.6); p.label('S', 279, 100, { size: 14, rotate: 0 });
     p.rect(66, 34, 8, 122, 1.6); p.rect(246, 34, 8, 122, 1.6);                  // Ti cathode plates
-    p.hatchPoly([rectPts(66, 34, 8, 122), rectPts(246, 34, 8, 122)], 2.5, -Math.PI / 4, 0.5);
     for (const y of [42, 78, 114]) { p.rect(100, y, 120, 30, 1.4); p.line(140, y, 140, y + 30, 1); p.line(180, y, 180, y + 30, 1); }   // anode cells (side view)
     p.curve((t) => [120 + 12 * Math.sin(t * 14) * (0.4 + t * 0.6), 82 + t * 22], 0, 1, 80, 0.8);   // electron spiralling along B
     p.arrow(196, 94, 242, 96, 1, 5); p.label('Ti', 236, 88, { size: 10 });      // ion to the cathode
@@ -6396,11 +6383,10 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // surrounding (often water- or LN₂-cooled) shroud; the fresh film chemically binds active gases that land on it.
   SK['pump-tsp'] = (p) => {   // drawn 0.84× narrower than first sketched (X), so the right-hand labels sit clear of the shroud
     const X = (x) => 70 + (x - 70) * 0.84;
-    p.rect(X(60), 24, 200 * 0.84, 12, 1.6); p.hatchPoly([rectPts(X(60), 24, 200 * 0.84, 12)], 4, Math.PI / 4, 0.5);   // mounting flange
+    p.rect(X(60), 24, 200 * 0.84, 12, 1.6); p   // mounting flange
     for (const x of [120, 160, 200].map(X)) { p.line(x - 4, 18, x - 4, 44, 1.2); p.line(x + 4, 18, x + 4, 44, 1.2);
       p.curve((t) => [x + 6 * Math.sin(t * 9 * Math.PI) * (t > 0.05 && t < 0.95 ? 1 : 0), 44 + t * 90], 0, 1, 70, 1.4); }
     p.poly([[70, 36], [70, 170], [X(250), 170], [X(250), 36]], 2); p.poly([[X(80), 36], [X(80), 160], [X(240), 160], [X(240), 36]], 1.2);   // cooled shroud
-    p.hatchPoly([[[70, 36], [70, 170], [X(250), 170], [X(250), 36], [X(240), 36], [X(240), 160], [X(80), 160], [X(80), 36]]], 4, Math.PI / 4, 0.5);
     p.line(X(83), 50, X(83), 156, 2.4); p.line(X(237), 50, X(237), 156, 2.4); p.line(X(86), 157, X(234), 157, 2.4);   // Ti film
     for (const [x0, y0, x1, y1] of [[154, 90, 92, 70], [166, 110, 230, 128], [200, 80, 232, 70], [120, 120, 90, 140], [160, 130, 170, 152]]) p.arrow(X(x0), y0, X(x1), y1, 0.8, 4);
     molecule(p, X(100), 104); p.arrow(X(110), 98, X(101), 103, 0.7, 4);
@@ -6411,10 +6397,10 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // NEG pump: pleated strips coated with a Zr–V–Fe getter alloy on a flange; heated once to activate (dissolving the surface
   // oxide into the bulk), it then binds active gases at room temperature; hydrogen diffuses into the metal.
   SK['pump-neg'] = (p) => {
-    p.rect(40, 160, 240, 12, 1.6); p.hatchPoly([rectPts(40, 160, 240, 12)], 4, Math.PI / 4, 0.5);   // CF flange
+    p.rect(40, 160, 240, 12, 1.6); p   // CF flange
     const zz = []; for (let i = 0; i <= 18; i++) zz.push([84 + i * 8.5, i % 2 ? 40 : 150]);
     p.poly(zz, 1.4); const zz2 = zz.map(([x, y]) => [x + 3, y]); p.poly(zz2, 0.7);   // pleated, coated strip
-    for (let i = 0; i < 18; i += 2) p.hatchPoly([[zz[i], zz[i + 1], zz2[i + 1], zz2[i]]], 3, 0, 0.4);
+    for (let i = 0; i < 18; i += 2) p
     p.line(160, 30, 160, 160, 1.2); p.curve((t) => [160 + 3 * Math.sin(t * 40), 34 + t * 120], 0, 1, 80, 0.8);   // heater
     p.line(150, 172, 150, 186, 1.2); p.line(170, 172, 170, 186, 1.2);           // power feedthrough
     for (const [x, y, tx, ty] of [[40, 70, 86, 82], [40, 120, 92, 112], [290, 60, 240, 74], [292, 110, 246, 120]]) { molecule(p, x, y); p.arrow(x + 4, y, tx, ty, 0.8, 4); }
@@ -6426,14 +6412,14 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // charcoal underneath adsorbs H₂, He, Ne.
   SK['pump-cryo'] = (p) => {   // drawn 0.8× narrower than first sketched (X), so the right-hand labels sit clear of the housing
     const X = (x) => 40 + (x - 50) * 0.8;
-    p.rect(X(50), 18, 220 * 0.8, 10, 1.6); p.hatchPoly([rectPts(X(50), 18, 220 * 0.8, 10)], 4, Math.PI / 4, 0.5);   // inlet flange
+    p.rect(X(50), 18, 220 * 0.8, 10, 1.6); p   // inlet flange
     p.poly([[X(64), 28], [X(64), 168], [X(256), 168], [X(256), 28]], 2);              // housing
     p.poly([[X(82), 44], [X(82), 150], [X(238), 150], [X(238), 44]], 1.4);            // 1st-stage radiation shield (open top)
     for (let x = 88; x < 234; x += 16) p.poly([[X(x), 40], [X(x + 8), 48], [X(x + 16), 40]], 1.2);   // chevron baffle
     for (let x = 92; x < 232; x += 16) p.line(X(x), 37, X(x) + 3, 34, 0.6);           // water frost on the baffle
-    p.rect(X(120), 80, 64, 8, 1.6); p.hatchPoly([rectPts(X(120), 80, 64, 8)], 3, 0, 0.5);   // 2nd-stage cryopanel
+    p.rect(X(120), 80, 64, 8, 1.6); p   // 2nd-stage cryopanel
     for (let x = 124; x < 200; x += 7) { p.line(X(x), 79, X(x) + 2, 75, 0.6); p.dot(X(x) + 3, 92, 1.3); }   // frost on top, charcoal below
-    p.rect(X(150), 88, 16, 62, 1.4); p.rect(X(145), 150, 24, 28, 1.6); p.hatchPoly([rectPts(X(145), 150, 24, 28)], 3.5, -Math.PI / 4, 0.5);   // cold head
+    p.rect(X(150), 88, 16, 62, 1.4); p.rect(X(145), 150, 24, 28, 1.6); p   // cold head
     p.line(X(175), 168, X(230), 186, 1.2); p.line(X(175), 174, X(228), 190, 1.2);    // helium lines to the compressor
     p.note('chevron baffle', 316, 42, X(226), 42, { align: 'end' }); p.label('(50–80 K)', 316, 54, { size: 11, align: 'end' });
     p.note('cryopanel 10–20 K', 316, 78, X(200), 82, { align: 'end' }); p.note('charcoal (H₂, He)', 316, 104, X(196), 93, { align: 'end' });
@@ -6444,11 +6430,11 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // umbrella-shaped jets aimed down and out at supersonic speed; gas molecules that wander in are knocked toward the cooled
   // wall, where the oil condenses and runs back down; the gas is compressed into the foreline at the side.
   SK['pump-diffusion'] = (p) => {
-    p.rect(70, 10, 160, 8, 1.6); p.hatchPoly([rectPts(70, 10, 160, 8)], 4, Math.PI / 4, 0.5);   // inlet flange
+    p.rect(70, 10, 160, 8, 1.6); p   // inlet flange
     p.line(96, 18, 96, 158, 2); p.line(204, 18, 204, 158, 2);                   // body
     for (let y = 26; y < 150; y += 12) { p.circle(90, y, 4, 1); p.circle(210, y, 4, 1); }   // cooling coils
     p.poly([[96, 158], [96, 176], [204, 176], [204, 158]], 2);                 // boiler
-    p.curve((x) => [x, 166 + 1.5 * Math.sin(x / 6)], 98, 202, 30, 0.8); p.hatchPoly([rectPts(98, 167, 104, 8)], 3.5, 0, 0.4);   // oil
+    p.curve((x) => [x, 166 + 1.5 * Math.sin(x / 6)], 98, 202, 30, 0.8); p   // oil
     p.curve((t) => [100 + 100 * t, 182 + 3 * Math.sin(t * 40)], 0, 1, 60, 1); p.label('heater', 94, 186, { size: 10, align: 'end' });
     for (const [w, y0, y1] of [[10, 52, 160], [16, 92, 160], [22, 130, 160]]) { p.line(150 - w, y0, 150 - w, y1, 1.4); p.line(150 + w, y0, 150 + w, y1, 1.4); }   // nested chimneys
     for (const [w, y] of [[10, 52], [16, 92], [22, 130]]) { const W = w + 22; p.poly([[150 - W, y + 10], [150, y - 6], [150 + W, y + 10]], 1.6);   // umbrella jet caps
@@ -6469,7 +6455,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     p.line(146, 42, 146, 18, 1.6); p.line(174, 42, 174, 18, 1.6); p.arrow(160, 10, 160, 40, 1, 6);
     p.line(146, 154, 146, 182, 1.6); p.line(174, 154, 174, 182, 1.6); p.arrow(160, 158, 160, 188, 1, 6);
     const A = lobe(c1, 0), B = lobe(c2, Math.PI / 2); p.poly(A, 1.8, true); p.poly(B, 1.8, true);
-    p.hatchPoly([A], 6, Math.PI / 4, 0.5); p.hatchPoly([B], 6, -Math.PI / 4, 0.5); p.dot(...c1, 3); p.dot(...c2, 3);
+    p.dot(...c1, 3); p.dot(...c2, 3);
     p.curve((t) => [c1[0] + 30 * Math.cos(t), c1[1] + 30 * Math.sin(t)], -60 * DEG, -150 * DEG, 12, 1); p.arrow(c1[0] + 30 * Math.cos(-145 * DEG), c1[1] + 30 * Math.sin(-145 * DEG), c1[0] + 30 * Math.cos(-155 * DEG), c1[1] + 30 * Math.sin(-155 * DEG), 1, 5);
     p.curve((t) => [c2[0] + 30 * Math.cos(t), c2[1] + 30 * Math.sin(t)], -120 * DEG, -30 * DEG, 12, 1); p.arrow(c2[0] + 30 * Math.cos(-35 * DEG), c2[1] + 30 * Math.sin(-35 * DEG), c2[0] + 30 * Math.cos(-25 * DEG), c2[1] + 30 * Math.sin(-25 * DEG), 1, 5);
     for (const [x, y] of [[74, 120], [80, 132], [246, 120], [240, 132]]) p.circle(x, y, 1.6, 0.7);   // gas pockets carried round the outside
@@ -6481,10 +6467,9 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   // hit the moving surface are dragged along the grooves toward the outlet. Works in the molecular-flow range; often built
   // into turbo pumps as the last, high-pressure stage.
   SK['pump-holweck'] = (p) => {
-    p.rect(60, 14, 200, 8, 1.6); p.hatchPoly([rectPts(60, 14, 200, 8)], 4, Math.PI / 4, 0.5);
+    p.rect(60, 14, 200, 8, 1.6);
     p.line(80, 22, 80, 160, 2); p.line(240, 22, 240, 160, 2); p.line(80, 160, 240, 160, 2);
     for (const [x0, s] of [[80, 1], [240, -1]]) for (let y = 30; y < 150; y += 16) p.poly([[x0, y], [x0 + s * 14, y + 3], [x0 + s * 14, y + 11], [x0, y + 14]], 1.1);   // grooves (cut)
-    p.hatchPoly([[[80, 22], [80, 160], [70, 160], [70, 22]], [[240, 22], [250, 22], [250, 160], [240, 160]]], 4, Math.PI / 4, 0.5);
     p.rect(98, 30, 124, 112, 1.8); p.line(160, 142, 160, 176, 2.4); p.rect(146, 168, 28, 16, 1.4);   // drum, shaft, motor
     p.curve((t) => [160 + 50 * Math.cos(t), 36 + 6 * Math.sin(t)], 0.2, 2.9, 16, 1); p.arrow(112, 40, 109, 37, 1, 4);
     for (let y = 40; y < 140; y += 22) { p.line(98, y, 222, y + 12, 0.6); }    // helical path (seen through the drum)
@@ -6499,7 +6484,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     p.line(160, 2, 160, 16, 2); p.line(148, 4, 172, 4, 1.6); p.rect(152, 10, 16, 8, 1.2);   // neck and valve
     p.poly([[90, 62], [90, 174], [230, 174], [230, 62]], 2); p.line(84, 62, 236, 62, 1.4);   // dewar
     p.curve((x) => [x, 74 + 1.2 * Math.sin(x / 7)], 92, 228, 30, 0.8);
-    p.hatchPoly([rectPts(92, 76, 136, 96), rectPts(130, 76, 60, 84)], 8, Math.PI / 4, 0.5);
     p.rect(130, 20, 60, 140, 1.8); for (const x of [145, 160, 175]) p.line(x, 26, x, 154, 0.8);   // canister + fins
     for (let i = 0; i < 40; i++) p.circle(134 + ((i * 37) % 52), 28 + ((i * 53) % 124), 1.6, 0.6);   // zeolite pellets
     p.note('zeolite pellets', 22, 40, 136, 44, { align: 'start' }); p.note('copper fins', 22, 100, 145, 100, { align: 'start' });
@@ -6507,7 +6491,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     p.note('to chamber (valve)', 300, 12, 170, 12, { align: 'end' });
   };
   // ---- basics and apparatus
-  const wallH = (p, x0, x1, y, down = 1) => { p.line(x0, y, x1, y, 2.2); p.hatchPoly([rectPts(x0, down > 0 ? y : y - 9, x1 - x0, 9)], 6, Math.PI / 4, 0.6); };
+  const wallH = (p, x0, x1, y, down = 1) => { p.line(x0, y, x1, y, 2.2); };
   // Cercignani–Lampis wall: a fast atom comes in; the outgoing velocity is random, centred between the mirror bounce and the
   // wall-thermal value; inset: over several hits hot and cold atoms both settle to T_w
   SK['accommodation'] = (p) => {
@@ -6527,7 +6511,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   };
   // residence: the atom sits in the wall's attractive potential well; thermal kicks eventually lift it over the top
   SK['residence'] = (p) => {
-    p.line(40, 20, 40, 170, 2.2); p.hatchPoly([rectPts(30, 20, 10, 150)], 6, Math.PI / 4, 0.6);
+    p.line(40, 20, 40, 170, 2.2);
     const U = (x) => { const r = 62 / (x - 20); return 120 * (Math.pow(r, 12) - 2 * Math.pow(r, 6)); };   // Lennard-Jones-like, well at x = 82
     const Y = (x) => Math.max(14, Math.min(176, 60 - U(x) * 0.8));
     const pts = []; for (let x = 70; x <= 300; x += 2) pts.push([x, Y(x)]);
@@ -6540,26 +6524,11 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     p.note('atom held in the well', 140, 150, 92, 160, { align: 'start' });
     p.label('τ = τ₀ · e^(E/kT)', 230, 96, { size: 14 });
   };
-  // ConFlat (CF) joint in cross-section: a knife-edge on each flange bites into a soft copper gasket; bolts pull them together
-  SK['scale'] = (p) => {
-    const L = [70, 40, 46, 112], R = [126, 40, 46, 112];
-    p.rect(...L, 1.8); p.rect(...R, 1.8); p.hatchPoly([rectPts(...L)], 5, Math.PI / 4, 0.5); p.hatchPoly([rectPts(...R)], 5, -Math.PI / 4, 0.5);
-    p.rect(114, 72, 14, 56, 1.4); for (let y = 76; y < 126; y += 5) p.line(115, y, 127, y + 3, 0.5);   // copper gasket in the recess
-    for (const y of [80, 120]) { p.poly([[116, y - 5], [121, y], [116, y + 5]], 1.2, true); p.poly([[126, y - 5], [121, y], [126, y + 5]], 1.2, true); }   // knife-edges
-    p.rect(40, 48, 166, 8, 1.4); p.rect(30, 44, 10, 16, 1.4); p.rect(206, 44, 10, 16, 1.4);   // bolt + nuts
-    for (const [x0, x1] of [[10, 70], [172, 236]]) { p.line(x0, 136, x1, 136, 1.8); p.line(x0, 142, x1, 142, 1.8); p.hatchPoly([rectPts(x0, 136, x1 - x0, 6)], 3, Math.PI / 4, 0.4); }
-    p.line(10, 176, 236, 176, 0.6); p.label('bore (vacuum)', 120, 168, { size: 11 });
-    p.note('knife-edge', 300, 64, 123, 80); p.note('copper gasket', 300, 100, 128, 100); p.note('bolt', 300, 36, 210, 52);
-    p.note('flange', 300, 140, 172, 140);
-    p.label('DN40CF: 2¾-inch flange,', 300, 166, { size: 10, align: 'end' }); p.label('≈ 35 mm bore', 300, 178, { size: 10, align: 'end' });
-  };
-  // LN₂ cryoshroud: a double-walled jacket of liquid nitrogen round the tube; an atom that hits the cold wall leaves slower
+    // LN₂ cryoshroud: a double-walled jacket of liquid nitrogen round the tube; an atom that hits the cold wall leaves slower
   SK['cold'] = (p) => {
     wallH(p, 10, 310, 70, -1); wallH(p, 10, 310, 130);
     p.poly([[80, 61], [80, 26], [240, 26], [240, 61]], 1.6); p.poly([[90, 61], [90, 36], [230, 36], [230, 61]], 1);
-    p.hatchPoly([[[80, 61], [80, 26], [240, 26], [240, 61], [230, 61], [230, 36], [90, 36], [90, 61]]], 5, Math.PI / 4, 0.4);
     p.poly([[80, 139], [80, 174], [240, 174], [240, 139]], 1.6); p.poly([[90, 139], [90, 164], [230, 164], [230, 139]], 1);
-    p.hatchPoly([[[80, 139], [80, 174], [240, 174], [240, 139], [230, 139], [230, 164], [90, 164], [90, 139]]], 5, Math.PI / 4, 0.4);
     p.line(200, 26, 200, 6, 1.4); p.line(212, 26, 212, 6, 1.4); for (const y of [4, 12]) p.curve((t) => [206 + 6 * Math.sin(t * 8), y - t * 6], 0, 1, 10, 0.6);
     for (let x = 96; x < 228; x += 8) p.line(x, 71, x + 3, 75, 0.6);            // frost on the cold bore
     molecule(p, 40, 100); p.arrow(44, 98, 140, 76, 1.8, 8); p.arrow(148, 76, 176, 96, 0.9, 5);
@@ -6579,8 +6548,8 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   };
   // radiation pressure: each absorbed photon pushes along the beam; re-emission goes in random directions and averages out
   SK['laser'] = (p) => {
-    p.rect(8, 76, 40, 28, 1.6); p.hatchPoly([rectPts(8, 76, 40, 28)], 4, -Math.PI / 4, 0.5); p.label('laser', 28, 70, { size: 11 });
-    p.line(48, 84, 300, 84, 1); p.line(48, 96, 300, 96, 1); p.hatchPoly([rectPts(48, 84, 252, 12)], 9, 0, 0.3);
+    p.rect(8, 76, 40, 28, 1.6); p.label('laser', 28, 70, { size: 11 });
+    p.line(48, 84, 300, 84, 1); p.line(48, 96, 300, 96, 1);
     for (const x of [70, 96, 122]) p.curve((t) => [x + 22 * t, 90 + 3 * Math.sin(t * 6 * Math.PI)], 0, 1, 20, 0.9);
     p.arrow(140, 90, 150, 90, 0.9, 4); p.circle(166, 90, 12, 1.8); p.label('atom', 172, 133, { size: 11 });
     p.arrow(180, 90, 222, 90, 2, 8); p.label('kick ħk', 236, 112, { size: 11 });
@@ -6591,7 +6560,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   };
   // Lyman-α: 121.6 nm needs a magnesium-fluoride window; air and ordinary glass absorb it
   SK['lya'] = (p) => {
-    p.rect(20, 50, 28, 90, 1.6); p.hatchPoly([rectPts(20, 50, 28, 90)], 5, Math.PI / 4, 0.5);   // flange
+    p.rect(20, 50, 28, 90, 1.6); p   // flange
     p.rect(48, 72, 10, 46, 1.4); for (let y = 76; y < 116; y += 6) p.line(50, y, 56, y + 4, 0.5);   // MgF₂ window
     p.rect(2, 82, 18, 26, 1.2); p.note('UV lamp', 6, 30, 10, 82, { align: 'start' });
     p.line(58, 80, 270, 80, 1.2); p.line(58, 110, 270, 110, 1.2);
@@ -6602,7 +6571,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     p.label('dashed = invisible beam (as in the game)', 170, 176, { size: 10 });
   };
   // ---- dead-end components
-  const flangeBase = (p, y = 150) => { p.rect(70, y, 180, 12, 1.6); p.hatchPoly([rectPts(70, y, 180, 12)], 4, Math.PI / 4, 0.5); };
+  const flangeBase = (p, y = 150) => { p.rect(70, y, 180, 12, 1.6); };
   // Bayard–Alpert ion gauge: filament OUTSIDE a helical grid, a thin collector wire on the axis
   SK['part-ionGauge'] = (p) => {
     flangeBase(p); p.poly([[104, 150], [104, 34], [112, 20], [208, 20], [216, 34], [216, 150]], 1.6);   // envelope
@@ -6632,7 +6601,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   SK['part-capacitance'] = (p) => {
     p.poly([[70, 100], [70, 24], [250, 24], [250, 100]], 1.8); p.poly([[70, 100], [70, 140], [140, 140], [140, 176]], 1.8); p.poly([[250, 100], [250, 140], [180, 140], [180, 176]], 1.8);
     p.curve((x) => [x, 100 + 7 * Math.sin((Math.PI * (x - 70)) / 180)], 70, 250, 40, 1.8);           // diaphragm, bowed
-    p.rect(96, 40, 128, 12, 1.2); p.hatchPoly([rectPts(96, 40, 128, 12)], 4, 0, 0.4);                  // ceramic disc
+    p.rect(96, 40, 128, 12, 1.2); p                  // ceramic disc
     p.line(140, 56, 180, 56, 2.2); p.line(104, 56, 126, 56, 2.2); p.line(194, 56, 216, 56, 2.2);         // centre electrode + ring
     p.rect(228, 30, 14, 16, 1); for (let i = 0; i < 6; i++) p.dot(231 + (i % 3) * 4, 35 + Math.floor(i / 3) * 6, 1);   // getter
     p.arrow(160, 176, 160, 118, 1.2, 6); p.label('gas pressure', 214, 168, { size: 11 });
@@ -6641,7 +6610,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   };
   // viewport: a glass or sapphire disc sealed into a CF flange through a thin metal sleeve
   SK['part-viewport'] = (p) => {
-    p.rect(60, 30, 40, 130, 1.8); p.hatchPoly([rectPts(60, 30, 40, 130)], 5, Math.PI / 4, 0.5);
+    p.rect(60, 30, 40, 130, 1.8);
     p.rect(100, 44, 18, 102, 1.2); p.rect(118, 52, 14, 86, 1.6);
     for (let y = 56; y < 136; y += 7) p.line(120, y, 130, y + 5, 0.5);                                    // window (glass)
     for (const y of [86, 96, 106]) p.arrow(150, y, 250, y, 0.8, 5);
@@ -6651,8 +6620,8 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   };
   // blank flange: a solid disc closing a port, sealed with the same knife-edge + copper gasket as any CF joint
   SK['part-blank'] = (p) => {
-    p.rect(70, 40, 46, 112, 1.8); p.hatchPoly([rectPts(70, 40, 46, 112)], 5, Math.PI / 4, 0.5);
-    p.rect(130, 40, 40, 112, 1.8); p.hatchPoly([rectPts(130, 40, 40, 112)], 3.5, -Math.PI / 4, 0.5);
+    p.rect(70, 40, 46, 112, 1.8);
+    p.rect(130, 40, 40, 112, 1.8);
     p.rect(116, 72, 14, 56, 1.4); for (let y = 76; y < 126; y += 5) p.line(117, y, 129, y + 3, 0.5);
     for (const y of [80, 120]) { p.poly([[118, y - 5], [123, y], [118, y + 5]], 1.2, true); p.poly([[128, y - 5], [123, y], [128, y + 5]], 1.2, true); }
     p.rect(40, 48, 150, 8, 1.4); p.rect(30, 44, 10, 16, 1.4); p.rect(190, 44, 10, 16, 1.4);
@@ -6663,8 +6632,8 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   SK['part-valve'] = (p) => {
     p.poly([[100, 80], [100, 150], [210, 150], [210, 80]], 1.8);                                           // body
     p.line(10, 112, 100, 112, 1.8); p.line(10, 132, 100, 132, 1.8); p.line(140, 150, 140, 186, 1.8); p.line(170, 150, 170, 186, 1.8);   // side and bottom ports
-    p.rect(130, 132, 50, 8, 1.4); p.hatchPoly([rectPts(130, 132, 50, 8)], 3, Math.PI / 4, 0.5);          // seat
-    p.poly([[136, 132], [145, 118], [165, 118], [174, 132]], 1.6, true); p.hatchPoly([[[136, 132], [145, 118], [165, 118], [174, 132]]], 3, -Math.PI / 4, 0.5);   // nose (closed)
+    p.rect(130, 132, 50, 8, 1.4); p          // seat
+    p.poly([[136, 132], [145, 118], [165, 118], [174, 132]], 1.6, true); p   // nose (closed)
     const zz = []; for (let i = 0; i <= 10; i++) zz.push([i % 2 ? 142 : 148, 84 + i * 3.4]); p.poly(zz, 0.9); p.poly(zz.map(([x, y]) => [320 - x, y]), 0.9);   // bellows
     p.line(155, 30, 155, 118, 2); p.rect(120, 64, 70, 16, 1.6); p.rect(120, 22, 70, 10, 1.6); p.line(140, 80, 140, 84, 1.2); p.line(170, 80, 170, 84, 1.2); p.line(126, 80, 126, 80.1, 0.1); p.poly([[110, 80], [200, 80]], 1.4);               // stem, bonnet, handle
     p.note('handle', 300, 26, 190, 27); p.note('bellows seal', 300, 92, 172, 96); p.note('nose on seat: shut', 300, 136, 176, 128);
@@ -6677,7 +6646,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     p.line(60, Y(1e-9), 60, Y(1000), 1.8);
     for (let e = -9; e <= 3; e++) { p.line(56, Y(10 ** e), 64, Y(10 ** e), 0.8); }
     for (const [T, t] of [[1e-9, '1 nK'], [1e-6, '1 µK'], [1e-3, '1 mK'], [1, '1 K'], [1000, '1000 K']]) p.label(t, 50, Y(T) + 4, { size: 10, align: 'end' });
-    p.rect(56, Y(8e-9), 8, Y(3e-9) - Y(8e-9), 1.2); p.hatchPoly([rectPts(56, Y(8e-9), 8, Y(3e-9) - Y(8e-9))], 2.5, Math.PI / 4, 0.6);   // this edition (levels 1–30)
+    p.rect(56, Y(8e-9), 8, Y(3e-9) - Y(8e-9), 1.2); p   // this edition (levels 1–30)
     p.note('game walls, H on Earth: 3–8 nK', 76, 172, 66, Y(5e-9), { align: 'start' });
     p.dot(60, Y(371e-9), 2.6); p.note('Kr, DN63: ~371 nK', 76, 140, 64, Y(371e-9), { align: 'start' });
     p.dot(60, Y(5e-3) - 4, 0.1); p.note('dilution fridge: a few mK', 76, 96, 64, Y(3e-3) - 2, { align: 'start' });
@@ -6739,8 +6708,8 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   SK['conductance'] = (p) => {
     // square elbow: in from the top, out to the right
     p.line(30, 12, 30, 132, 2.2); p.line(30, 132, 150, 132, 2.2); p.line(66, 12, 66, 96, 2.2); p.line(66, 96, 150, 96, 2.2);
-    p.hatchPoly([rectPts(22, 12, 8, 128)], 6, Math.PI / 4, 0.6); p.hatchPoly([rectPts(30, 132, 120, 8)], 6, Math.PI / 4, 0.6);
-    p.hatchPoly([rectPts(66, 12, 8, 84)], 6, Math.PI / 4, 0.6); p.hatchPoly([rectPts(74, 88, 76, 8)], 6, Math.PI / 4, 0.6);
+   
+   
     p.line(66, 96, 30, 132, 0.6);   // the 45° weld seam
     molecule(p, 31.5, 114);
     for (const a of [-50, -20, 0, 20, 50]) { const L = 34 * Math.cos(a * DEG); p.arrow(34, 114, 34 + L * Math.cos(a * DEG), 114 + L * Math.sin(a * DEG), 1, 5); }
