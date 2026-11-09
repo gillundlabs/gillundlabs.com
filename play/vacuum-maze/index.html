@@ -634,6 +634,29 @@
     max-height: calc(var(--vh) - var(--sat) - var(--sab) - 16px);
   }
   #p-notebook .nb-bar { flex: 0 0 auto; position: relative; z-index: 2; }
+  /* 320 px Victorian: four full-width brass controls stacked and pushed the pages
+     halfway down. A single row cannot hold "Accuracy notes" inside the bevel, so the
+     four controls sit in a compact 2×2 under the title. 390 px and up are unchanged. */
+  @media (max-width: 340px) {
+    body[data-theme="victorian"] #p-notebook.show { padding: 8px 10px 10px; }
+    body[data-theme="victorian"] #p-notebook .nb-bar h2 {
+      margin: 0 0 6px; padding-bottom: 2px; font-size: 17px; line-height: 1.15;
+    }
+    body[data-theme="victorian"] #p-notebook .nb-bar .row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; width: 100%;
+    }
+    body[data-theme="victorian"] #p-notebook .nb-bar .row > button {
+      min-width: 0 !important; width: 100%; margin: 0;
+      padding: 8px 8px !important; font-size: 12px !important; letter-spacing: .02em !important;
+      line-height: 1.15; --vm-face-bevel: 4px;
+      white-space: normal !important; overflow-wrap: normal !important; word-break: keep-all !important;
+    }
+    body[data-theme="victorian"] #p-notebook .nb-bar .row > button .vm-button-face {
+      display: block; text-align: center; overflow: visible;
+      overflow-wrap: normal !important; word-break: keep-all !important;
+    }
+    body[data-theme="victorian"] #p-notebook .nb-bar .row > button::after { inset: 4px; }
+  }
   #nb-body.scrollable {
     flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto;
     -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y;
