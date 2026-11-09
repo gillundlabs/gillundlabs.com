@@ -83,7 +83,7 @@
 .vls-analogy .vls-note-label { color: var(--vls-ink-blue); }
 .vls-simplification { background: var(--vls-note-simplification); border-left: 3px double var(--vls-ink-red); transform: rotate(0.6deg); box-shadow: 1px 2px 6px rgba(60,30,5,0.25); }
 .vls-simplification .vls-note-label { color: var(--vls-ink-red); }
-.vls-cf { font-size: 17px; line-height: 22px; color: var(--vls-ink-faded); border-top: 1px solid rgba(112,66,20,0.35); padding-top: 6px; margin: 4px 0 0; }
+.vls-cf { font-size: 17px; line-height: 22px; color: var(--vls-ink-faded); border-top: 1px solid rgba(112,66,20,0.35); padding-top: 6px; margin: 4px 0 0; overflow-wrap: anywhere; word-break: break-word; }
 .vls-cf-mark { font-style: italic; font-weight: 700; }
 .vls-cf a { color: inherit; }
 
@@ -533,7 +533,7 @@
   #notes-book .vls-page h2 { font-variant: normal; letter-spacing: 0; text-transform: none; border-bottom: 0; padding-bottom: 0; text-align: left; }
   #notes-book .vls-page p { margin: 0 0 var(--vls-line); line-height: var(--vls-line); }
   #notes-book .vls-note p { margin: 0; line-height: inherit; }
-  #notes-book .vls-cf { line-height: 22px; }
+  #notes-book .vls-cf { line-height: 22px; overflow-wrap: anywhere; word-break: break-word; }
   #notes-book sub, #notes-book sup { line-height: 0; }
   .notes-toc { margin: 0 0 30px; padding-left: 26px; }
   .notes-toc li { margin: 0; line-height: 44px; }
@@ -5806,15 +5806,35 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     p.label('the hottest leave;', xm, h - 30, { size: 15 }).label('the rest re-share and cool', xm, h - 12, { size: 15 });
   }
   function sketchBEC(ctx, w, h, theme) {
-    const p = NB.pen(ctx, { theme, seed: 141 }), n = 3, cw = (w - 30) / n, y0 = h - 50, top = 34;
+    const p = NB.pen(ctx, { theme, seed: 141 }), n = 3, cw = (w - 30) / n, top = 34;
     const caps = [['above T꜀', 'all thermal'], ['just below', 'a spike appears'], ['far below', 'nearly all condensate']], frac = [0, 0.35, 0.9];
+    const hand = (getComputedStyle(document.body).getPropertyValue('--vls-font-hand') || '').trim() || 'sans-serif';
+    const textWidth = (text, size) => { ctx.save(); ctx.font = `500 ${size}px ${hand}`; const width = ctx.measureText(text).width; ctx.restore(); return width; };
+    const roomy = caps.every((cap) => textWidth(cap[0], 15) <= cw - 8 && textWidth(cap[1], 14) <= cw - 8);
+    const y0 = roomy ? h - 50 : h - 68;
+    const wrap = (text, size) => {
+      const words = text.split(' '), lines = [];
+      let cur = '';
+      for (const word of words) {
+        const next = cur ? `${cur} ${word}` : word;
+        if (cur && textWidth(next, size) > cw - 8) { lines.push(cur); cur = word; }
+        else cur = next;
+      }
+      if (cur) lines.push(cur);
+      return lines;
+    };
     for (let i = 0; i < n; i++) {
       const x = 15 + i * cw, xm = x + cw / 2, s1 = cw * 0.2, s0 = cw * 0.05, A = y0 - top;
       const g = (s) => (1 - frac[i]) * 0.38 * Math.exp(-((s / s1) ** 2)) + frac[i] * Math.exp(-((s / s0) ** 2));
       p.line(x + 6, y0, x + cw - 6, y0, 1.1);
       p.curve((u) => { const s = (u - 0.5) * cw * 0.9; return [xm + s, y0 - g(s) * A]; }, 0, 1, 90, 1.6);
       p.hatch((c) => { c.moveTo(xm - cw * 0.45, y0); for (let k = 0; k <= 60; k++) { const s = (k / 60 - 0.5) * cw * 0.9; c.lineTo(xm + s, y0 - g(s) * A); } c.closePath(); }, [x, top, cw, y0 - top], 0.9, 6, 0.6);
-      p.label(caps[i][0], xm, y0 + 18, { size: 15 }).label(caps[i][1], xm, y0 + 36, { size: 14 });
+      if (roomy) p.label(caps[i][0], xm, y0 + 18, { size: 15 }).label(caps[i][1], xm, y0 + 36, { size: 14 });
+      else {
+        const head = wrap(caps[i][0], 13), sub = wrap(caps[i][1], 12);
+        head.forEach((line, k) => p.label(line, xm, y0 + 14 + k * 13, { size: 13 }));
+        sub.forEach((line, k) => p.label(line, xm, y0 + 14 + head.length * 13 + k * 12, { size: 12 }));
+      }
     }
     p.label('atoms per position, after the trap is switched off', w / 2, 14, { size: 15 });
   }
