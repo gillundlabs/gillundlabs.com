@@ -2877,35 +2877,87 @@
   const stainlessTube = (ctx, x0, y0, x1, y1, od, o = {}) => stainlessStroke(ctx, x0, y0, x1, y1, od, o);
 
   // ================= flanges =================
-  // ConFlat joint, cut through: (x, y) on the bore axis, axis (ax, ay), bore half-width `bore`.
-  // o.wall (tube wall thickness, 12), o.over (flange beyond the wall, 22), o.thick (each flange, 14)
+  // Longitudinal section of a bolt: head and nut in side profile, shank cut through both flanges.
+  function sectionBolt(ctx, y, thick, bw) {
+    const shank = 2.2, headT = 4.6, headR = 4.2, nutT = 3.8, nutR = 4;
+    const chunks = [[-thick - headT, -headR, headT, headR * 2], [-thick, -shank / 2, thick * 2, shank], [thick, -nutR, nutT, nutR * 2]];
+    for (const [x, dy, w, h] of chunks) {
+      if (bw) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.15; ctx.strokeRect(x, y + dy, w, h); continue; }
+      ctx.fillStyle = stainlessFill(ctx, x, y + dy, x + w, y + dy + h);
+      ctx.fillRect(x, y + dy, w, h);
+      ctx.strokeStyle = P('stainlessEdge'); ctx.lineWidth = 0.55; ctx.strokeRect(x, y + dy, w, h);
+    }
+  }
+  // One flange half in the joint frame. x runs along the tube, y outward.
+  // The seal face steps back into a recess; the knife edge stands proud and bites the copper.
+  function flangeProfile(side, bore, wall, over, thick) {
+    const od = bore + wall + over, gasketOut = bore + wall + over * 0.55, knife = bore + Math.max(6, wall * 0.55);
+    const face = side * Math.min(thick * 0.55, 8), tip = side * 0.8, xOut = side * thick;
+    const yb = bore, yg = gasketOut, yk = knife, yo = od;
+    return [
+      [xOut, yb], [xOut, yo], [face * 0.35, yo], [face * 0.35, yg + side * 0],
+      [face, yg], [face, yk + 5], [tip, yk], [face, yk - 4], [face, yb],
+    ];
+  }
+  function tracePoly(ctx, pts) {
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+  }
+  // ConFlat joint, cut through the axis: (x, y) on the bore centre line, (ax, ay) along the tube,
+  // `bore` is the bore half-width. Knife edges oppose through a copper gasket in the face recesses.
+  // Bolts are sliced lengthwise. No section hatching.
   function conflatFlange(ctx, x, y, ax, ay, bore, o = {}) {
     const bw = isBW(o), thick = o.thick || 14, wall = o.wall || 12, over = o.over || 22, nx = -ay, ny = ax;
-    const v0 = bore - 1, v1 = bore + wall + over;
+    const gasketOut = bore + wall + over * 0.58;
     ctx.save(); ctx.translate(x, y); ctx.transform(ax, ay, nx, ny, 0, 0);
-    for (const side of [-1, 1]) {
-      const y0 = side > 0 ? v0 : -v1, hgt = v1 - v0;
-      if (bw) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(-thick, y0, 2 * thick, hgt); ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(0, y0 + hgt); ctx.stroke(); continue; }
-      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
-      for (const s of [-1, 1]) { ctx.fillStyle = stainlessFill(ctx, s * thick, 0, 0, 0); ctx.beginPath(); ctx.roundRect(Math.min(0, s * thick), y0, thick, hgt, 2.5); ctx.fill(); }
-      ctx.restore();
-      ctx.fillStyle = P('copperGasket'); ctx.fillRect(-1, y0 + (side > 0 ? 0 : 3), 2, hgt - 3);
-      ctx.strokeStyle = P('stainlessEdge'); ctx.lineWidth = 0.8; ctx.strokeRect(-thick, y0, 2 * thick, hgt);
+    const gasketBand = (sy) => {
+      const y0 = sy * (bore + 2), y1 = sy * gasketOut;
+      return [Math.min(y0, y1), Math.abs(y1 - y0)];
+    };
+    if (!bw) {
+      ctx.fillStyle = P('copperGasket');
+      for (const sy of [1, -1]) { const [y, h] = gasketBand(sy); ctx.fillRect(-5.5, y, 11, h); }
     }
+    for (const sy of [1, -1]) {
+      for (const side of [-1, 1]) {
+        const pts = flangeProfile(side, bore, wall, over, thick).map(([px, py]) => [px, sy * py]);
+        tracePoly(ctx, pts);
+        if (bw) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.35; ctx.stroke(); }
+        else {
+          ctx.fillStyle = stainlessFill(ctx, side * thick, 0, 0, 0);
+          ctx.fill();
+          ctx.strokeStyle = P('stainlessEdge'); ctx.lineWidth = 0.7; ctx.stroke();
+        }
+      }
+    }
+    if (bw) {
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6;
+      for (const sy of [1, -1]) { const [y, h] = gasketBand(sy); ctx.strokeRect(-5.5, y, 11, h); }
+    }
+    const boltY = bore + wall + over - 7;
+    sectionBolt(ctx, boltY, thick, bw);
+    sectionBolt(ctx, -boltY, thick, bw);
     ctx.restore();
-    for (const s of [-1, 1]) {
-      const v = s * (bore + wall + over * 0.55), r = Math.min(5.5, over * 0.27);
-      bolt(ctx, x + ax * thick * 0.5 + nx * v, y + ay * thick * 0.5 + ny * v, r, 0.3 * s, o);
-      bolt(ctx, x - ax * thick * 0.5 + nx * v, y - ay * thick * 0.5 + ny * v, r, 0.9 * s, o);
-    }
   }
   // CF blank: (x, y) = centre of its inner face, (ax, ay) = outward axis
   function blankFlange(ctx, x, y, ax, ay, bore, o = {}) {
-    const nx = -ay, ny = ax, half = bore + 34, th = o.thick || 16;
+    const nx = -ay, ny = ax, half = bore + 34, th = o.thick || 16, bw = isBW(o);
+    const knife = bore + 10;
     ctx.save(); ctx.translate(x, y); ctx.transform(ax, ay, nx, ny, 0, 0);
-    if (isBW(o)) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(0, -half, th, 2 * half); ctx.restore(); }
-    else { ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 6; ctx.fillStyle = stainlessFill(ctx, 0, 0, th, 0); ctx.beginPath(); ctx.roundRect(0, -half, th, 2 * half, 3); ctx.fill(); ctx.restore(); }
-    for (const s of [-1, -0.45, 0.45, 1]) bolt(ctx, x + ax * th * 0.5 + nx * s * (half - 7), y + ay * th * 0.5 + ny * s * (half - 7), 5, s, o);
+    tracePoly(ctx, [[0, -half], [th, -half], [th, half], [0, half], [0, knife + 4], [-3.2, knife], [0, knife - 3], [0, -(knife - 3)], [-3.2, -knife], [0, -(knife + 4)]]);
+    if (bw) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4; ctx.stroke(); }
+    else { ctx.fillStyle = stainlessFill(ctx, 0, 0, th, 0); ctx.fill(); ctx.strokeStyle = P('stainlessEdge'); ctx.lineWidth = 0.7; ctx.stroke(); }
+    for (const s of [-1, 1]) {
+      const yb = s * (half - 9), shank = 2.2, head = 4.4;
+      if (bw) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.15; ctx.strokeRect(0, yb - shank / 2, th, shank); ctx.strokeRect(th, yb - head, 4.4, head * 2); }
+      else {
+        ctx.fillStyle = stainlessFill(ctx, 0, yb, th, yb); ctx.fillRect(0, yb - shank / 2, th, shank);
+        ctx.strokeStyle = P('stainlessEdge'); ctx.lineWidth = 0.6; ctx.strokeRect(0, yb - shank / 2, th, shank);
+        ctx.fillStyle = stainlessFill(ctx, th, yb - head, th + 4.4, yb + head); ctx.fillRect(th, yb - head, 4.4, head * 2); ctx.strokeRect(th, yb - head, 4.4, head * 2);
+      }
+    }
+    ctx.restore();
   }
   // edge-welded bellows between two points, outer diameter od
   function bellows(ctx, x0, y0, x1, y1, od, o = {}) {
@@ -5232,8 +5284,39 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   const BORE_PX = M.D;
 
   const scaleFor = (level) => (level.boreMM || 80) / 1000 / BORE_PX;            // m per px
-  // κ m g_pace D / k_B — g is the body's surface gravity; paceG scales it for wall temperature only
+  // κ m g_pace D / k_B — g is the body's surface gravity; paceG scales it for wall temperature only.
+  // This is the reference temperature: the phone on which the tube fills the width.
   const wallTempFor = (level, massKg, g) => ((level.kappa || 1) * massKg * paceG(g) * ((level.boreMM || 80) / 1000)) / K_B;
+  // Camera: on a short screen the tube fills the short side (VIEW_SHORT_WORLD world px).
+  // On a wide screen the zoom stops at VIEW_ZOOM_CAP, so the width shows more of the maze.
+  // Crossing time uses that shown width. Speed scales with it and temperature with its square,
+  // so the mean thermal speed still crosses the width in the reference time.
+  const VIEW_SHORT_WORLD = 215;
+  const VIEW_ZOOM_CAP = 2.2;
+  function viewZoom(vw, vh) {
+    const short = Math.min(Math.abs(+vw) || 0, Math.abs(+vh) || 0);
+    if (!(short > 0)) return 1;
+    return short / Math.max(VIEW_SHORT_WORLD, short / VIEW_ZOOM_CAP);
+  }
+  function visibleWidthPx(vw, vh) {
+    const zoom = viewZoom(vw, vh);
+    const w = Math.abs(+vw) || 0;
+    return zoom > 0 && w > 0 ? w / zoom : VIEW_SHORT_WORLD;
+  }
+  function crossingPace(vw, vh) {
+    const span = visibleWidthPx(vw, vh);
+    if (!(span > 0) || !isFinite(span)) return 1;
+    return span / VIEW_SHORT_WORLD;
+  }
+  const crossingFactor = (vw, vh) => { const p = crossingPace(vw, vh); return p * p; };
+  // Mean of the speed sampleWallSpeed draws (Maxwellian, 3 normal components).
+  function meanThermalSpeed(T, m) { return Math.sqrt((8 * K_B * Math.max(0, T)) / (Math.PI * m)); }
+  function crossingSeconds(vw, vh, level, massKg, g) {
+    const pace = crossingPace(vw, vh);
+    const T = wallTempFor(level, massKg, g) * pace * pace;
+    const v = meanThermalSpeed(T, massKg);
+    return visibleWidthPx(vw, vh) * scaleFor(level) / v;
+  }
 
   function makeAtom(z, x, y) {
     const e = P.ELEMENTS[z - 1];
@@ -5456,7 +5539,8 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   }
 
   return { K_B, G_EARTH, BODIES, PACE_SCALE, paceG, THERMAL, MAX_SUBSTEP_FRAC, BORE_PX, scaleFor, wallTempFor, makeAtom, createWorld, step, adsorb, desorb,
-    EXTRACTION_INTAKE, EXTRACTION_DURATION, PUMP_ROUTES, extractionPose, advanceExtraction, kinT, sampleWallSpeed, wallTempAt, beamsAt, DEFAULT_ACC, accOf, scatterCL, scatterMaxwell, scatter, wallFluxSample, kernelCheck };
+    EXTRACTION_INTAKE, EXTRACTION_DURATION, PUMP_ROUTES, extractionPose, advanceExtraction, kinT, sampleWallSpeed, wallTempAt, beamsAt, DEFAULT_ACC, accOf, scatterCL, scatterMaxwell, scatter, wallFluxSample, kernelCheck,
+    VIEW_SHORT_WORLD, VIEW_ZOOM_CAP, viewZoom, visibleWidthPx, crossingPace, crossingFactor, meanThermalSpeed, crossingSeconds };
 });
 
 </script>
@@ -5940,7 +6024,23 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     body: ['UHV tubing is joined with ConFlat (CF) flanges: a sharp knife-edge on each flange bites into a soft copper gasket, making an all-metal seal that survives baking to about 450 °C.',
       'Sizes go by nominal diameter: DN16, DN40, DN63, DN100, DN160 have bores of roughly 16, 35, 60, 98 and 148 mm. Each level uses one size, shown on its card.'],
     cf: 'W. R. Wheeler, <i>Trans. Natl. Vac. Symp.</i> 10, 159 (1963); ISO 3669:2017 (bakeable flanges).',
-    sketch(p) { p.rect(70, 40, 40, 110, 1.8); p.rect(150, 40, 40, 110, 1.8); p.hatch(70, 40, 40, 110, 8); p.hatch(150, 40, 40, 110, 8); p.poly([[110, 85], [118, 95], [110, 105]], 1.4); p.poly([[150, 85], [142, 95], [150, 105]], 1.4); p.rect(124, 80, 12, 30, 1.2); p.label('copper gasket', 130, 170); p.label('knife-edge', 230, 95); p.arrow(205, 95, 152, 95, 1, 6); p.line(70, 20, 70, 32, 1); p.line(190, 20, 190, 32, 1); p.label('bolts all round', 130, 22); } });
+    sketch(p) {
+      // Longitudinal section: opposed knife edges, copper gasket in the face recesses, bolts cut lengthwise.
+      const half = (xSign) => {
+        const s = xSign;
+        p.poly([[s * 28, 28], [s * 78, 28], [s * 78, 162], [s * 28, 162], [s * 28, 118], [s * 18, 108], [s * 6, 96], [s * 18, 84], [s * 28, 74], [s * 28, 28]], 1.7);
+      };
+      half(-1); half(1);
+      p.rect(148, 70, 24, 52, 1.5);
+      p.poly([[132, 86], [148, 96], [132, 106]], 1.4);
+      p.poly([[188, 86], [172, 96], [188, 106]], 1.4);
+      p.rect(108, 36, 14, 18, 1.3); p.rect(122, 42, 76, 6, 1.2); p.rect(198, 36, 12, 18, 1.3);
+      p.rect(108, 136, 14, 18, 1.3); p.rect(122, 142, 76, 6, 1.2); p.rect(198, 136, 12, 18, 1.3);
+      p.label('knife-edge', 250, 78); p.arrow(230, 82, 176, 96, 1, 5);
+      p.label('copper gasket', 160, 178);
+      p.label('recess', 250, 118);
+      p.label('bolt, cut through', 160, 22);
+    } });
 
   add({ id: 'mfp', title: 'Why a lone atom?', unlock: 'win', group: 'Basics',
     body: ['At 10⁻¹⁰ mbar an air molecule travels hundreds of kilometres between collisions with other molecules. Inside a pipe it only ever meets walls.',
@@ -6072,7 +6172,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     viewport: { title: 'Viewport', body: ['A window of glass, fused silica or sapphire sealed into a CF flange, so you can look in, or shine lasers in.', 'Different window materials pass different colours: ordinary glass blocks deep UV; magnesium fluoride lets even 121.6 nm Lyman-α light through.'],
       cf: 'Jousten (2016), ch. 17 (feedthroughs and viewports).', sketch(p) { p.rect(70, 50, 180, 90, 2); p.ellipse(160, 95, 55, 35, 1.6); p.line(130, 80, 150, 70, 0.8); p.line(140, 90, 165, 76, 0.8); p.label('window', 160, 160); } },
     blank: { title: 'Blank flange', body: ['A solid CF flange closes a port that is not in use. Its knife-edge bites a copper gasket just like any other CF joint.', 'Spare blanked ports are common: they leave room to add an instrument later.'],
-      cf: 'ISO 3669:2017.', sketch(p) { p.rect(100, 40, 50, 110, 1.8); p.rect(152, 40, 40, 110, 1.8); p.hatch(152, 40, 40, 110, 7); p.label('blank', 175, 170); p.label('tube flange', 120, 30); } },
+      cf: 'ISO 3669:2017.', sketch(p) { p.poly([[70, 40], [130, 40], [130, 150], [70, 150], [70, 108], [58, 96], [70, 84], [70, 40]], 1.6); p.poly([[150, 48], [196, 48], [196, 142], [150, 142], [150, 104], [138, 96], [150, 88]], 1.6); p.rect(124, 78, 20, 36, 1.3); p.rect(78, 52, 44, 5, 1.1); p.rect(122, 48, 12, 14, 1.2); p.label('blank', 175, 170); p.label('knife into copper', 120, 28); } },
     bellows: { title: 'Bellows', body: ['A flexible tube of welded or formed metal convolutions. It lets parts move, absorbs vibration, or takes up misalignment, while staying vacuum-tight.', 'Here it is blanked off at the far end.'],
       cf: 'Jousten (2016), ch. 17.', sketch(p) { p.rect(40, 40, 16, 110, 1.8); p.line(20, 60, 40, 60, 1.6); p.line(20, 130, 40, 130, 1.6); const top = [], bot = []; for (let i = 0; i <= 12; i++) { const x = 56 + i * 15, o = i % 2 ? 0 : 14; top.push([x, 48 + o]); bot.push([x, 142 - o]); } p.poly(top, 1.6); p.poly(bot, 1.6); p.rect(236, 40, 16, 110, 1.8); p.rect(254, 40, 14, 110, 1.8); p.hatch(254, 40, 14, 110, 6); p.arrow(150, 112, 120, 112, 1, 6); p.arrow(150, 112, 180, 112, 1, 6); p.label('convolutions', 150, 30); p.label('flexes', 150, 100, { size: 11 }); p.label('blank', 262, 170); p.label('flange', 48, 170); } },
     valve: { title: 'All-metal valve', body: ['An angle valve seals with metal on metal (often a copper or hardened-steel seat) so it can be baked with the rest of the system.', 'Shut, it makes a dead end; open, it might lead to a pump-out port or a gas line.'],
@@ -7252,7 +7352,6 @@ const P = window.MDPhysics, M = window.VMMaze, E = window.VMEngine, SN = window.
 const LZ = window.VMLasers, ECO = window.VMEconomy, NB = window.VMNotebook, VP = window.VMPurchase, CFG = window.VMEconomyConfig, EC = window.VMEditorCore;
 const { ELEMENTS, formatT } = P;
 const { C, H, HC, WALL_T } = M;
-const VIEW_SHORT_WORLD = 215;          // world px across the screen's short side (tube OD 184 px nearly fills it)
 const DATA = window.VM_LEVEL_DATA || { chapters: [], releasedThrough: M.LEVELS.length };
 const RELEASED = M.LEVELS.filter((l) => l.released !== false).length;
 
@@ -7332,7 +7431,13 @@ const restart = () => (state.custom ? startCustom(state.custom.level, { from: st
 const pumpName = (t) => (HW.PUMP_INFO[t] || CFG.byId[t] || { name: t }).name;
 function beginRun(level, demo) {
   state.level = level; state.demo = demo;
-  state.world = E.createWorld(state.level, demo ? 1 : settings.element, engineOpts(state.level));
+  const opts = engineOpts(state.level);
+  const z = demo ? 1 : settings.element;
+  const pace = E.crossingPace(vw, vh);
+  opts.pace = pace;
+  opts.wallT = E.wallTempFor(state.level, ELEMENTS[z - 1].mass, opts.g) * pace * pace;
+  state.pace = pace;
+  state.world = E.createWorld(state.level, z, opts);
   state.world.onContact = (a, hit) => onContact(a, hit);
   state.model = A.buildModel(state.world.atom.z);
   const a = state.world.atom; state.cam = { x: a.x, y: a.y, k: 1, lx: 0, ly: 0 };
@@ -7489,18 +7594,21 @@ function onWin() {
   if (state.demo) return;
   if (state.level.custom) return onCustomWin();
   const w = state.world, L = state.level, t = w.stats.time, body = bodyFor(L);
-  const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(t, par);
+  const pace = w.opts.pace > 0 ? w.opts.pace : 1, tRef = t * pace;
+  const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(tRef, par);
   const key = S.bestKey(L.id, body), prev = store.best[key];
-  const rec = !prev || t < prev.time, exit = w.wonExit || L.exits[0];
+  const rec = !prev || tRef < prev.time, exit = w.wonExit || L.exits[0];
   let coins = ECO.coinsForWin({ levelId: L.id, body: body, stars, prevStars: prev ? prev.stars : 0, bonusExit: !!exit.bonus });
-  store.best[key] = { time: rec ? t : prev.time, stars: Math.max(stars, prev ? prev.stars : 0) };
+  const nextBest = { time: rec ? tRef : prev.time, stars: Math.max(stars, prev ? prev.stars : 0) };
+  if (rec || (prev && prev.ref)) nextBest.ref = true;
+  store.best[key] = nextBest;
   store.cleared[L.id] = true;
   const newPump = !store.pumpsSeen[exit.pump];
   if (newPump) { store.pumpsSeen[exit.pump] = true; coins += ECO.PUMP_BONUS; }
   store.coins += coins; persist();
   unlock('pump:' + exit.pump); unlock('win');
   purchase.trial.endRun();
-  state.lastResult = { t, stars, par, rec, prev, contacts: w.stats.contacts, coins, exit, body, newPump };
+  state.lastResult = { t, tRef, pace, stars, par, rec, prev, contacts: w.stats.contacts, coins, exit, body, newPump };
   state.screen = 'won';
   // only if the player is still on this won level 0.9 s later (leaving or restarting cancels it)
   clearTimeout(winTimer); winTimer = setTimeout(() => { if (state.world === w && state.screen === 'won') (newPump ? showPumpCard(exit.pump) : showWin()); }, 900);
@@ -7529,11 +7637,12 @@ function showWin() {
   }
   $('win-title').textContent = `${L.name}: atom extracted!`;
   $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
-  const rows = [['Time', `${r.t.toFixed(1)} s`], ['Par (★★★)', `${r.par} s (${L.pathCells} cells, ${b.name})`], ['Wall contacts', r.contacts],
+  const rows = [['Time on this screen', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par (★★★)', `${r.par} s (${L.pathCells} cells, ${b.name})`], ['Wall contacts', r.contacts],
     [`Best on ${b.name}`, `${store.best[S.bestKey(L.id, r.body)].time.toFixed(1)} s`], ['Pump', pumpName(r.exit.pump) + (r.exit.bonus ? ' (bonus ×1.5)' : '')],
     ['Coins', `+${r.coins} (${store.coins} in the purse)`], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, captured at ${formatT(state.world.atom.T)}`]];
   $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
-  $('win-note').textContent = r.rec && r.prev ? `New best! (was ${r.prev.time.toFixed(1)} s)` : r.rec ? 'First escape from this apparatus on this world.' : '';
+  const paceNote = Math.abs((r.pace || 1) - 1) > 0.02 ? ` Record pace is this screen's time × ${r.pace.toFixed(2)}, the reference where the tube fills the width.` : '';
+  $('win-note').textContent = (r.rec && r.prev ? `New best! (was ${r.prev.time.toFixed(1)} s)` : r.rec ? 'First escape from this apparatus on this world.' : '') + paceNote;
   const nxt = state.levelIdx + 1;
   $('b-next').style.display = nxt < RELEASED ? '' : 'none';
   $('b-next').textContent = nxt < RELEASED && !isLevelUnlocked(nxt) ? 'Next apparatus 🔒' : 'Next apparatus ▸';
@@ -7543,7 +7652,7 @@ function showWin() {
 // ------------------------------------------------------------------ camera: follows the atom, GPS-style look-ahead
 function camera(dt) {
   if (!state.world) return;
-  const a = state.world.atom, short = Math.min(vw, vh), k = short / Math.max(VIEW_SHORT_WORLD, short / 2.2);   // phones: tube fills the short side; big screens see more maze
+  const a = state.world.atom, short = Math.min(vw, vh), k = E.viewZoom(vw, vh);   // phones: tube fills the short side; big screens see more maze
   const halfW = vw / k / 2, halfH = vh / k / 2;
   const v = state.world.won ? { x: 0, y: 0 } : { x: a.vx, y: a.vy };
   let lx = v.x * 0.35 + state.tilt.x * 90, ly = v.y * 0.35 + state.tilt.y * 90;
