@@ -37,7 +37,7 @@ if (play.includes('hatchPoly') || /\.hatch\(/.test(play)) fail('notebook still h
 {
   const p9 = site.slice(site.indexOf('id="p9"'), site.indexOf('id="p10"'));
   const fig = p9.slice(p9.indexOf('<figure'), p9.indexOf('</figure>'));
-  if (!fig.includes('2 mm copper') || !fig.includes('M6') || fig.includes('knife-edge') || fig.includes('bore (vacuum)')) fail('site notebook still shows the old flange figure');
+  if (!fig.includes('2 mm copper') || !fig.includes('M6') || !fig.includes('5×') || !fig.includes('data-inset="seal"') || fig.includes('knife-edge') || fig.includes('bore (vacuum)')) fail('site notebook still shows the old flange figure');
 }
 
 const chrome = spawn('google-chrome', [
@@ -135,25 +135,81 @@ try {
   if (opened.best !== 42.5) fail('best rewritten on open');
 
   async function flangeSvg() {
-    return ev(`(() => {
+    return ev(`(async () => {
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const page = document.getElementById('note-scale');
       const svg = page && page.querySelector('svg.vm-sketch');
       if (!svg) return { present: false };
       const text = svg.textContent || '';
+      const ctm = svg.getScreenCTM();
+      const clipEl = svg.querySelector('clipPath rect');
+      const clip = clipEl ? { x: +clipEl.getAttribute('x'), y: +clipEl.getAttribute('y'), w: +clipEl.getAttribute('width'), h: +clipEl.getAttribute('height') } : null;
+      const vb = svg.viewBox.baseVal;
+      const view = { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
+      const cut = (a, b) => {
+        if (!b) return a;
+        const x = Math.max(a.x, b.x), y = Math.max(a.y, b.y);
+        const r = Math.min(a.x + a.w, b.x + b.w), bot = Math.min(a.y + a.h, b.y + b.h);
+        return r < x || bot < y ? null : { x, y, w: r - x, h: bot - y };
+      };
+      const toScreen = (box) => {
+        const corners = [[box.x, box.y], [box.x + box.w, box.y], [box.x, box.y + box.h], [box.x + box.w, box.y + box.h]].map(([x, y]) => {
+          const sp = svg.createSVGPoint(); sp.x = x; sp.y = y; return sp.matrixTransform(ctm);
+        });
+        return {
+          l: Math.min(...corners.map((p) => p.x)), r: Math.max(...corners.map((p) => p.x)),
+          t: Math.min(...corners.map((p) => p.y)), b: Math.max(...corners.map((p) => p.y)),
+        };
+      };
       const labels = [...svg.querySelectorAll('text')].map((node) => {
-        const lead = svg.querySelector('path[data-lead="' + node.getAttribute('data-k') + '"]');
+        const id = node.getAttribute('data-k');
+        const lead = svg.querySelector('path[data-lead="' + id + '"]');
         const tr = node.getBoundingClientRect();
         const sr = svg.getBoundingClientRect();
+        const R = { l: tr.left - 2, r: tr.right + 2, t: tr.top - 2, b: tr.bottom + 2 };
+        const overlaps = (box) => box && R.l <= box.r && R.r >= box.l && R.t <= box.b && R.b >= box.t;
+        let hit = false;
+        if (ctm) {
+          for (const path of svg.querySelectorAll('path, circle')) {
+            if (path.getAttribute('data-lead') === id) continue;
+            const region = path.closest('[data-inset]') && clip ? cut(view, clip) : view;
+            if (path.tagName === 'circle') {
+              const sp = svg.createSVGPoint();
+              sp.x = +path.getAttribute('cx'); sp.y = +path.getAttribute('cy');
+              if (region && (sp.x < region.x || sp.x > region.x + region.w || sp.y < region.y || sp.y > region.y + region.h)) continue;
+              const s = sp.matrixTransform(ctm);
+              if (s.x >= R.l && s.x <= R.r && s.y >= R.t && s.y <= R.b) { hit = true; break; }
+              continue;
+            }
+            let bb = null;
+            try { bb = path.getBBox(); } catch (e) { bb = null; }
+            const painted = bb ? cut({ x: bb.x, y: bb.y, w: bb.width, h: bb.height }, region) : null;
+            if (painted && overlaps(toScreen(painted))) { hit = true; break; }
+            const len = path.getTotalLength ? path.getTotalLength() : 0;
+            const step = Math.max(1.2, len / 70);
+            for (let d = 0; d <= len; d += step) {
+              const pt = path.getPointAtLength(d);
+              if (region && (pt.x < region.x || pt.x > region.x + region.w || pt.y < region.y || pt.y > region.y + region.h)) continue;
+              const sp = svg.createSVGPoint();
+              sp.x = pt.x; sp.y = pt.y;
+              const s = sp.matrixTransform(ctm);
+              if (s.x >= R.l && s.x <= R.r && s.y >= R.t && s.y <= R.b) { hit = true; break; }
+            }
+            if (hit) break;
+          }
+        }
         return {
           t: node.textContent,
           lead: !!lead,
           inside: tr.width > 0 && tr.left >= sr.left - 1 && tr.right <= sr.right + 1 && tr.top >= sr.top - 1 && tr.bottom <= sr.bottom + 1,
+          hit,
         };
       });
       return {
         present: true,
         paths: svg.querySelectorAll('path').length,
         inset: !!svg.querySelector('[data-inset="seal"]'),
+        five: text.includes('5×'),
         copper: text.includes('2 mm copper'),
         knife: text.includes('20° knife'),
         bolt: text.includes('M6'),
@@ -161,18 +217,20 @@ try {
         flange: labels.some((l) => l.t === 'flange'),
         leaders: labels.every((l) => l.lead),
         clipped: labels.filter((l) => !l.inside).map((l) => l.t),
+        hits: labels.filter((l) => l.hit).map((l) => l.t),
         old: ['knife-edge', 'copper gasket', 'bore (vacuum)', '2¾'].filter((s) => text.includes(s)),
       };
     })()`);
   }
   const flange = await flangeSvg();
   console.log('flange svg', JSON.stringify(flange));
-  if (!flange.present || !flange.copper || !flange.knife || !flange.bolt || !flange.bore || !flange.flange) fail('rendered flange sketch is not the DN40 drawing ' + JSON.stringify(flange));
+  if (!flange.present || !flange.copper || !flange.knife || !flange.bolt || !flange.bore || !flange.flange || !flange.five) fail('rendered flange sketch is not the DN40 drawing ' + JSON.stringify(flange));
   if (!flange.inset) fail('flange sketch has no enlarged seal inset');
   if (!flange.leaders) fail('a flange label has no leader line');
   if (flange.old.length) fail('old flange labels still rendered ' + flange.old.join(','));
-  if (flange.paths > 160) fail('rendered flange sketch still has hatch paths ' + flange.paths);
+  if (flange.paths > 180) fail('rendered flange sketch still has hatch paths ' + flange.paths);
   if (flange.clipped.length) fail('flange labels clipped on desktop ' + flange.clipped.join(','));
+  if (flange.hits.length) fail('flange labels touch the drawing on desktop ' + flange.hits.join(','));
 
   const jumped = await ev(`(() => {
     const book = document.getElementById('nb-body');
@@ -250,13 +308,16 @@ try {
   const bestAfter = await ev(`JSON.parse(localStorage.getItem('vacuum-maze.v2')).best['1|earth'].time`);
   if (bestAfter !== 42.5) fail('best changed after navigation');
 
-  for (const theme of ['victorian', 'bw']) {
-    save.settings.theme = theme;
-    await boot(320, 568);
-    const narrow = await flangeSvg();
-    console.log('flange 320', theme, JSON.stringify({ clipped: narrow.clipped, inset: narrow.inset, leaders: narrow.leaders }));
-    if (!narrow.inset || !narrow.leaders || !narrow.copper) fail('320 px flange sketch incomplete ' + theme);
-    if (narrow.clipped && narrow.clipped.length) fail('flange labels clipped at 320 ' + theme + ' ' + narrow.clipped.join(','));
+  for (const w of [320, 360, 390, 1280]) {
+    for (const theme of ['victorian', 'bw']) {
+      save.settings.theme = theme;
+      await boot(w, w >= 800 ? 800 : w === 390 ? 844 : 640);
+      const narrow = await flangeSvg();
+      console.log('flange', w, theme, JSON.stringify({ clipped: narrow.clipped, hits: narrow.hits, inset: narrow.inset }));
+      if (!narrow.inset || !narrow.leaders || !narrow.copper || !narrow.five) fail(w + ' px flange sketch incomplete ' + theme);
+      if (narrow.clipped && narrow.clipped.length) fail('flange labels clipped at ' + w + ' ' + theme + ' ' + narrow.clipped.join(','));
+      if (narrow.hits && narrow.hits.length) fail('flange labels touch the drawing at ' + w + ' ' + theme + ' ' + narrow.hits.join(','));
+    }
   }
   save.settings.theme = 'victorian';
 

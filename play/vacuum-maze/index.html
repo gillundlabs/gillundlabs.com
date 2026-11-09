@@ -6035,7 +6035,9 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
         const k = nText; p.label(text, tx, ty, { size, align, rotate: o.rotate });
         const x0 = align === 'start' ? tx : align === 'end' ? tx - w : tx - w / 2, x1 = x0 + w;   // the text's extent
         const sx = px < x0 ? x0 - 3 : px > x1 ? x1 + 3 : Math.min(x1, Math.max(x0, px)), sy = px < x0 || px > x1 ? ty - size * 0.35 : py > ty ? ty + 3 : ty - size - 1;
-        stroke(seg(sx, sy, px, py), 0.6, `data-lead="${k}"`); return p;
+        stroke(seg(sx, sy, px, py), 0.6, `data-lead="${k}"`);
+        if (o.end === 'dot') out.push(`<circle data-lead="${k}" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="1.8" fill="currentColor" stroke="none"/>`);
+        return p;
       },
       // strokes drawn between leadFrom(label) and leadEnd() are that label's own leader/arrow (tagged for the layout tests)
       leadFrom(text, x, y, o = {}) { const k = nText; p.label(text, x, y, o); leadAttr = `data-lead="${k}"`; return p; },
@@ -6131,7 +6133,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     sketch(p) {
       // DN40CF half-section. Axis is left-right, radius increases downward.
       // The small view keeps the real ratios; the box below is the same seal at 5×.
-      p.viewBox(320, 360);
+      p.viewBox(320, 400);
       const run = 0.4 * Math.tan(20 * Math.PI / 180);
       const G = { bore: 19, od: 35, land: 0.1, floor: 1, tip: 0.6, outer: 12.8, gIn: 19.1, gOut: 24.2, recess: 24.4, knife: 21, bolt: 29.4, hole: 3.3, shank: 3, headT: 4, headR: 5, washT: 1.6, washR: 6, nutT: 5, stick: 2, run };
       const draw = (k, x0, yOf, lw) => {
@@ -6160,24 +6162,31 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
         p.poly([[nx, yB - G.headR * k], [nx + G.nutT * k - cham, yB - G.headR * k], [nx + G.nutT * k, yB - G.headR * k + cham], [nx + G.nutT * k, yB + G.headR * k - cham], [nx + G.nutT * k - cham, yB + G.headR * k], [nx, yB + G.headR * k]], lw, true);
         return { X, yOf };
       };
-      const k = 4.6, x0 = 132, yMain = (r) => 20 + (r - 15) * k;
+      const k = 4.6, x0 = 140, yMain = (r) => 40 + (r - 15) * k;
       const main = draw(k, x0, yMain, 1.15);
-      const seal = [x0, yMain(21.6)];
-      p.circle(seal[0], seal[1], k * 3.6, 0.75);
-      const box = { x: 8, y: 132, w: 304, h: 214 };
-      p.line(seal[0], seal[1] + k * 3.6, box.x + box.w * 0.72, box.y, 0.7);
+      const rad = k * 3.2, sealY = yMain(21.6);
+      p.circle(x0, sealY, rad, 0.8);
+      // Callout leaves the circle in the open bore, crosses above the metal, and meets the inset corner.
+      const box = { x: 96, y: 182, w: 160, h: 196 };
+      const leaveA = -1.45;
+      const lx = x0 + rad * Math.cos(leaveA), ly = sealY + rad * Math.sin(leaveA);
+      p.line(lx, ly, lx, 6, 0.7);
+      p.line(lx, 6, 308, 6, 0.7);
+      p.line(308, 6, 308, box.y, 0.7);
+      p.line(308, box.y, box.x + box.w, box.y, 0.7);
       p.rect(box.x, box.y, box.w, box.h, 1.05);
-      const ki = k * 5, ix = box.x + 118, iy = (r) => box.y + 78 + (r - 21.6) * ki;
+      const ki = k * 5, ix = box.x + 80, iy = (r) => box.y + 66 + (r - 21.6) * ki;
       p.clip('seal', box.x + 1, box.y + 1, box.w - 2, box.h - 2);
       draw(ki, ix, iy, 1.15);
       p.clipEnd();
-      const lead = { rotate: 0, size: 11 };
-      p.note('bore', 18, 16, x0, yMain(16.5), { ...lead, align: 'start' });
-      p.note('flange', 16, 78, main.X(-7), yMain(28), { ...lead, align: 'start' });
-      p.note('M6', 292, 96, main.X(-G.outer - G.headT * 0.5), yMain(G.bolt), { ...lead, align: 'end' });
-      p.note('2 mm copper', 16, 168, ix, iy(22.2), { ...lead, align: 'start' });
-      p.note('20° knife', 292, 156, ix + G.tip * ki, iy(G.knife), { ...lead, align: 'end' });
-      p.note('gap', 292, iy(25.4), ix, iy(25.4), { ...lead, align: 'end' });
+      const lead = { rotate: 0, size: 11, end: 'dot' };
+      p.note('bore', 12, 26, x0 - 26, yMain(17.5), { ...lead, align: 'start' });
+      p.note('flange', 6, 72, main.X(-9), yMain(22.2), { ...lead, align: 'start' });
+      p.note('M6', main.X(G.outer + G.washT + G.nutT) + 14, yMain(G.bolt) - G.headR * k - 20, main.X(G.outer + G.washT + G.nutT * 0.4), yMain(G.bolt) - G.headR * k, { ...lead, align: 'start' });
+      p.note('5×', box.x + 2, box.y - 20, box.x + 16, box.y, { ...lead, align: 'start' });
+      p.note('2 mm copper', 6, iy(22.5), ix - ki, iy(22.5), { ...lead, align: 'start' });
+      p.note('20° knife', 150, box.y - 20, ix + G.tip * ki, iy(G.knife), { ...lead, align: 'start' });
+      p.note('gap', box.x + box.w + 14, iy(25.4), ix, iy(25.4), { ...lead, align: 'start' });
     } });
 
   add({ id: 'mfp', title: 'Why a lone atom?', unlock: 'win', group: 'Basics',
