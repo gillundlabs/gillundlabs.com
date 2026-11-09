@@ -389,6 +389,13 @@
   .fa-locked { opacity: .55; } .fa-toc { columns: 2; font-size: 15px; margin: 6px 0 0; padding-left: 22px; } .fa-toc a { color: inherit; } .fa-toc-locked { opacity: .6; }
   body[data-theme="bw"] .fa-entry, body[data-theme="bw"] .fa-fig, body[data-theme="bw"] .fa-contents { color: #000; }
   #p-help .close { position: sticky; top: 0; float: right; z-index: 2; }
+  /* Portrait: the sticky Close used to cover the end of a centred heading.
+     Keep the same button, above the scrolling notes, so the hand titles stay whole. */
+  @media (max-width: 520px) {
+    #p-help.show { display: flex; flex-direction: column; overflow: hidden; }
+    #p-help .close { position: relative; float: none; align-self: flex-end; flex: none; margin: 0 0 8px; }
+    #p-help .vls-notebook { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  }
   @media (max-height: 430px) {
     :root { --drawer: 300px; --bar: 64px; }
     #drawer { grid-auto-rows: min-content; gap: 4px; padding: 6px; } #drawer button { height: 60px; } #drawer button canvas { width: 28px; height: 28px; }
@@ -555,7 +562,7 @@
 
   /* Full UI craft pass: kit plaques on every typeset panel and notice; notebook stays paper.
      Scroll belongs to the transparent host, so the closed rule follows the entire ivory article. */
-  body[data-theme] .panel:not(#p-help), body[data-theme] #toast {
+  body[data-theme] .panel:not(#p-help), body[data-theme] #toast, body[data-theme] #part-tip {
     padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--vls-ivory-ink);
     box-shadow: none; text-shadow: none; font-family: var(--vls-font-ivory); }
   body:has(#p-trial.show) .panel.show:not(#p-trial) { visibility: hidden; }
@@ -588,6 +595,9 @@
   #levels-grid button .brass-face > span:not(.seal) { display: block; white-space: nowrap; font-size: 11px; line-height: 1.2; }
   #levels-grid button .seal { right: 0; top: 0; }
   body[data-theme] #toast { z-index: 20; width: max-content; max-width: min(560px, calc(100vw - 48px)); }
+  /* Part cards sit beside the control. They are not modals: no veil, and they do not take a click. */
+  #part-tip { position: fixed; z-index: 24; left: 0; top: 0; display: none; width: max-content; max-width: min(320px, calc(100vw - 16px)); pointer-events: none; }
+  #part-tip.show { display: block; }
   .fa-toast-plaque { display: block; width: 100%; padding: 30px; font: 16px/1.4 var(--vls-font-ivory); }
   .fa-toast-copy { display: block; white-space: normal !important; overflow: visible; text-overflow: clip; line-height: 1.4; }
   /* A fixed kit frame behind the scrolling parts tray; rebuilding the catalogue never erases its chrome. */
@@ -656,7 +666,7 @@
   <button id="b-undo" aria-label="Undo"><svg class="bar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5 3 9l4 4M3 9h10a7 7 0 0 1 0 14"/></svg></button>
   <button id="b-redo" aria-label="Redo"><svg class="bar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 5 4 4-4 4M21 9h-10a7 7 0 0 0 0 14"/></svg></button>
   <button id="b-fit" aria-label="Fit the bench to the screen"><svg class="bar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5M5 5l5 5m9-5-5 5M5 19l5-5m9 5-5-5"/></svg></button>
-  <button id="b-help" aria-label="Laboratory notes"><svg class="bar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7a3.5 3.5 0 1 1 5 3c-2 1-2 2-2 4M12 18v1"/></svg></button>
+  <button id="b-help" aria-label="Help and tips"><svg class="bar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7a3.5 3.5 0 1 1 5 3c-2 1-2 2-2 4M12 18v1"/></svg></button>
   <button id="b-theme" aria-label="Black and white theme"><svg class="bar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 3v18M14 5v14m2-12v10m2-8v6"/></svg></button>
   <button id="b-settings" aria-label="Settings and purchases"><svg class="bar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M12 4v16M19 4v16M2 8h6m1 8h6m1-7h6"/></svg></button>
   <button id="b-editor-back" hidden aria-label="Back to the level editor">◂ Editor</button>
@@ -678,13 +688,14 @@
 <button id="lever" aria-label="Run the apparatus"><canvas width="152" height="152"></canvas></button>
 <div id="trial-chip" role="timer" aria-label="Full laboratory trial time remaining" hidden><span class="lbl">TRIAL</span> <b id="trial-left">15:00</b></div>
 <div id="toast" role="status"><article class="vls-plaque vls-plaque--ivory fa-toast-plaque" data-vls-ivory="fa/notices"><span class="vls-plaque__label fa-toast-copy" id="toast-copy"></span></article></div>
+<div id="part-tip" role="tooltip" aria-hidden="true"><article class="vls-plaque vls-plaque--ivory fa-toast-plaque" data-vls-ivory="fa/part-tip"><span class="vls-plaque__label fa-toast-copy" id="part-tip-copy"></span></article></div>
 <div id="veil"></div>
 <div class="panel" id="p-levels" role="dialog" aria-label="Experiments">
  <article class="vls-plaque vls-plaque--ivory fa-ui-plaque" data-vls-ivory="fa/panels/p-levels">
   <h1 class="vls-plaque__label">Fantastic Apparatus</h1>
   <p class="sub"><span id="levels-count">Twelve experiments.</span> Complete the construction of laboratory apparatus. Build in the scribed area, pull the lever, and hold the missing part in its assembly bay for two seconds; the mounting clamps then seat it.</p>
   <div id="levels-grid"></div>
-  <div class="row"><button id="b-levels-help">Laboratory notes</button><button id="b-levels-close">Back</button></div>
+  <div class="row"><button id="b-levels-help">Help and tips</button><button id="b-levels-close">Back</button></div>
  </article>
 </div>
 <div class="panel" id="p-win" role="dialog" aria-label="Apparatus assembled">
@@ -6055,7 +6066,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
 
   add({ id: 'how-to', title: 'How to build an apparatus', group: 'The bench', unlock: 'start', hint: 'Open from the start.',
     body: ['Every experiment completes an unfinished apparatus: a telescope needs its objective, an orrery its drive wheel, a battery its last cell. Transport the softly glowing missing part wholly into the marked assembly bay and hold it there for two seconds. The mounting jig then releases your carrier, seats the actual part in its socket and completes the apparatus.',
-      'Pick a part from the drawer and draw it inside the scribed build area: drag from joint to joint for rods, string and springs; tap to drop a wheel; drag in the direction a piston should push. Ends that land on a joint are pinned there and turn freely. Each wheel also has four rim pins: a beam attached there follows the turning wheel like a crank.',
+      'Pick a part from the drawer and draw it inside the scribed build area: drag from joint to joint for rods, oak, string and springs; tap to drop a wheel or a counterweight; drag in the direction a piston should push. A tap that does not drag does not lay a rod. Ends that land on a joint are pinned there and turn freely. Each wheel also has four rim pins: a beam attached there follows the turning wheel like a crank. Pulley cord: tap one end, then up to four wheel hubs, then the other end. Winch cord: tap a wheel hub, then the other end. While either cord is open, the footer states how many ends are set. Rest on a part for its numbers: hover on a desk, press and hold on a phone.',
       'Missing components carry a brass transport joint: pin your carrier to it, or push the component. Then pull the brass lever; pull it again to stop and edit.',
       'Fantastic Apparatus was inspired by Colin Northway\'s <i>Fantastic Contraption</i> (2008), rebuilt with real masses and materials.'],
     game: 'Only parts sharing the same pin do not collide with each other. Steel and wheels otherwise collide, even when indirectly joined in one frame. Oak is ghost to components and parts but still touches furniture. Assembly bays are marked activation volumes, not invisible collision walls; their rear-plane jigs seat the delivered parts automatically, not a simulation of screws or electrical circuits.',
@@ -6068,7 +6079,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       'Three brass dials watch every run: total mass of the parts you placed (kilograms), the work the motors and pistons put in (joules), and the elapsed time (seconds). The needles climb as the apparatus runs.',
       'Each reading has a score S(x) = K / (a + x)^p (separate K, a, p for mass, energy and time; see economy-config). Beating your best pays the rise in score, round(S(new) − S(old)). Because S steepens as x approaches nought, the last gram, joule or tenth of a second is worth more than the first crude cut. A first clear still pays a flat bonus on top.',
       'The laboratory remembers your best mass, best energy and best time on each experiment. Beat any of the three and the win card congratulates you by name ("New best mass", and so on).'],
-    analogy: 'A thrifty watchmaker: the less brass, the less winding and the less waiting, the fatter the purse.',
     game: 'Mass counts only the parts you placed (not the furniture or the specimens). Energy is the absolute mechanical work ∫|τω|dt of every motor joint plus ∫|F·v|dt of every piston over the run. A repeat clear with no new best pays only the small repeat purse; improvements pay ΔS as above. The dial full-scales are soft pegs for the needles (20 kg, 80 J, 30 s), not hard caps on the score.',
     cf: 'Work and energy, any elementary mechanics; purse rule from Fantastic Apparatus economy-config (owner, 2026-11-04).',
     sketch(p) {
@@ -6097,7 +6107,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['A force turns things about a pivot in proportion to how far from the pivot it acts: the torque is τ = F × d, where d is the perpendicular distance from the pivot to the line of the force.',
       'So a lever balances when F₁·d₁ = F₂·d₂: a small force far out holds a big force close in. Archimedes stated the law of the lever in <i>On the Equilibrium of Planes</i>.',
       'A rod pinned to a wheel off-centre is a lever too: a push on its far end turns the wheel harder than the same push near the hub.'],
-    analogy: 'A door: push near the hinge and it barely moves; push at the handle and it swings easily.',
     game: 'Rods and beams are perfectly rigid and never bend or break, however hard a piston leans on them.',
     cf: 'Archimedes, <i>On the Equilibrium of Planes</i>, Book I, Props. 6–7; D. Halliday, R. Resnick &amp; J. Walker, <i>Fundamentals of Physics</i>, ch. 10–12.',
     sketch(p) { p.ground(20, 300, 165); p.poly([[150, 165], [138, 140], [162, 140]], 1.6, true); p.hatch(138, 145, 24, 18, 6); p.line(40, 128, 290, 152, 2.6); p.rect(50, 100, 26, 26, 1.6); p.hatch(50, 100, 26, 26, 5); p.label('W', 63, 92); p.arrow(272, 110, 272, 148, 1.6); p.label('F', 282, 110);
@@ -6107,7 +6116,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['A wheel that rolls without slipping moves its centre at v = ω·r, and the point touching the ground is momentarily at rest. That is why rolling costs so little: the contact does not rub.',
       'A rolling wheel carries energy in two forms, ½mv² for moving and ½Iω² for spinning. The moment of inertia I depends on where the mass sits: a uniform disc has I = ½mr², a thin hoop I = mr².',
       'Down a slope of angle θ a rolling body accelerates at g·sin θ / (1 + I/mr²): a disc at ⅔ g·sin θ, a hoop at ½ g·sin θ. A spoked wheel keeps most of its mass in the rim, so it behaves more like a hoop: slower to spin up, slower to stop.'],
-    analogy: 'A bicycle wheel (mass in the rim) and a solid cheese wheel of the same weight rolled down one plank: the cheese wins.',
     game: 'Every wheel, the spoked motor wheels included, is simulated as a uniform disc (I = ½mr²), and there is no rolling resistance at all.',
     cf: 'Halliday, Resnick &amp; Walker, <i>Fundamentals of Physics</i>, ch. 11 (rolling); J. R. Taylor, <i>Classical Mechanics</i> (2005), ch. 10.',
     sketch(p) { p.line(20, 60, 300, 170, 1.8); p.label('θ', 260, 166, { size: 12 }); p.ellipse(300, 170, 50, 50, 1, Math.PI, Math.PI + 0.37);
@@ -6120,7 +6128,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['Dry friction follows Coulomb\'s law: a resting block will not slide until the sideways force exceeds μₛN (N is the force pressing the surfaces together), and once it slides the friction is about μₖN, a little less. To a first approximation it does not depend on the area in contact (Amontons, 1699).',
       'Typical textbook values (they vary a lot with finish and dirt): steel on steel μₛ ≈ 0.74, μₖ ≈ 0.57; wood on wood μₛ ≈ 0.25–0.5; glass on glass μₛ ≈ 0.9 but μₖ ≈ 0.4.',
       'Spikes go beyond plain Coulomb friction: they dig into the surface, so the wheel must plough or shear material to slip. The grip then behaves like a friction coefficient above 1.'],
-    analogy: 'Football boots on grass: studs that bite into the turf grip far better than a flat sole.',
     game: `One coefficient serves for both static and sliding friction, and two touching materials combine as √(μ₁μ₂) (the planck.js rule). Spikes are just a high coefficient (${PT.wheel.friction}); nothing is dented.`,
     cf: 'C.-A. Coulomb, <i>Théorie des machines simples</i> (1781 prize essay; publ. 1785); R. A. Serway &amp; J. W. Jewett, <i>Physics for Scientists and Engineers</i>, Table 5.1; F. P. Bowden &amp; D. Tabor, <i>The Friction and Lubrication of Solids</i> (1950).',
     sketch(p) { p.ground(20, 300, 140); p.rect(90, 90, 70, 50, 1.8); p.hatch(90, 90, 70, 50, 7); p.arrow(160, 115, 230, 115, 1.8); p.label('F', 240, 112); p.arrow(90, 136, 40, 136, 1.4); p.label('friction ≤ μN', 50, 125, { size: 11 }); p.arrow(125, 90, 125, 60, 1.2); p.label('N', 136, 62);
@@ -6131,7 +6138,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['A string can only pull. Taut, it carries the same tension T all along its length (if it is light and runs over nothing rubbing), and each end pulls along its adjoining straight span. A frictionless guide redirects the pull without changing the tension.',
       'Slack, it carries nothing at all. That makes strings ideal for tethers, for catching things that swing too far, and for dragging loads that need room to move.',
       'Rope makers\' tables give a minimum breaking force of 1.8 kN for new 5 mm (3/16 in) manila. Scaled by cross-section, the 2 mm cord in the drawer holds about 320 N, and the game snaps it at 300 N: twice the piston\'s push, but a cord holding a heavy swinging load can reach it.'],
-    analogy: 'A dog on a lead: free to wander until the lead goes tight, then firmly held.',
     game: 'The string is massless and does not stretch: it is a tension-only maximum-length constraint and snaps at 300 N. The drawn sag is illustrative. Pulley cord routes one continuous length through up to four wheel hubs, treated as frictionless zero-radius eyes; the guides take the reaction force and can move. Winch cord winds on a wheel-radius drum with a tangent lead and opposing load torque. The drum has a constant radius and ideal unlimited payout; real cord thickness, groove friction and layering are not modelled.',
     cf: 'Halliday, Resnick &amp; Walker, ch. 5 (tension); Cordage Institute minimum breaking strengths for 3-strand manila rope (3/16 in: 405 lbf, 1.8 kN; 1/4 in: 540 lbf, 2.4 kN), as reprinted in rope makers\' tables; planck.js RopeJoint.',
     sketch(p) { p.line(40, 30, 140, 30, 2); p.hatch(40, 20, 100, 10, 7); p.line(90, 30, 90, 120, 1.4); p.rect(76, 120, 28, 26, 1.6); p.hatch(76, 120, 28, 26, 6); p.arrow(90, 70, 90, 45, 1.2, 6); p.arrow(90, 95, 90, 118, 1.2, 6); p.label('T', 102, 60); p.label('T', 102, 108); p.label('taut', 90, 168, { size: 11 });
@@ -6141,7 +6147,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['Stretch or squash a spring by x from its natural length and it pushes back with F = −k·x: Hooke\'s law, which Robert Hooke published in 1678 as "ut tensio, sic vis" (as the extension, so the force).',
       `The work you do is stored as elastic energy ½k·x². This game's spring has k = ${PT.spring.k} N/m: stretched 10 cm it pulls with ${PT.spring.k * 0.1} N and holds ${r1(0.5 * PT.spring.k * 0.01, 2)} J.`,
       'Real springs obey Hooke only up to their elastic limit; beyond it they stay bent.'],
-    analogy: 'A trampoline: the deeper you sink, the harder it throws you back.',
     game: `Springs are massless, never overstretch, and are damped (${PT.spring.c} N·s/m) so they settle instead of ringing for ever. They pass through everything.`,
     cf: 'R. Hooke, <i>Lectures de Potentia Restitutiva, or of Spring</i> (London, 1678); Halliday, Resnick &amp; Walker, ch. 7–8.',
     sketch(p) { p.line(30, 30, 30, 160, 2); p.hatch(20, 30, 10, 130, 7); const coil = (x0, x1, y) => { const pts = [[x0, y]]; const n = 10; for (let i = 0; i < n; i++) pts.push([x0 + 10 + (x1 - x0 - 20) * (i + 0.5) / n, y + (i % 2 ? 12 : -12)]); pts.push([x1 - 10, y], [x1, y]); p.poly(pts, 1.4); };
@@ -6153,7 +6158,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       `A double-acting cylinder takes steam on both sides in turn. On the return stroke the piston rod occupies part of the face, so steam presses only on the ring around it: 3×10⁵ Pa × π × (12.5² − 7²) mm² ≈ ${Math.round(PIS.retractForce)} N with this game's 14 mm rod. The game models this: every piston pulls back with ${Math.round(PIS.retractForce)} N.`,
       'In a reciprocating engine the piston\'s to-and-fro drives a crank that turns a flywheel, as in the working engine in the catalogue.',
       'A steam engine also times itself: an eccentric on the crankshaft slides the valve that sends steam to one side of the piston, then the other.'],
-    analogy: 'Blowing into a bicycle pump with your thumb over the end: the higher the pressure, the harder it pushes your thumb.',
     game: `The steam never runs out or cools, and the pressure never sags; the piston pushes with a steady ${Math.round(PIS.force)} N and pulls with ${Math.round(PIS.retractForce)} N, at up to ${PIS.speed} m/s either way. Every piston is timed by a plain clock (out for ${PIS.period / 2} s, back for ${PIS.period / 2} s), not by a valve worked from a crank.`,
     cf: 'L. T. C. Rolt &amp; J. S. Allen, <i>The Steam Engine of Thomas Newcomen</i> (1977); J. Watt, English patent No. 913 (1769); R. L. Hills, <i>Power from Steam</i> (1989); W. J. M. Rankine, <i>A Manual of the Steam Engine and Other Prime Movers</i> (1859), on slide valves.',
     sketch(p) { p.rect(40, 70, 150, 60, 1.8); p.line(40, 70, 40, 130, 2.4); p.rect(120, 74, 12, 52, 1.6); p.hatch(120, 74, 12, 52, 5); p.line(132, 100, 250, 100, 2.6); p.circle(272, 100, 22, 1.4); p.line(250, 100, 272, 82, 1.6);
@@ -6163,7 +6167,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['A simple DC electric motor gives its greatest torque when held still (the stall torque) and none at its free-running speed; in between the torque falls off in a straight line.',
       `Power is torque × speed, so it peaks at half the free speed: for a ${M.torque} N·m, ${M.speed} rad/s motor that would be ${M.torque} × ${M.speed} / 4 = ${pmax} W, about a hundredth of a horsepower.`,
       'At the Vienna exhibition of 1873, a Gramme dynamo wired to another is said to have spun the second as a motor: the first big demonstration that dynamos could deliver power over a wire.'],
-    analogy: 'Cycling: from a standstill you can push the pedals hardest; at full speed your legs barely keep up and push almost nothing.',
     game: `It depends how the wheel is mounted. A motor wheel pinned to a frame is a planck.js joint motor: full ${M.torque} N·m at any speed up to ${M.speed} rad/s, then it holds that speed instead of tapering off; the frame takes the equal-and-opposite reaction. A lone motor wheel carries a stator of ${M.statorMass} kg whose centre of mass sits ${Math.round(M.statorOffset * 100)} cm off the axle: the joint motor twists rotor and stator opposite ways, so Newton's third law holds. On the bench the sustained crawl torque is only about m·g·d = ${(M.statorMass * 9.81 * M.statorOffset).toFixed(2)} N·m from the offset weight, plus ${M.bearingFriction} N·m of bearing friction — a few newtons at the rim, not the full stall. Either way the motor never overheats when stalled.`,
     cf: 'A. E. Fitzgerald, C. Kingsley &amp; S. D. Umans, <i>Electric Machinery</i> (DC machines); B. Bowers, <i>A History of Electric Light and Power</i> (1982), on Gramme and Fontaine.',
     sketch(p) { p.line(40, 160, 300, 160, 1.6); p.line(40, 160, 40, 20, 1.6); p.label('torque', 40, 14, { size: 11 }); p.label('speed ω', 280, 180, { size: 11 }); p.line(40, 40, 260, 160, 2); p.label('stall', 70, 36, { size: 11 }); p.label('free speed', 260, 150, { size: 11 });
@@ -6173,7 +6176,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['Energy is never made or destroyed, only moved about: a motor\'s work becomes the motion of your apparatus, height gained becomes potential energy mgh, and a falling weight turns it back into motion.',
       'Every collision, every rub and every damped spring turns some of it into heat and sound. James Joule measured the exchange rate in the 1840s by stirring water with falling weights: about 4.2 J of work warms a gram of water by one degree.',
       'Lifting a 4 kg weight 30 cm needs at least 4 × 9.81 × 0.3 ≈ 12 J; an apparatus that does it spends far more, mostly in friction and bumps.'],
-    analogy: 'Money in a purse: it can be changed into other coins, but each transaction takes a small fee (the heat).',
     game: 'The game does not track heat: lost energy simply disappears. It is lost to bounces (restitution below 1), friction, the springs\' damping (4 N·s/m), a touch of angular damping on wheels and the counterweight (nothing else has any), and the integrator itself.',
     cf: 'J. P. Joule, "On the Mechanical Equivalent of Heat", <i>Phil. Trans. R. Soc.</i> 140, 61 (1850); Feynman, <i>Lectures on Physics</i> I, ch. 4.',
     sketch(p) { p.ground(20, 300, 165); p.rect(50, 30, 26, 26, 1.6); p.hatch(50, 30, 26, 26, 6); p.arrow(63, 60, 63, 150, 1.2); p.label('mgh → ½mv²', 63, 20, { size: 11 }); p.line(40, 30, 40, 165, 1); p.label('h', 30, 100);
@@ -6183,7 +6185,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['In a collision the total momentum, mass × velocity, is unchanged: whatever one body gains, the other loses.',
       'How bouncy the impact is is set by the coefficient of restitution e, the speed of separation over the speed of approach (Newton\'s experimental law, from his pendulum experiments in the <i>Principia</i>). e = 1 is a perfect bounce; e = 0 means the two stick together.',
       'A heavy cart nudging a 1 kg crystal sphere hands it momentum; with low e the sphere rolls off gently instead of shooting away.'],
-    analogy: 'Snooker: a straight hit stops the cue ball dead and sends the red off at its speed (e close to 1).',
     game: `Restitution values here are low (brass ${MAT.brass.restitution}, rock crystal ${MAT.quartz.restitution}), and a pair uses the larger of the two (the planck.js rule) rather than a measured value for that pair.`,
     cf: 'I. Newton, <i>Philosophiæ Naturalis Principia Mathematica</i> (1687), Scholium to the Laws of Motion; Taylor, <i>Classical Mechanics</i>, ch. 3.',
     sketch(p) { p.ground(20, 300, 150); p.circle(80, 125, 25, 1.6); p.arrow(30, 125, 54, 125, 1.6); p.label('v', 40, 112); p.circle(140, 125, 25, 1.6); p.hatch(115, 100, 50, 50, 8); p.label('before', 110, 80, { size: 12 });
@@ -6193,7 +6194,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['An object on a flat surface stands as long as the vertical line through its centre of mass falls inside its base. Lean it past that edge and gravity turns it over.',
       'Push a block of width b sideways at height h and it tips rather than slides if h > b / (2μ): push low to slide a tea tin, high to topple it.',
       'Tall, narrow, top-heavy things (a retort stand, an empty canister on end) tip easily; low, wide ones slide. A cast-iron counterweight slung low on a cart lowers its centre of mass and keeps it upright on a slope.'],
-    analogy: 'A wine glass on a tray tips over at the first lurch; a low tumbler only slides.',
     game: 'Every object is rigid, so it pivots exactly on its corner; real ones dent and rock a little.',
     cf: 'J. L. Meriam &amp; L. G. Kraige, <i>Engineering Mechanics: Statics</i>, ch. 6 (tipping and sliding).',
     sketch(p) { p.ground(20, 300, 160); p.rect(50, 70, 50, 90, 1.6); p.dot(75, 115, 3); p.line(75, 115, 75, 160, 1); p.arrow(100, 85, 140, 85, 1.6); p.label('F at h', 132, 75, { size: 11 }); p.line(110, 160, 110, 85, 0.8); p.label('h', 118, 125, { size: 11 }); p.label('b', 75, 180, { size: 11 });
@@ -6211,7 +6211,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['Surface gravity is about 9.81 m/s² on Earth, 3.71 m/s² on Mars and 1.62 m/s² on the Moon. A 2 kg brass weight keeps its mass everywhere, but weighs 19.6 N here, 7.4 N on Mars and 3.2 N on the Moon.',
       'Less weight means less normal force and so less friction: wheels slip more easily, and a cart that climbs a ramp on Earth may spin its wheels on the Moon. Things also fall more slowly: dropping 1 m takes 0.45 s on Earth and 1.1 s on the Moon (t = √(2h/g)).',
       'Momentum and inertia do not change: a heavy cart is just as hard to start and stop on the Moon.'],
-    analogy: 'Like a bathroom scale that reads lighter while the lift starts down: your body has not changed, only the push you need.',
     game: 'Only g changes. The air, temperature and the materials\' friction coefficients stay as on Earth.',
     cf: 'NASA Goddard Space Flight Center, <i>Planetary Fact Sheets</i> (Earth, Mars, Moon).',
     sketch(p) { const bars = [['Earth', 9.81], ['Mars', 3.71], ['Moon', 1.62]]; bars.forEach(([n, g], i) => { const x = 70 + i * 90, h = g * 12; p.rect(x - 18, 160 - h, 36, h, 1.6); p.hatch(x - 18, 160 - h, 36, h, 8); p.label(n, x, 178); p.label(`${g} m/s²`, x, 152 - h); }); p.line(30, 160, 300, 160, 1.2); } });
@@ -6221,7 +6220,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: [`Densities used for every part and specimen, in kg/m³: brass ${MAT.brass.rho}, steel ${MAT.steel.rho}, cast iron ${MAT.iron.rho}, glass ${MAT.glass.rho}, rock crystal ${MAT.quartz.rho}, brick ${MAT.brick.rho}, oak ${MAT.oak.rho}.`,
       'Real values spread: brass alloys run about 8,400–8,750; grey cast iron about 7,000–7,300; seasoned oak anywhere from about 600 to 900 depending on the species and how dry it is.',
       'Steel is the stiff, strong choice for rods; oak is light (a tenth of steel\'s density) for beams that need only to reach; brass and iron make heavy wheels and counterweights.'],
-    analogy: 'A pint of water weighs about a pound; the same pint of brass would weigh over eight.',
     game: 'Each body is a 2D outline whose areal density is chosen so its total mass equals that of the real 3D object.',
     cf: 'W. M. Haynes (ed.), <i>CRC Handbook of Chemistry and Physics</i>; USDA Forest Products Laboratory, <i>Wood Handbook</i>, FPL-GTR-190 (2010), ch. 4–5.',
     sketch(p) { const rows = [['brass', 8500], ['steel', 7850], ['iron', 7200], ['quartz', 2650], ['glass', 2500], ['brick', 1900], ['oak', 750]]; rows.forEach(([n, d], i) => { const y = 20 + i * 23, w = d / 8500 * 200; p.label(n, 60, y + 13, { size: 11, align: 'end' }); p.rect(70, y, w, 15, 1.2); p.hatch(70, y, w, 15, 7); p.label(String(d), 80 + w, y + 13, { size: 10, align: 'start' }); }); } });
@@ -6230,7 +6228,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: [`The game uses planck.js, a JavaScript rewrite of Erin Catto's Box2D rigid-body engine. It advances the world in fixed steps of 1/120 s (about 8 ms): first every body's velocity, from forces and gravity, then its position.`,
       'Joints and contacts are constraints ("these two points stay together", "these bodies do not overlap"). Box2D solves them by sequential impulses: it nudges the velocities of each pair in turn, sweeping over all of them several times per step (10 times here for velocities and 4 for positions) until they nearly agree.',
       'A fixed step makes the result repeatable: the same design on the same level always does the same thing, which is what lets the tests replay every reference solution.'],
-    analogy: 'A flip-book: each page is the world 1/120 s later, drawn from the page before.',
     game: 'A constraint is only satisfied approximately, so pins can stretch by a few millimetres under load, and a fast part could in principle pass through a thin moving object between two steps (planck.js\'s continuous collision guards only the fixed furniture unless a body is marked as a bullet).',
     cf: 'E. Catto, "Iterative Dynamics with Temporal Coherence", Game Developers Conference (2005); Box2D v2 manual (recommended 8 velocity / 3 position iterations at 60 Hz); planck.js (github.com/piqnt/planck.js).',
     sketch(p) { for (let i = 0; i < 4; i++) { const x = 30 + i * 72; p.rect(x, 40, 60, 80, 1.2); p.circle(x + 15 + i * 9, 100 - i * 14 + i * i * 3, 7, 1.4); p.label(`t + ${i}Δt`, x + 30, 140, { size: 11 }); } p.arrow(30, 165, 290, 165, 1.2); p.label('Δt = 1/120 s', 160, 184, { size: 12 }); } });
@@ -6239,7 +6236,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['A pin (revolute joint) keeps two points together but lets the parts turn freely about it. A piston is a sliding (prismatic) joint between cylinder and rod with a motor along it. A string is a maximum-distance rule.',
       'Three rods pinned in a triangle cannot change shape, which is why bridges and cranes are made of triangles; four rods in a square fold flat.',
       'Each joint removes freedoms: a flat body has three (x, y and rotation), and a pin takes two of them away.'],
-    analogy: 'Paper fasteners in card strips: a square of strips flops about, a triangle stays rigid.',
     game: 'Pins are frictionless. Each is a 1/8 in brass screw that shears at 969 N (see "Stress, strength and breaking"). A joint\'s constraint is solved approximately each step, so a heavily loaded pin may drift by a few millimetres.',
     cf: 'Meriam &amp; Kraige, <i>Engineering Mechanics: Statics</i>, ch. 4 (trusses); Box2D v2 manual, "Joints".',
     sketch(p) { const tri = [[40, 150], [140, 150], [90, 70]]; p.poly(tri, 2.2, true); tri.forEach(([x, y]) => pin(p, x, y)); p.label('rigid', 90, 175, { size: 12 }); const sq = [[190, 150], [280, 150], [300, 70], [210, 70]]; p.poly(sq, 2.2, true); sq.forEach(([x, y]) => pin(p, x, y)); p.arrow(220, 50, 260, 50, 1, 6); p.label('folds flat', 245, 175, { size: 12 }); } });
@@ -6257,7 +6253,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['First law: a body keeps its state of rest or steady motion unless a force acts on it. Second: force = mass × acceleration (F = ma), so the same push accelerates a 1 kg crystal ten times faster than a 10 kg load. Third: forces come in pairs; if A pushes B, B pushes A back just as hard, in the opposite direction.',
       `The third law is why a piston needs something to brace against: as the rod pushes the specimen with ${Math.round(PIS.force)} N, the cylinder is pushed back with ${Math.round(PIS.force)} N, and your frame must carry it. A motor wheel on a cart twists the cart the other way as it turns.`,
       'Newton set the three laws out at the start of the <i>Principia</i> (1687).'],
-    analogy: 'Pushing off from a wall in a swimming pool: you push the wall, the wall pushes you, and away you glide.',
     game: 'The game keeps all three laws for pistons, motors, springs and strings: each force acts on both bodies. A lone motor wheel has a stator that takes the reaction torque; pinned motors push against their frame (see "Motors" and "Angular momentum").',
     cf: 'I. Newton, <i>Philosophiæ Naturalis Principia Mathematica</i> (1687), Axioms, or Laws of Motion; Halliday, Resnick &amp; Walker, ch. 5.',
     sketch(p) { p.ground(20, 300, 160); p.rect(40, 110, 60, 50, 1.6); p.hatch(40, 110, 60, 50, 7); p.rect(100, 122, 70, 26, 1.6); p.line(170, 135, 210, 135, 2.6); p.rect(210, 108, 50, 52, 1.6);
@@ -6267,7 +6262,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['A spinning body carries angular momentum L = Iω. With no outside torque it cannot change: that is why a free wheel coasts, and why a skater who pulls her arms in (smaller I) spins faster.',
       `A motor wheel at its free speed has I = ½mr² ≈ ${r1(0.5 * motorMass * WR * WR, 4)} kg·m², so L ≈ ${r1(0.5 * motorMass * WR * WR * M.speed, 3)} kg·m²/s and a spin energy ½Iω² ≈ ${r1(0.25 * motorMass * WR * WR * M.speed * M.speed, 2)} J. A steam engine\'s heavy flywheel stores far more, which is what carries the crank smoothly past the dead points of each stroke.`,
       'When a motor spins a wheel one way, it twists its mounting (and so the cart) the other way, so the total angular momentum stays the same.'],
-    analogy: 'An office chair: spin it with your feet off the floor and pull your legs in, and it speeds up.',
     game: 'A lone motor wheel conserves angular momentum: the stator spins the other way with equal-and-opposite L. Pinned motors are honest too: the frame takes the reaction. One quieter leak remains: the small angular damping on the wheels and the counterweight is a twist with no partner, so it slowly drains L (a few thousandths of a kg·m²/s over a couple of seconds).',
     cf: 'Halliday, Resnick &amp; Walker, ch. 11 (angular momentum); Taylor, <i>Classical Mechanics</i>, ch. 3 and 10.',
     sketch(p) { wheel(p, 90, 100, 50, 8); p.ellipse(90, 100, 66, 66, 1.2, -2.6, -0.6); p.arrow(90 + 66 * Math.cos(-0.7), 100 + 66 * Math.sin(-0.7), 90 + 66 * Math.cos(-0.6), 100 + 66 * Math.sin(-0.6), 1.2, 7); p.label('L = Iω', 90, 180, { size: 13 });
@@ -6277,7 +6271,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: [`A mass m on a spring k bounces at its natural frequency f = (1/2π)√(k/m). This game's spring (k = ${PT.spring.k} N/m) holding the ${r1(PT.weight.mass)} kg iron ball would bounce at about ${r1(Math.sqrt(PT.spring.k / PT.weight.mass) / (2 * Math.PI), 2)} Hz.`,
       `Damping (a force against the velocity, c·v) makes the bounce die away. The damping ratio is ζ = c / (2√(km)); for that ball ζ ≈ ${r1(PT.spring.c / (2 * Math.sqrt(PT.spring.k * PT.weight.mass)), 2)}, so it rings for several bounces before it settles. ζ = 1 is critical damping: back to rest as fast as possible with no overshoot.`,
       `Push a lightly damped spring in time with its natural frequency and each push adds to the swing: resonance. The steady swing can reach about 1/(2ζ) times the static stretch, roughly ${Math.round(1 / (2 * PT.spring.c / (2 * Math.sqrt(PT.spring.k * PT.weight.mass))))} times here. A piston's 2 s cycle (0.5 Hz) is far from that ball's natural frequency, so it will not pump it up much.`],
-    analogy: 'A child on a swing: small pushes at just the right moment build a big swing; pushes at random do little.',
     game: `Springs are massless and their damping (${PT.spring.c} N·s/m) is a simple velocity force; real springs also lose energy inside the steel and can surge (ripple along their coils).`,
     cf: 'A. P. French, <i>Vibrations and Waves</i> (1971), ch. 3–4; Halliday, Resnick &amp; Walker, ch. 15 (damped and forced oscillations).',
     sketch(p) { p.line(30, 100, 300, 100, 0.8); p.curve((t) => [30 + 270 * t, 100 - 60 * Math.exp(-3 * t) * Math.cos(t * 30)], 0, 1, 120, 1.6); p.curve((t) => [30 + 270 * t, 100 - 60 * Math.exp(-3 * t)], 0, 1, 30, 0.8); p.curve((t) => [30 + 270 * t, 100 + 60 * Math.exp(-3 * t)], 0, 1, 30, 0.8);
@@ -6287,7 +6280,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     body: ['Once a thing leaves your apparatus, only gravity acts on it (air drag is tiny for dense brass and glass at bench speeds). It keeps its sideways speed and gains downward speed at g, so it flies on a parabola: x = v·cos θ·t, y = v·sin θ·t − ½gt².',
       'On level ground the range is R = v²·sin 2θ / g, longest at 45°. Thrown at 2 m/s at 45° it lands 0.41 m away on Earth and 2.5 m away on the Moon.',
       'Galileo worked out the parabola in his <i>Two New Sciences</i> (1638) by treating the sideways and the falling motion separately.'],
-    analogy: 'A ball rolled off a table and one dropped beside it at the same instant land together.',
     game: 'There is no air at all, and the step-by-step integrator makes falls very slightly long (about 1 % over a 1 s fall at 120 steps per second).',
     cf: 'G. Galilei, <i>Discorsi e dimostrazioni matematiche intorno a due nuove scienze</i> (1638), Fourth Day; Halliday, Resnick &amp; Walker, ch. 4.',
     sketch(p) { p.ground(20, 300, 165); p.curve((t) => [40 + 240 * t, 165 - 4 * 110 * t * (1 - t)], 0, 1, 60, 1.6); p.arrow(40, 165, 75, 130, 1.4); p.label('v, θ', 70, 150, { size: 12 }); p.dot(160, 55, 3); p.label('top: vertical speed 0', 200, 42, { size: 11 }); p.line(40, 178, 280, 178, 1); p.label('R = v² sin 2θ / g', 160, 188, { size: 12 }); } });
@@ -6298,7 +6290,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       'Euler overestimates short, stocky members, which yield or crush before they bow. Below a slenderness L/r of about 126 for this steel (rods shorter than 63 cm), and about 69 for oak (beams shorter than 30 cm), the game uses Johnson\'s parabola, P = Aσ(1 − σ(L/r)²/4π²E). That gives 54 kN for a 0.5 m rod, where Euler would claim 62 kN.',
       'Bending is worst at the outer edge, the extreme fibre: σ = M·c/I + P/A. The steel rod yields at M = 250 MPa × 7,854 mm⁴ / 10 mm ≈ 196 N·m, about what a 1 m rod lying across a peg feels with 393 N hanging from each end. Steel is ductile: past yield it does not break but kinks, and the kink stays. After yielding, the elastic fibre formula no longer applies. A solid round bar has plastic section modulus Zp = d³/6, so full-plastic yield is 333 N·m and the model uses an ultimate bending capacity of 400 MPa × Zp = 533 N·m. The hinge hardens toward that capacity over an assumed 0.4 rad (23°); combined axial force reduces its bending allowance. This is an idealised capacity model, not a prediction of real fracture strain. Oak is brittle. Turned in its own plane the beam is 30 mm deep (I = 33,750 mm⁴), so it breaks outright at its modulus of rupture, 105 MPa, at 236 N·m. Pins carry no turning moment, so bending comes from things pressing along a member and from its own weight and inertia when it is struck.',
       'Every joint is a 1/8 in brass screw, whose thread root (2.36 mm, 4.38 mm²) shears at 221 MPa, or 969 N. The 2 mm cord snaps at 300 N. So on this bench screws and cords give way long before any bar is pulled apart. Long beams buckle, steel rods kink, and a hard knock can bend or snap a member.'],
-    analogy: 'A drinking straw: pull it and it holds; push its ends together and it bows and folds.',
     game: 'Parts fail as their material does. A steel rod that buckles or bends past yield kinks at that point and keeps the kink, still in one piece; pulled past yield it necks; it splits only at 400 MPa. An oak beam snaps where it fails, a screw shears and a cord snaps. Each has a quarter-second animation and sound. A part glows once it carries 70% of its failure load. The loads are read from the solver at every 1/120 s physics step and smoothed with a 6 ms time constant, so a one-step solver spike needs a third more than the failure load, while a genuine knock still breaks things. Members are otherwise perfectly rigid: the waist is drawn but the rod does not get longer, and a kink sits at least a fifth of the way along a rod.',
     cf: 'L. Euler, <i>Methodus inveniendi lineas curvas</i> (1744), appendix on elastic curves; J. M. Gere &amp; B. J. Goodno, <i>Mechanics of Materials</i>, ch. 1, 5 and 11 (stress, bending, columns and Johnson\'s parabolic formula); ASTM A36 (structural steel: yield 250 MPa, tensile strength 400–550 MPa, elongation 20%); USDA <i>Wood Handbook</i> (2010), Table 5-3b (white oak: MOE 12.3 GPa, MOR 105 MPa, crushing 50.8 MPa) and Table 5-7 (tension along the grain, overcup oak 77.9 MPa green, about 32% more at 12% moisture); Copper Development Association, free-cutting brass C36000 (half hard: shear 221 MPa); Cordage Institute manila rope table.',
     sketch(p) { p.line(60, 20, 60, 170, 2.6); p.arrow(60, 4, 60, 18, 1.4, 6); p.arrow(60, 186, 60, 172, 1.4, 6); p.label('σ = F/A', 105, 100, { size: 12 });
@@ -6309,7 +6300,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       'Steel and wheels collide except at shared pins; oak passes through other parts but touches furniture; joints are frictionless; motors and pistons never run short of steam; the world is a flat 2D slice; wheels have no rolling resistance; air and heat are left out.',
       'Parts can break, but members stay perfectly rigid until they do, and the breaking loads are those of new, flawless material. The solver\'s forces are smoothed over a step or two before they are compared with the breaking loads, because a stack of contacts can throw up a one-step spike that no real part would feel. The smoothing is a first-order lag with a 6 ms time constant, applied at every fixed 1/120 s physics step, so it is the same at any frame rate. A one-step spike must reach a third over the breaking load to count; a knock that lasts a few steps breaks at the true load.',
       'A free motor wheel has a stator with an offset centre of mass: it can crawl on the bench with only a little force (about m·g·d at the axle, plus bearing friction), and the reaction torque never comes from nowhere.'],
-    analogy: 'A model railway: the engines are to scale, but the track never wears and the coal never runs out.',
     game: 'Every page here ends with its own "In the game" note; this page gathers those modelling notes.',
     cf: 'planck.js and the Box2D v2 manual for what the solver does; the game\'s own part definitions and simulation settings for every number.',
     sketch(p) { p.ground(20, 300, 160); wheel(p, 80, 140, 20, 8); wheel(p, 180, 140, 20, 8); p.line(80, 140, 180, 140, 2.2); p.line(70, 100, 200, 120, 2.2); p.label('passes through', 140, 92, { size: 11 }); p.circle(262, 110, 20, 1.6); p.circle(262, 110, 5, 1.2); p.line(262, 110, 225, 70, 2.2); p.line(262, 110, 300, 80, 2.2); p.label('frictionless pin', 262, 150, { size: 11 }); pin(p, 80, 140); pin(p, 180, 140); } });
@@ -6352,7 +6342,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     const slip = (kind, text, label) => `<aside class="vls-note vls-${kind}" role="note"><span class="vls-note-label">${label}</span><p>${text}</p></aside>`;
     return `<article class="vls-page fa-entry" id="note-${e.id}" data-entry="${e.id}">${no != null ? `<span class="vls-pageno">${no}</span>` : ''}<h2>${esc(e.title)}</h2>`
       + `<figure class="fa-fig">${sketchSVG(e)}</figure>${e.body.map((t) => `<p>${t}</p>`).join('')}`
-      + (e.analogy ? slip('analogy', e.analogy, 'Analogy') : '') + (e.game ? slip('simplification', e.game, 'In the game') : '')
+      + (e.game ? slip('simplification', e.game, 'In the game') : '')
       + `<p class="vls-cf"><span class="vls-cf-mark">cf.</span> ${e.cf}</p></article>`;
   }
   function lockedHTML(e, no) { return `<article class="vls-page fa-entry fa-locked" data-entry="${e.id}"><span class="vls-pageno">${no}</span><h2>🔒 ${esc(e.title)}</h2><p><i>${esc(e.hint)}</i></p></article>`; }
@@ -6376,7 +6366,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
   }
   function render(el) {
     const all = NB.ENTRIES, n = all.filter((e) => open.has(e.id)).length;
-    let html = `<article class="vls-page fa-contents"><h2>Laboratory notes</h2><p>${n} of ${all.length} pages written. New pages appear as you meet each part and experiment.</p><ol class="fa-toc">`
+    let html = `<article class="vls-page fa-contents"><h2>Laboratory notes</h2><p>Pick a part from the drawer and draw it inside the scribed build area, then pull the lever. Rods, oak, string and springs run from joint to joint; wheels, motors and the counterweight drop on a tap; a piston is dragged along its push. Pulley cord: one end, then wheel hubs, then the other end. Winch cord: a wheel hub, then the other end. The footer counts an open cord. Rest on a part for its numbers: hover on a desk, or press and hold on a phone, and the card leaves when you do. A short tap still selects the part. These pages are the instructions, and they open from Help.</p><p>${n} of ${all.length} pages written. New pages are written as you meet each part and experiment.</p><ol class="fa-toc">`
       + all.map((e) => `<li>${open.has(e.id) ? `<a href="#note-${e.id}">${e.title}</a>` : `<span class="fa-toc-locked">🔒 ${e.title}</span>`}</li>`).join('') + '</ol></article>';
     all.forEach((e, i) => { html += open.has(e.id) ? NB.pageHTML(e, i + 1) : NB.lockedHTML(e, i + 1); });
     el.innerHTML = html;
@@ -6386,6 +6376,226 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     onUnlock(f) { listeners.add(f); return () => listeners.delete(f); },
     reset() { open = new Set(); save(); } };
 })(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>/* src/part-tip.js */
+/* Part and tool cards. One ivory plaque, never a modal.
+ * Desk: show after a hover dwell, hide on leave. Touch and pen: show after a press dwell,
+ * hide on release, cancel, scroll or drag, and do not select, place or buy.
+ * A keyboard focus that did not come from a pointer is the same card.
+ * Tests complete a pending dwell with VC.partTip.settle(); they do not wait on the clock. */
+(function (root) {
+  'use strict';
+  const VC = (root.VC = root.VC || {});
+  const DWELL_MS = 480;
+  const SLOP = 12;
+  function mount(opts) {
+    const tip = opts.tip, copy = opts.copy, refresh = opts.refresh || function () {};
+    let timer = null, armed = null, showing = null, showingKind = null, holdWatch = null, touchAt = -1e9;
+    const suppress = new WeakMap();
+    const pointerFocused = new WeakSet();
+    const keyboardFocus = new WeakSet();
+    function clearTimer() { if (timer != null) { root.clearTimeout(timer); timer = null; } }
+    function isTip(node) { return !!(node && (node === tip || tip.contains(node))); }
+    function isInside(button, node) { return !!(button && node && (node === button || button.contains(node))); }
+    function hide() {
+      clearTimer();
+      armed = null;
+      if (showing) showing.removeAttribute('aria-describedby');
+      showing = null;
+      showingKind = null;
+      tip.classList.remove('show');
+      tip.setAttribute('aria-hidden', 'true');
+      tip.style.pointerEvents = 'none';
+      copy.textContent = '';
+    }
+    function dismiss(button, kinds) {
+      if (armed && armed.button === button && kinds.indexOf(armed.kind) >= 0) { clearTimer(); armed = null; }
+      if (showing === button && kinds.indexOf(showingKind) >= 0) hide();
+    }
+    function place(button) {
+      const margin = 8, r = button.getBoundingClientRect();
+      tip.style.left = '0px'; tip.style.top = '0px';
+      const w = tip.offsetWidth, h = tip.offsetHeight, vw = root.innerWidth, vh = root.innerHeight;
+      const above = { left: r.left, top: r.top - h - margin };
+      const below = { left: r.left, top: r.bottom + margin };
+      const right = { left: r.right + margin, top: r.top };
+      const left = { left: r.left - w - margin, top: r.top };
+      const lower = r.top + r.height / 2 > vh * 0.55;
+      const candidates = lower ? [above, right, left, below] : [right, left, above, below];
+      const fits = (c) => c.left >= margin && c.top >= margin && c.left + w <= vw - margin && c.top + h <= vh - margin;
+      const hits = (c) => !(c.left + w <= r.left || r.right <= c.left || c.top + h <= r.top || r.bottom <= c.top);
+      let chosen = null;
+      for (let i = 0; i < candidates.length; i++) if (fits(candidates[i]) && !hits(candidates[i])) { chosen = candidates[i]; break; }
+      if (!chosen) for (let i = 0; i < candidates.length; i++) if (fits(candidates[i])) { chosen = candidates[i]; break; }
+      chosen = chosen || candidates[2];
+      tip.style.left = Math.max(margin, Math.min(chosen.left, vw - w - margin)) + 'px';
+      tip.style.top = Math.max(margin, Math.min(chosen.top, vh - h - margin)) + 'px';
+    }
+    function show(button, text, kind) {
+      if (!button.isConnected) return hide();
+      copy.textContent = text;
+      tip.classList.add('show');
+      tip.setAttribute('aria-hidden', 'false');
+      tip.style.pointerEvents = kind === 'hold' ? 'none' : 'auto';
+      refresh();
+      place(button);
+      if (showing && showing !== button) showing.removeAttribute('aria-describedby');
+      showing = button;
+      showingKind = kind;
+      button.setAttribute('aria-describedby', copy.id || 'part-tip-copy');
+    }
+    function arm(button, text, kind) {
+      if (showing === button && showingKind === kind) return;
+      if (armed && armed.button === button && armed.kind === kind) return;
+      clearTimer();
+      armed = { button: button, text: text, kind: kind };
+      timer = root.setTimeout(function () {
+        timer = null;
+        if (!armed || armed.button !== button || armed.kind !== kind) return;
+        armed = null;
+        if (!button.isConnected) return;
+        if (kind === 'hover' && !button.matches(':hover') && !tip.matches(':hover')) return;
+        if (kind === 'focus' && root.document.activeElement !== button) return;
+        if (kind === 'hold' && !holdWatch) return;
+        show(button, text, kind);
+      }, DWELL_MS);
+    }
+    function endHoldWatch() {
+      if (!holdWatch) return;
+      const w = holdWatch;
+      holdWatch = null;
+      root.removeEventListener('pointermove', w.move);
+      root.removeEventListener('pointerup', w.up);
+      root.removeEventListener('pointercancel', w.cancel);
+      if (w.touchCancel) root.removeEventListener('touchcancel', w.touchCancel);
+    }
+    function armSuppress(button) {
+      suppress.set(button, true);
+      root.setTimeout(function () { suppress.delete(button); }, 0);
+    }
+    function beginHold(button, text, e) {
+      endHoldWatch();
+      suppress.delete(button);
+      arm(button, text, 'hold');
+      const originX = e.clientX, originY = e.clientY, pointerId = e.pointerId;
+      const gesture = { button: button, dragged: false, pointerId: pointerId };
+      function move(ev) {
+        if (ev.pointerId !== pointerId || !holdWatch) return;
+        const dx = ev.clientX - originX, dy = ev.clientY - originY;
+        if (dx * dx + dy * dy <= SLOP * SLOP) return;
+        gesture.dragged = true;
+        dismiss(button, ['hold']);
+      }
+      function up(ev) {
+        if (ev.pointerId !== pointerId) return;
+        touchAt = performance.now();
+        const shown = showing === button && showingKind === 'hold';
+        endHoldWatch();
+        pointerFocused.delete(button);
+        if (shown || gesture.dragged) armSuppress(button);
+        dismiss(button, ['hold']);
+      }
+      function cancel(ev) {
+        if (ev.pointerId !== pointerId) return;
+        endHoldWatch();
+        pointerFocused.delete(button);
+        armSuppress(button);
+        dismiss(button, ['hold']);
+      }
+      function touchCancel() {
+        endHoldWatch();
+        pointerFocused.delete(button);
+        armSuppress(button);
+        dismiss(button, ['hold']);
+      }
+      gesture.move = move; gesture.up = up; gesture.cancel = cancel; gesture.touchCancel = touchCancel;
+      holdWatch = gesture;
+      root.addEventListener('pointermove', move);
+      root.addEventListener('pointerup', up);
+      root.addEventListener('pointercancel', cancel);
+      root.addEventListener('touchcancel', touchCancel);
+    }
+    function bind(button, text) {
+      if (!button || button.dataset.tipBound) return;
+      button.dataset.tipBound = '1';
+      button.removeAttribute('title');
+      button.addEventListener('pointerover', function (e) {
+        if (e.pointerType === 'touch') return;
+        if (e.pointerType === 'pen' && e.buttons) return;
+        // A tap on Chrome is followed by a compatibility mouse hover. That is not a desk hover.
+        if (touchAt > 0 && performance.now() - touchAt < 800) return;
+        if (isInside(button, e.relatedTarget)) return;
+        arm(button, text, 'hover');
+      });
+      button.addEventListener('pointerout', function (e) {
+        if (e.pointerType === 'touch') return;
+        if (isTip(e.relatedTarget) || isInside(button, e.relatedTarget)) return;
+        dismiss(button, ['hover']);
+        if (keyboardFocus.has(button)) arm(button, text, 'focus');
+      });
+      button.addEventListener('pointerdown', function (e) {
+        pointerFocused.add(button);
+        if (e.pointerType === 'mouse') return;
+        touchAt = performance.now();
+        beginHold(button, text, e);
+      });
+      button.addEventListener('pointerup', function () { pointerFocused.delete(button); });
+      button.addEventListener('pointercancel', function () { pointerFocused.delete(button); });
+      button.addEventListener('click', function (e) {
+        if (!suppress.get(button)) return;
+        suppress.delete(button);
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }, true);
+      button.addEventListener('focusin', function () {
+        // Touch focus arrives after pointerup, so it must not count as a keyboard focus.
+        if (pointerFocused.has(button) || (touchAt > 0 && performance.now() - touchAt < 800)) {
+          pointerFocused.delete(button);
+          keyboardFocus.delete(button);
+          return;
+        }
+        keyboardFocus.add(button);
+        arm(button, text, 'focus');
+      });
+      button.addEventListener('focusout', function () { keyboardFocus.delete(button); dismiss(button, ['focus']); });
+    }
+    tip.addEventListener('pointerout', function (e) {
+      if (showingKind !== 'hover' || !showing) return;
+      if (isInside(showing, e.relatedTarget) || isTip(e.relatedTarget)) return;
+      dismiss(showing, ['hover']);
+    });
+    tip.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); });
+    tip.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); });
+    function onScroll() {
+      // Keep the pointerup watcher so the click that follows a scroll or drag is still swallowed.
+      if (holdWatch) { holdWatch.dragged = true; dismiss(holdWatch.button, ['hold']); return; }
+      if (showing || armed) hide();
+    }
+    root.document.addEventListener('scroll', onScroll, true);
+    function settle() {
+      if (timer == null || !armed) return false;
+      const job = armed;
+      clearTimer();
+      armed = null;
+      if (!job.button.isConnected) return false;
+      if (job.kind === 'hover' && !job.button.matches(':hover') && !tip.matches(':hover')) return false;
+      if (job.kind === 'focus' && root.document.activeElement !== job.button) return false;
+      if (job.kind === 'hold' && !holdWatch) return false;
+      show(job.button, job.text, job.kind);
+      return true;
+    }
+    const api = {
+      bind: bind, hide: hide, settle: settle, dwellMs: DWELL_MS, slop: SLOP,
+      get showing() { return showingKind ? showingKind : ''; },
+    };
+    VC.partTip.settle = settle;
+    VC.partTip.hide = hide;
+    VC.partTip.dwellMs = DWELL_MS;
+    return api;
+  }
+  VC.partTip = { mount: mount, dwellMs: DWELL_MS };
+})(typeof window !== 'undefined' ? window : this);
 
 </script>
 <script>/* src/game.js */
@@ -6407,6 +6617,8 @@ window.VC.ready = (async function () {
     sim: null, cam: { x: 6, y: 1.5, scale: 80 }, undo: [], redo: [], drag: null, pointers: new Map(), pinch: null, hover: null,
     progress: store.get('progress', {}), acc: 0, last: 0, t: 0, hold: false, W: 0, H: 0, dpr: 1, nid: 1, won: false };
   VC.gameState = state;   // shared with the level editor (src/editor.js)
+  let partTip = null;
+  function bindPartTip(button, text) { if (partTip && text) partTip.bind(button, text); }
 
   // The bevel is hardware, not printable area. Keep every changing button caption/icon in a
   // clipped inner face, including dynamically built catalogues and shop/status captions.
@@ -6532,26 +6744,36 @@ window.VC.ready = (async function () {
 
   // ---------------- drawer ----------------
   const TOOLS = [{ id: 'move', label: 'Move' }, { id: 'delete', label: 'Delete' }, { id: 'stringRoute', label: 'Pulley cord' }, { id: 'stringWinch', label: 'Winch cord' }];
+  const TOOL_TIP = {
+    move: 'Move. Drag a joint to reposition it, or drag empty bench to look around.',
+    delete: 'Delete. Tap a part to remove it.',
+    stringRoute: 'Pulley cord. Tap the first end, then wheel hubs, then the other end.',
+    stringWinch: 'Winch cord. Tap a wheel hub, then the cord end. Motor direction winds in.',
+  };
   function buildDrawer() {
     const d = $('drawer'); d.innerHTML = '';
+    if (partTip) partTip.hide();
     if (state.editing && state.drawerHook) return state.drawerHook(d);
     const lab = (t) => { const e = document.createElement('div'); e.className = 'drawer-label'; e.textContent = t; d.appendChild(e); };
     lab('Parts');
     for (const id of ORDER) {
       if (PARTS[id].extra && id === 'beam') lab('Extras');
-      const b = document.createElement('button'); b.dataset.tool = id; b.setAttribute('aria-label', PARTS[id].label); b.title = `${PARTS[id].label}: ${PARTS[id].massNote}`;
+      const b = document.createElement('button'); b.dataset.tool = id; b.setAttribute('aria-label', PARTS[id].label);
       const c = document.createElement('canvas'); c.width = 96; c.height = 96; b.appendChild(c);
       const sm = document.createElement('small'); sm.textContent = PARTS[id].short; b.appendChild(sm);
       if (state.level && state.level.parts && !state.level.parts.includes(id)) b.disabled = true;
-      b.addEventListener('click', () => { state.cordDraft = null; state.tool = id; syncDrawer(); toast(`${PARTS[id].label} · ${PARTS[id].massNote}`); });
+      b.addEventListener('click', () => { state.cordDraft = null; state.tool = id; syncDrawer(); });
+      bindPartTip(b, `${PARTS[id].label}. ${PARTS[id].massNote}`);
       d.appendChild(b); drawIcon(c, id);
     }
     lab('Tools');
     for (const t of TOOLS) { const b = document.createElement('button'); b.dataset.tool = t.id; b.setAttribute('aria-label', t.label); const c = document.createElement('canvas'); c.width = c.height = 96; b.appendChild(c); const label = document.createElement('small'); label.textContent = t.label; b.appendChild(label); drawIcon(c, t.id);
       if (t.id.startsWith('string')) b.disabled = !!state.level.parts && !state.level.parts.includes('string');
-      b.addEventListener('click', () => { state.cordDraft = null; state.tool = t.id; syncDrawer(); if(t.id==='stringRoute')toast('Tap the first end, then wheel hubs, then the other end.'); if(t.id==='stringWinch')toast('Tap a wheel hub, then the cord end. Motor direction winds in.'); }); d.appendChild(b); }
+      b.addEventListener('click', () => { state.cordDraft = null; state.tool = t.id; syncDrawer(); });
+      bindPartTip(b, TOOL_TIP[t.id]); d.appendChild(b); }
     const clr = document.createElement('button'); clr.innerHTML = '<canvas width="96" height="96"></canvas><small>Clear all</small>'; drawIcon(clr.querySelector('canvas'), 'clear'); clr.setAttribute('aria-label', 'Clear all parts');
     clr.addEventListener('click', () => { if (state.mode !== 'build' || !state.design.parts.length) return; commit(() => { state.design = { nodes: [], parts: [] }; }); toast('Bench cleared. Undo (↶) brings it back.'); });
+    bindPartTip(clr, 'Clear all. Removes every part from the bench. Undo brings them back.');
     d.appendChild(clr);
   }
   function syncDrawer() { for (const b of $('drawer').querySelectorAll('button[data-tool]')) {
@@ -6646,19 +6868,19 @@ window.VC.ready = (async function () {
   function cordTap(p) {
     const q=snap(view().toWorld(p.px,p.py)), draft=state.cordDraft;
     if(!draft) {
-      if(state.tool==='stringWinch' && !wheelAtHub(q.id)){toast('Start a winch cord at a wheel hub.');return;}
-      state.cordDraft={a:q,via:[]};toast(state.tool==='stringWinch'?'Now tap the other end.':'Tap a wheel hub to guide the cord, then its other end.');return;
+      if(state.tool==='stringWinch' && !wheelAtHub(q.id)){toast('Not a wheel hub.');return;}
+      state.cordDraft={a:q,via:[]};updateStatus();return;
     }
     if(state.tool==='stringRoute' && wheelAtHub(q.id)) {
       if(draft.via.length===4){toast('At most four pulley hubs per cord.');return;}
       if(q.id===draft.a.id || draft.via.includes(q.id)){toast('Choose another wheel hub.');return;}
-      draft.via.push(q.id);toast('Guide added. Tap another hub or the cord end.');return;
+      draft.via.push(q.id);updateStatus();return;
     }
-    if(state.tool==='stringRoute' && !draft.via.length){toast('Tap at least one wheel hub before the other end.');return;}
+    if(state.tool==='stringRoute' && !draft.via.length){toast('A pulley cord needs a wheel hub.');return;}
     const cord=state.tool==='stringWinch'?{winch:{end:0,direction:wheelAtHub(draft.a.id).type==='motorCCW'?-1:1}}:{via:draft.via};
     const result=proposePart('string',draft.a,q,cord);
     if(result.error){toast(result.error);return;}
-    commit(()=>{state.design=result.design;prune(state.design);});state.cordDraft=null;
+    state.cordDraft=null;commit(()=>{state.design=result.design;prune(state.design);});updateStatus();
   }
   function deletePart(i) {
     const old=nm(),removed=state.design.parts[i];state.design.parts.splice(i,1);
@@ -6736,7 +6958,7 @@ window.VC.ready = (async function () {
     const d = state.drag; state.drag = null; if (!d || e.type === 'pointercancel') { if (d && d.kind === 'node') state.design = JSON.parse(d.orig); return; }
     if (d.kind === 'place') {
       const spec = PARTS[state.tool]; if(!spec)return; const single = spec.kind === 'wheel' || spec.kind === 'ball';
-      if (!single && !d.moved && spec.kind !== 'piston') { toast(`Drag to draw a ${spec.label.toLowerCase()} from joint to joint.`); return; }
+      if (!single && !d.moved && spec.kind !== 'piston') return;
       const r = proposePart(state.tool, d.a, single ? d.b : d.b);
       if (r.error) { toast(r.error); return; }
       commit(() => { state.design = r.design; prune(state.design); });
@@ -6763,6 +6985,7 @@ window.VC.ready = (async function () {
   canvas.addEventListener('pointerup', endPointer); canvas.addEventListener('pointercancel', endPointer);
   canvas.addEventListener('pointerleave', () => { state.hover = null; });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  $('drawer').addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener('wheel', (e) => { e.preventDefault(); const p = local(e); zoomAt(p.px, p.py, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
   function zoomAt(px, py, f) { const V = view(), w = V.toWorld(px, py), s = Math.max(MIN_SCALE, Math.min(2500, state.cam.scale * f)); state.cam.scale = s; state.cam.x = w.x - (px - state.W / 2) / s; state.cam.y = w.y + (py - state.H / 2) / s; state.userCam = true; }
   function startPinch() { const [a, b] = [...state.pointers.values()]; state.pinch = { d: Math.hypot(a.px - b.px, a.py - b.py), c: { px: (a.px + b.px) / 2, py: (a.py + b.py) / 2 }, cam: { ...state.cam } }; }
@@ -7088,12 +7311,13 @@ window.VC.ready = (async function () {
       const be = p.bestEnergy != null ? `, ${p.bestEnergy.toFixed(1)} J` : '';
       s += ` · best ${bm}${be}, ${p.bestTime.toFixed(1)} s`;
     }
+    if (state.cordDraft) s += state.tool === 'stringWinch' ? ' · Winch cord open, one end set' : ` · Pulley cord open, ${state.cordDraft.via.length} hub${state.cordDraft.via.length === 1 ? '' : 's'}`;
     $('status').textContent = s;
   }
 
   // ---------------- panels, toasts ----------------
   let toastT = 0; function toast(msg) { const t = $('toast'); $('toast-copy').textContent = msg; t.classList.add('show'); refreshUiPlaques(); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
-  function showPanel(id) { $('veil').classList.add('show'); $(id).classList.add('show'); refreshUiPlaques(); }
+  function showPanel(id) { if (partTip) partTip.hide(); $('veil').classList.add('show'); $(id).classList.add('show'); refreshUiPlaques(); }
   function hidePanel(id) { $(id).classList.remove('show'); if (!document.querySelector('.panel.show')) $('veil').classList.remove('show'); }
   function showLevels() {
     stop(true); const g = $('levels-grid'); g.innerHTML = '';
@@ -7138,7 +7362,8 @@ window.VC.ready = (async function () {
   const openNotes = () => { VC.notes.render($('notebook'), state.theme); showPanel('p-help'); $('p-help').scrollTop = 0; };
   $('b-levels-help').addEventListener('click', () => { hidePanel('p-levels'); openNotes(); });
   $('b-help').addEventListener('click', openNotes);
-  VC.notes.emit('start'); VC.notes.onUnlock((es) => toast(`New page${es.length > 1 ? 's' : ''} in the Laboratory notes: ${es.map((e) => e.title).join('; ')}.`));
+  // Pages still unlock as the player meets them and stay in Help. They are not announced.
+  VC.notes.emit('start');
   $('b-help-close').addEventListener('click', () => hidePanel('p-help'));
   $('b-settings').addEventListener('click', () => { $('settings-msg').textContent = ''; $('b-set-theme').textContent = state.theme === 'bw' ? 'Gaslight theme' : 'B&W theme'; refreshShop(); renderStoreLinks(); showPanel('p-settings'); });
   $('b-settings-close').addEventListener('click', () => hidePanel('p-settings'));
@@ -7156,9 +7381,13 @@ window.VC.ready = (async function () {
   $('b-editor-back').addEventListener('click', () => { hidePanel('p-win'); VC.editor && VC.editor.back(); });
   $('veil').addEventListener('click', () => { for (const id of ['p-levels', 'p-help', 'p-settings', 'p-coins']) hidePanel(id); });
   window.addEventListener('keydown', (e) => {
-    if (e.key === ' ' || e.key === 'Enter') { if (!document.querySelector('.panel.show')) { e.preventDefault(); run(); } }
+    if (e.key === ' ' || e.key === 'Enter') {
+      const target = e.target;
+      if (target && target.closest && target.closest('button, a, input, textarea, select, summary, [role="button"]')) return;
+      if (!document.querySelector('.panel.show')) { e.preventDefault(); run(); }
+    }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
-    else if (e.key === 'Escape') { state.cordDraft=null; if ($('p-trial').classList.contains('show') && state.unlockReason === 'locked') { hidePanel('p-trial'); return; } for (const id of ['p-levels', 'p-help', 'p-win', 'p-settings']) hidePanel(id); if ($('p-trial').classList.contains('show') && !isUnlocked(state.li)) $('b-trial-free').click(); }
+    else if (e.key === 'Escape') { state.cordDraft=null; updateStatus(); if (partTip) partTip.hide(); if ($('p-trial').classList.contains('show') && state.unlockReason === 'locked') { hidePanel('p-trial'); return; } for (const id of ['p-levels', 'p-help', 'p-win', 'p-settings']) hidePanel(id); if ($('p-trial').classList.contains('show') && !isUnlocked(state.li)) $('b-trial-free').click(); }
     else if (e.key === 'Delete' || e.key === 'Backspace') { state.tool = 'delete'; syncDrawer(); }
     else if (e.key === 'm') { state.tool = 'move'; syncDrawer(); }
   });
@@ -7167,7 +7396,7 @@ window.VC.ready = (async function () {
 
   // test hooks
   ENT.onChange(() => { if (document.getElementById('p-levels').classList.contains('show')) showLevels(); });
-  Object.assign(state, { ENT, PUR, ECO, storeless: STORELESS, enterLevel, buildDrawer, syncDrawer, showPanel, hidePanel, showCoins, drawIcon, levelBounds, updateStatus, purse, showUnlock, refreshShop, isUnlocked, loadLevel, run, stop, fitCamera, setTheme, showLevels, proposePart, commit, view, stageRect, toast, LEVELS,
+  Object.assign(state, { ENT, PUR, ECO, storeless: STORELESS, enterLevel, buildDrawer, syncDrawer, showPanel, hidePanel, showCoins, drawIcon, levelBounds, updateStatus, purse, showUnlock, refreshShop, isUnlocked, loadLevel, run, stop, fitCamera, setTheme, showLevels, proposePart, commit, view, stageRect, toast, LEVELS, bindPartTip,
     setDesign(d) { state.design = JSON.parse(JSON.stringify(d)); saveDesign(); updateStatus(); } });
 
   // ---------------- boot ----------------
@@ -7175,11 +7404,11 @@ window.VC.ready = (async function () {
   // Corrected kit plaque DOM chrome (DECISIONS a521b25); unlock is measured again when shown.
   if (window.VLS && typeof window.VLS.plaqueMount === 'function') window.VLS.plaqueMount(document);
   document.body.style.setProperty('--fa-case-wood', `url("${window.VLS.apparatus.woodPanelDataURL(320, 640, 27, { dpr: 1, grainDir: 'v', figure: 'plain' })}")`);
+  partTip = window.VC.partTip.mount({ tip: $('part-tip'), copy: $('part-tip-copy'), refresh: refreshUiPlaques });
   resize();
   const last = store.get('last', null), li = Math.max(0, LEVELS.findIndex((L) => L.id === last));
   loadLevel(li);
   setTheme(state.theme);
-  if (!store.get('seenIntro', false)) { store.set('seenIntro', true); setTimeout(() => toast('Pick a part from the drawer, draw it in the scribed build area, then pull the lever.'), 400); }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { buildDrawer(); syncDrawer(); drawLever(); });
   requestAnimationFrame(frame);
 })().catch((err) => {
@@ -7268,22 +7497,26 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !wind
     head.querySelector('button').addEventListener('click', () => s.showCoins()); d.appendChild(head);
     lab('Tools');
     for (const [id, label] of [['move', 'Move'], ['delete', 'Remove']]) { const b = document.createElement('button'); b.dataset.tool = id; b.innerHTML = `<canvas width="96" height="96"></canvas><small>${label}</small>`; s.drawIcon(b.querySelector('canvas'), id); b.setAttribute('aria-label', label);
-      b.addEventListener('click', () => { ed.tool = id; sync(); }); d.appendChild(b); }
+      b.addEventListener('click', () => { ed.tool = id; sync(); });
+      if (s.bindPartTip) s.bindPartTip(b, id === 'move' ? 'Move. Drag a prop, the specimen, the tray or the build area.' : 'Remove. Tap a prop or an extra specimen.');
+      d.appendChild(b); }
     let tier;
     for (const it of eco.catalogue()) {
       if (it.tier !== tier) { tier = it.tier; lab(tier == null ? 'Free' : `Tier ${tier} · ${CFG.cost(tier).toLocaleString('en-US')}`); }
       const b = document.createElement('button'); b.dataset.tool = it.id; b.dataset.tier = it.tier == null ? 'free' : it.tier; b.className = it.owned ? '' : 'locked';
-      b.setAttribute('aria-label', it.owned ? it.name : `${it.name}: locked, ${it.price} coins`); b.title = it.owned ? it.name : `${it.name} · ${it.price} coins`;
+      b.setAttribute('aria-label', it.owned ? it.name : `${it.name}: locked, ${it.price} coins`);
       const c = document.createElement('canvas'); c.width = 96; c.height = 96; b.appendChild(c);
       const sm = document.createElement('small'); sm.textContent = it.owned ? it.name.replace(' (goal)', ' ◎') : `🔒 ${it.price.toLocaleString('en-US')}`; b.appendChild(sm);
-      b.addEventListener('click', () => { if (!eco.owns(it.id)) return offer(it.id); if (it.id === 'planets') { ed.tool = 'move'; sync(); return toast('Mars and Moon gravity are yours: choose them under Gravity.'); } ed.tool = it.id; sync(); toast(`${it.name}: tap the bench to place it.`); });
+      if (s.bindPartTip) s.bindPartTip(b, !it.owned ? `${it.name}. ${it.price.toLocaleString('en-US')} coins.` : it.id === 'planets' ? 'Mars and Moon gravity. Choose them under Gravity.' : `${it.name}. Tap the bench to place it.`);
+      b.addEventListener('click', () => { if (!eco.owns(it.id)) return offer(it.id); if (it.id === 'planets') { ed.tool = 'move'; sync(); return; } ed.tool = it.id; sync(); });
       d.appendChild(b); iconFor(c, it);
     }
     lab('Gravity');
     for (const [b, B] of Object.entries(CFG.BODIES)) { const ok = eco.bodyAllowed(b), btn = document.createElement('button'); btn.dataset.body = b; btn.className = (ok ? '' : 'locked') + (ed.level.body === b ? ' sel' : '');
       btn.innerHTML = `<span style="font-size:16px;line-height:30px">${b === 'earth' ? '🜨' : b === 'mars' ? '♂' : '☾'}</span><small>${ok ? `${B.name.replace('the ', '')} ${B.g}` : `🔒 ${CFG.cost(7).toLocaleString('en-US')}`}</small>`;
       btn.setAttribute('aria-label', ok ? `${B.name} gravity, ${B.g} m/s²` : `${B.name} gravity: locked`);
-      btn.addEventListener('click', () => { if (!eco.bodyAllowed(b)) return offer(B.item); ed.level.body = b; ed.tested = false; VC.notes && VC.notes.emit('body:' + b); preview(); S().buildDrawer(); toast(`${B.name}: g = ${B.g} m/s².${B.mult !== 1 ? ` Official ${B.name} levels pay ×${B.mult} coins.` : ''}`); });
+      if (s.bindPartTip) s.bindPartTip(btn, ok ? `${B.name}. g = ${B.g} m/s².${B.mult !== 1 ? ` Official ${B.name} levels pay ×${B.mult} coins.` : ''}` : `${B.name} gravity is locked.`);
+      btn.addEventListener('click', () => { if (!eco.bodyAllowed(b)) return offer(B.item); ed.level.body = b; ed.tested = false; VC.notes && VC.notes.emit('body:' + b); preview(); S().buildDrawer(); });
       d.appendChild(btn); }
     sync();
   }
@@ -7363,7 +7596,7 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !wind
   $('b-ed-fit').addEventListener('click', () => S().fitCamera());
   $('b-ed-new').addEventListener('click', () => { newLevel(); toast('A fresh bench.'); });
   $('b-ed-test').addEventListener('click', () => { const errs = C.validate(ed.level); if (errs.length) return toast(errs[0]); const s = S(); s.testing = true;
-    s.onTestWin = () => { ed.tested = true; }; s.enterLevel(C.toPlayable(ed.level, 'editor-' + (ed.id || 'draft')), null); $('b-editor-back').hidden = false; toast('Test run: build an apparatus and pull the lever. ◂ Editor returns.'); });
+    s.onTestWin = () => { ed.tested = true; }; s.enterLevel(C.toPlayable(ed.level, 'editor-' + (ed.id || 'draft')), null); $('b-editor-back').hidden = false; toast('Test run. ◂ Editor returns.'); });
   $('b-ed-save').addEventListener('click', () => { $('save-name').value = ed.level.name || ''; $('save-msg').textContent = ''; const n = lib.list().length, E = CFG.EDITOR;
     $('save-slots').textContent = ed.id ? 'Saving over your existing level.' : (VC.entitlements.has(VC.entitlements.FULL_GAME) || !E.unlockForMoreSaves) ? `${n} level${n === 1 ? '' : 's'} saved so far.` : `Free players keep ${E.freeSaveSlots} level of their own (${Math.min(n, E.freeSaveSlots)} used).`;
     S().showPanel('p-save'); });
