@@ -2900,35 +2900,25 @@
   const stainlessTube = (ctx, x0, y0, x1, y1, od, o = {}) => stainlessStroke(ctx, x0, y0, x1, y1, od, o);
 
   // ================= flanges =================
-  // ConFlat section, local frame: +x along the tube, +y radially outward.
-  // Proportions follow a real joint (flange thickness ~13 mm, M6, 2 mm copper, 20° knife).
-  function cfGeom(bore, wall, over, thick) {
-    const t = Math.max(8, thick);
-    const od = bore + wall + over;
-    const faceGap = Math.max(1.7, t * 0.14);
-    const recess = Math.max(2.6, t * 0.30);
-    const gHalf = faceGap + recess;
-    const bite = recess * 0.22;
-    const run = bite / Math.tan(20 * Math.PI / 180);
-    const back = Math.max(1.1, run * 0.42);
-    const knifeY = bore + Math.max(3.2, wall * 0.32);
-    const shankD = t * (6 / 13);
-    const headAF = shankD * (10 / 6);
-    const headH = shankD * (4 / 6);
-    const nutH = shankD * (5 / 6);
-    const washerT = Math.max(1.1, shankD * (1.6 / 6));
-    const washerOD = shankD * (12 / 6);
-    const clear = shankD * (6.6 / 6);
-    const headR = headAF / 2;
-    const avail = od - (knifeY + run + 3);
-    const outside = clear / 2 + headAF / 2 + 4;
-    const gasketW = Math.max(6, Math.min(t * 0.9, avail - outside));
-    const gasketIn = knifeY - back;
-    const gasketOut = knifeY + run + gasketW;
-    let boltY = (gasketOut + clear / 2 + 2 + od - headR - 1) / 2;
-    boltY = Math.max(boltY, gasketOut + clear / 2 + 2);
-    boltY = Math.min(boltY, od - headR - 1.2);
-    return { t, od, faceGap, gHalf, bite, run, back, knifeY, gasketIn, gasketOut, shankD, headAF, headH, nutH, washerT, washerOD, clear, boltY };
+  // DN40CF (2.75 in), millimetres. x is axial (the joint axis); r is radius.
+  // Gasket thickness is 2.0 mm against a 12.7 mm flange: thin along x, tall in r.
+  function dn40Metrics() {
+    const flangeT = 12.7, boreR = 19, odR = 35;
+    const gasketT = 2.0, gasketIn = 18.5, gasketOut = 24.2;
+    const recessR = 24.4, recessD = 0.9, faceGap = 0.2;
+    const knifeR = 21, knifeH = 0.4, knifeDeg = 20;
+    const boltR = 29.4, shankD = 6, clearD = 6.6;
+    const headT = 4, headAF = 10, washerT = 1.6, washerOD = 12, nutT = 5, stickout = 2;
+    const landX = faceGap / 2;
+    const floorX = landX + recessD;
+    const tipX = floorX - knifeH;
+    const flank = Math.tan(knifeDeg * Math.PI / 180);
+    return {
+      flangeT, boreR, odR, gasketT, gasketIn, gasketOut, recessR, recessD, faceGap,
+      knifeR, knifeH, knifeDeg, boltR, shankD, clearD, headT, headAF, washerT, washerOD, nutT, stickout,
+      landX, floorX, tipX, tipSep: tipX * 2, innerRun: knifeH * flank, outerRun: knifeH * flank,
+      gasketVsFlange: gasketT / flangeT,
+    };
   }
   function hexSide(xFace, xOut, y, af) {
     const h = af / 2, dir = xOut >= xFace ? 1 : -1;
@@ -2956,86 +2946,87 @@
     ctx.fillStyle = fill; ctx.fill();
     ctx.strokeStyle = stroke || P('stainlessEdge'); ctx.lineWidth = 0.7; ctx.stroke();
   }
-  // One flange, one side of the bore. The seal land stops short of the mate (the gap).
-  // The counterbore is set back from that land. The knife is a short 20° ridge at the
-  // inner edge of the recess. A clearance hole is left for the bolt.
+  // Sprite frame: +x along the tube, +y radially outward. `borePx` is the tube radius (r = 19 mm).
+  // `thickPx` is one flange's 12.7 mm, so every other millimetre uses the same scale.
+  function cfPlace(borePx, thickPx) {
+    const m = dn40Metrics();
+    const scale = (thickPx > 0 ? thickPx : 14) / m.flangeT;
+    const X = (mm) => mm * scale;
+    const R = (rMm) => borePx + (rMm - m.boreR) * scale;
+    const outerX = m.landX + m.flangeT;
+    return Object.assign({}, m, {
+      scale, X, R,
+      outerX,
+      shankEnd: outerX + m.washerT + m.nutT + m.stickout,
+    });
+  }
   function flangeMetal(side, g, sy) {
-    const s = side, y = (v) => sy * v;
-    const holeR = g.clear / 2;
-    const xOuter = s * g.t, xLand = s * g.faceGap, xFloor = s * g.gHalf;
-    const y0 = y(g.boltY - holeR), y1 = y(g.boltY + holeR);
-    // Outer face detours around the clearance hole so the shank is not buried in steel.
+    const s = side, y = (r) => sy * g.R(r);
+    const xO = s * g.X(g.outerX), xL = s * g.X(g.landX), xF = s * g.X(g.floorX);
+    const y0 = y(g.boltR - g.clearD / 2), y1 = y(g.boltR + g.clearD / 2);
+    const tip = s * g.X(g.tipX);
     return [
-      [xOuter, y(g.bore)], [xOuter, y0], [xLand, y0], [xLand, y1], [xOuter, y1],
-      [xOuter, y(g.od)], [xLand, y(g.od)], [xLand, y(g.gasketOut)], [xFloor, y(g.gasketOut)],
-      [xFloor, y(g.knifeY + g.run)], [s * (g.gHalf - g.bite), y(g.knifeY)], [xFloor, y(g.knifeY - g.back)],
-      [xFloor, y(g.bore)],
+      [xO, y(g.boreR)], [xO, y0], [xL, y0], [xL, y1], [xO, y1],
+      [xO, y(g.odR)], [xL, y(g.odR)], [xL, y(g.recessR)], [xF, y(g.recessR)],
+      [xF, y(g.knifeR + g.outerRun)], [tip, y(g.knifeR)], [xF, y(g.knifeR - g.innerRun)],
+      [xF, y(g.boreR)],
     ];
   }
   function gasketPoly(g, sy) {
-    const y = (v) => sy * v;
-    const xL = -(g.gHalf - 0.35), xR = g.gHalf - 0.35;
-    const tipL = -(g.gHalf - g.bite), tipR = g.gHalf - g.bite;
+    const y = (r) => sy * g.R(r);
+    const xR = g.X(g.gasketT / 2), xL = -xR;
+    const tipR = g.X(g.tipX), tipL = -tipR;
     return [
       [xL, y(g.gasketOut)], [xR, y(g.gasketOut)],
-      [xR, y(g.knifeY + g.run)], [tipR, y(g.knifeY)], [xR, y(g.knifeY - g.back)],
+      [xR, y(g.knifeR + g.outerRun)], [tipR, y(g.knifeR)], [xR, y(g.knifeR - g.innerRun)],
       [xR, y(g.gasketIn)], [xL, y(g.gasketIn)],
-      [xL, y(g.knifeY - g.back)], [tipL, y(g.knifeY)], [xL, y(g.knifeY + g.run)],
+      [xL, y(g.knifeR - g.innerRun)], [tipL, y(g.knifeR)], [xL, y(g.knifeR + g.outerRun)],
     ];
   }
-  function drawSectionBolt(ctx, g, bw) {
-    const y = g.boltY;
-    const shank = [
-      [-g.t, y - g.shankD / 2], [g.t, y - g.shankD / 2], [g.t, y + g.shankD / 2], [-g.t, y + g.shankD / 2],
-    ];
-    const head = hexSide(-g.t, -g.t - g.headH, y, g.headAF);
+  function drawSectionBolt(ctx, g, sy, bw) {
+    const y = sy * g.R(g.boltR);
+    const xO = g.X(g.outerX), xEnd = g.X(g.shankEnd);
+    const shank = [[-xO, y - g.X(g.shankD) / 2], [xEnd, y - g.X(g.shankD) / 2], [xEnd, y + g.X(g.shankD) / 2], [-xO, y + g.X(g.shankD) / 2]];
+    const head = hexSide(-xO, -xO - g.X(g.headT), y, g.X(g.headAF));
     const washer = [
-      [g.t, y - g.washerOD / 2], [g.t + g.washerT, y - g.washerOD / 2],
-      [g.t + g.washerT, y + g.washerOD / 2], [g.t, y + g.washerOD / 2],
+      [xO, y - g.X(g.washerOD) / 2], [xO + g.X(g.washerT), y - g.X(g.washerOD) / 2],
+      [xO + g.X(g.washerT), y + g.X(g.washerOD) / 2], [xO, y + g.X(g.washerOD) / 2],
     ];
-    const nut = hexSide(g.t + g.washerT, g.t + g.washerT + g.nutH, y, g.headAF);
-    const steel = bw ? '#fff' : stainlessFill(ctx, 0, y, g.t, y);
+    const nut = hexSide(xO + g.X(g.washerT), xO + g.X(g.washerT + g.nutT), y, g.X(g.headAF));
+    const steel = bw ? '#fff' : stainlessFill(ctx, 0, y, xO, y);
     for (const pts of [shank, head, washer, nut]) paintShape(ctx, pts, bw, steel);
   }
-  // ConFlat joint, cut on the axis: (x, y) on the bore centre line, (ax, ay) along the tube,
-  // `bore` is the bore half-width. No section hatching.
+  // ConFlat joint, cut on the axis. (x, y) is the bore centre, (ax, ay) runs along the tube,
+  // `bore` is the bore radius in sprite pixels. No section hatching.
   function conflatFlange(ctx, x, y, ax, ay, bore, o = {}) {
-    const bw = isBW(o), thick = o.thick || 14, wall = o.wall || 12, over = o.over || 22, nx = -ay, ny = ax;
-    const g = cfGeom(bore, wall, over, thick);
-    g.bore = bore;
+    const bw = isBW(o), nx = -ay, ny = ax;
+    const g = cfPlace(bore, o.thick || 14);
     ctx.save(); ctx.translate(x, y); ctx.transform(ax, ay, nx, ny, 0, 0);
     for (const sy of [1, -1]) {
-      for (const side of [-1, 1]) paintEven(ctx, flangeMetal(side, g, sy), null, bw, side * thick);
+      for (const side of [-1, 1]) paintEven(ctx, flangeMetal(side, g, sy), null, bw, side * g.X(g.outerX));
       paintShape(ctx, gasketPoly(g, sy), bw, P('copperGasket'), bw ? '#fff' : '#6e3d16');
-      const bolt = Object.assign({}, g, { boltY: sy * g.boltY });
-      drawSectionBolt(ctx, bolt, bw);
+      drawSectionBolt(ctx, g, sy, bw);
     }
     ctx.restore();
   }
   // CF blank: (x, y) = centre of its inner face, (ax, ay) = outward axis
   function blankFlange(ctx, x, y, ax, ay, bore, o = {}) {
-    const nx = -ay, ny = ax, th = o.thick || 16, bw = isBW(o);
-    const g = cfGeom(bore, 12, 28, th);
-    g.bore = bore;
-    g.od = bore + 34;
+    const nx = -ay, ny = ax, bw = isBW(o);
+    const g = cfPlace(bore, o.thick || 16);
     ctx.save(); ctx.translate(x, y); ctx.transform(ax, ay, nx, ny, 0, 0);
-    // One plate: sealing face at x=0, outer face at x=th. Knife points toward the mate (negative x).
-    const bite = g.bite, run = g.run, back = g.back, k = g.knifeY;
     for (const sy of [1, -1]) {
-      const y = (v) => sy * v;
+      const yy = (r) => sy * g.R(r);
+      const xO = g.X(g.outerX);
       const pts = [
-        [th, y(bore)], [th, y(g.od)], [g.faceGap, y(g.od)], [g.faceGap, y(g.gasketOut)],
-        [0, y(g.gasketOut)], [0, y(k + run)], [-bite, y(k)], [0, y(k - back)], [0, y(bore)],
+        [xO, yy(g.boreR)], [xO, yy(g.odR)], [g.X(g.landX), yy(g.odR)], [g.X(g.landX), yy(g.recessR)],
+        [g.X(g.floorX), yy(g.recessR)], [g.X(g.floorX), yy(g.knifeR + g.outerRun)],
+        [g.X(g.tipX), yy(g.knifeR)], [g.X(g.floorX), yy(g.knifeR - g.innerRun)], [g.X(g.floorX), yy(g.boreR)],
       ];
-      paintEven(ctx, pts, null, bw, th);
-    }
-    const steel = bw ? '#fff' : stainlessFill(ctx, th, 0, 0, 0);
-    for (const sy of [-1, 1]) {
-      const yb = sy * Math.min(g.boltY, g.od - g.headAF / 2 - 1);
-      const shank = [[0, yb - g.shankD / 2], [th, yb - g.shankD / 2], [th, yb + g.shankD / 2], [0, yb + g.shankD / 2]];
-      const head = hexSide(th, th + g.headH, yb, g.headAF);
-      paintShape(ctx, shank, bw, steel);
-      paintShape(ctx, head, bw, steel);
+      paintEven(ctx, pts, null, bw, xO);
+      const yb = yy(g.boltR);
+      const steel = bw ? '#fff' : stainlessFill(ctx, xO, yb, 0, yb);
+      paintShape(ctx, [[g.X(g.floorX), yb - g.X(g.shankD) / 2], [xO, yb - g.X(g.shankD) / 2], [xO, yb + g.X(g.shankD) / 2], [g.X(g.floorX), yb + g.X(g.shankD) / 2]], bw, steel);
+      paintShape(ctx, hexSide(xO, xO + g.X(g.headT), yb, g.X(g.headAF)), bw, steel);
     }
     ctx.restore();
   }
@@ -3224,7 +3215,7 @@
   }
 
   VLS.hardware = { version: '1.0.0', palette: HW_PALETTE, STAINLESS_STOPS,
-    stainlessFill, stainlessRadial, stainlessStroke, glassFill, bolt,
+    stainlessFill, stainlessRadial, stainlessStroke, glassFill, bolt, dn40Metrics,
     wallBand, arcWallBand, stainlessTube, conflatFlange, blankFlange, bellows, viewport, gateValve,
     pump, gauge, laser, mirror, coldJacket, heaterTape, bubbleLevel, benchWood };
 })(typeof self !== 'undefined' ? self : this);
@@ -6105,33 +6096,34 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       'Sizes go by nominal diameter: DN16, DN40, DN63, DN100, DN160 have bores of roughly 16, 35, 60, 98 and 148 mm. Each level uses one size, shown on its card.'],
     cf: 'W. R. Wheeler, <i>Trans. Natl. Vac. Symp.</i> 10, 159 (1963); ISO 3669:2017 (bakeable flanges).',
     sketch(p) {
-      // Same section as the in-game joint: bore up, bolt circle down. Lands leave a gap.
-      // The copper disc fills both recesses. Each 20° knife nicks its own side and they do not meet.
-      const yBore = 36, yIn = 58, yKnife = 70, yOut = 112, yOd = 172;
-      const outL = 46, outR = 250, landL = 112, landR = 184, floorL = 96, floorR = 200;
-      const bite = 8, run = 22;
-      const boltY = 146, hole = 9, shank = 7;
-      const flange = (outer, land, floor, tip) => p.poly([
-        [outer, yBore], [outer, boltY - hole], [land, boltY - hole], [land, boltY + hole], [outer, boltY + hole],
-        [outer, yOd], [land, yOd], [land, yOut], [floor, yOut],
-        [floor, yKnife + run], [tip, yKnife], [floor, yIn], [floor, yBore],
-      ], 1.5, true);
-      flange(outL, landL, floorL, floorL + bite);
-      flange(outR, landR, floorR, floorR - bite);
+      // Half-section of DN40CF, same millimetres as the in-game joint. Axis is left-right;
+      // radius increases downward. Copper is 2 mm thick against a 12.7 mm flange.
+      const k = 6.4, x0 = 148, yOf = (r) => 16 + (r - 15) * k, xOf = (mm) => x0 + mm * k;
+      const bore = 19, od = 35, recess = 24.4, knife = 21, bolt = 29.4;
+      const land = 0.1, floor = 1.0, tip = 0.6, outer = 12.8, gIn = 18.5, gOut = 24.2;
+      const run = 0.4 * Math.tan(20 * Math.PI / 180);
+      const flange = (s) => p.poly([
+        [xOf(s * outer), yOf(bore)], [xOf(s * outer), yOf(bolt - 3.3)], [xOf(s * land), yOf(bolt - 3.3)],
+        [xOf(s * land), yOf(bolt + 3.3)], [xOf(s * outer), yOf(bolt + 3.3)], [xOf(s * outer), yOf(od)],
+        [xOf(s * land), yOf(od)], [xOf(s * land), yOf(recess)], [xOf(s * floor), yOf(recess)],
+        [xOf(s * floor), yOf(knife + run)], [xOf(s * tip), yOf(knife)], [xOf(s * floor), yOf(knife - run)],
+        [xOf(s * floor), yOf(bore)],
+      ], 1.45, true);
+      flange(1); flange(-1);
       p.poly([
-        [floorL, yOut], [floorR, yOut],
-        [floorR, yKnife + run], [floorR - bite, yKnife], [floorR, yIn],
-        [floorL, yIn], [floorL + bite, yKnife], [floorL, yKnife + run],
-      ], 1.4, true);
-      p.poly([[outL, boltY - shank], [outR, boltY - shank], [outR, boltY + shank], [outL, boltY + shank]], 1.2, true);
-      p.poly([[outL - 16, boltY - 14], [outL - 4, boltY - 14], [outL, boltY - 10], [outL, boltY + 10], [outL - 4, boltY + 14], [outL - 16, boltY + 14]], 1.3, true);
-      p.rect(outR, boltY - 16, 5, 32, 1.2);
-      p.poly([[outR + 5, boltY - 13], [outR + 18, boltY - 13], [outR + 22, boltY - 9], [outR + 22, boltY + 9], [outR + 18, boltY + 13], [outR + 5, boltY + 13]], 1.3, true);
-      p.label('20° knife', 278, 64); p.arrow(248, 68, floorR - bite + 2, yKnife, 1, 5);
-      p.label('copper disc', 148, 102);
-      p.label('gap', 148, 132);
-      p.label('hex head', 18, 150, { align: 'start' });
-      p.label('nut', 292, 150);
+        [xOf(-1), yOf(gOut)], [xOf(1), yOf(gOut)],
+        [xOf(1), yOf(knife + run)], [xOf(tip), yOf(knife)], [xOf(1), yOf(knife - run)], [xOf(1), yOf(gIn)],
+        [xOf(-1), yOf(gIn)], [xOf(-1), yOf(knife - run)], [xOf(-tip), yOf(knife)], [xOf(-1), yOf(knife + run)],
+      ], 1.3, true);
+      const yB = yOf(bolt);
+      p.poly([[xOf(-outer), yB - 3 * k], [xOf(outer + 1.6 + 5 + 2), yB - 3 * k], [xOf(outer + 1.6 + 5 + 2), yB + 3 * k], [xOf(-outer), yB + 3 * k]], 1.15, true);
+      p.poly([[xOf(-outer - 4), yB - 5 * k], [xOf(-outer - 1), yB - 5 * k], [xOf(-outer), yB - 4 * k], [xOf(-outer), yB + 4 * k], [xOf(-outer - 1), yB + 5 * k], [xOf(-outer - 4), yB + 5 * k]], 1.25, true);
+      p.rect(xOf(outer), yB - 6 * k, 1.6 * k, 12 * k, 1.15);
+      p.poly([[xOf(outer + 1.6), yB - 5 * k], [xOf(outer + 1.6 + 4), yB - 5 * k], [xOf(outer + 1.6 + 5), yB - 4 * k], [xOf(outer + 1.6 + 5), yB + 4 * k], [xOf(outer + 1.6 + 4), yB + 5 * k], [xOf(outer + 1.6), yB + 5 * k]], 1.25, true);
+      p.label('2 mm copper', 148, yOf(22));
+      p.label('20° knife', 250, yOf(20));
+      p.label('gap', 148, yOf(27));
+      p.label('M6', 148, yOf(32));
     } });
 
   add({ id: 'mfp', title: 'Why a lone atom?', unlock: 'win', group: 'Basics',

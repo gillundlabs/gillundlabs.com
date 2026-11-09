@@ -111,6 +111,21 @@ const fast = consider(5, rows[0].pace, legacy);
 check(fast.wrote && Math.abs(fast.best.time - 5) < 1e-9 && fast.best.ref === true, 'a real faster run stores the reference time');
 check(!html.includes('store.best') || !/resize\(\)[\s\S]{0,400}store\.best/.test(html), 'resize does not mention bests');
 
+const dn40Src = html.match(/function dn40Metrics\(\) \{[\s\S]*?\n  \}/);
+if (!dn40Src) check(false, 'dn40Metrics missing');
+else {
+  const box = { Math };
+  vm.createContext(box);
+  vm.runInContext(dn40Src[0] + '\nthis.m = dn40Metrics();', box);
+  const m = box.m;
+  check(m.gasketT / m.flangeT < 0.25, 'gasket thicker than a quarter of the flange: ' + m.gasketT);
+  check(m.tipX > 0 && m.tipSep > 1 && m.tipX < m.gasketT / 2, 'knife tips must stay apart inside the copper, sep ' + m.tipSep);
+  check(m.boltR > m.recessR, 'bolt circle is inside the recess');
+  check(m.knifeR > m.gasketIn && m.knifeR < m.gasketOut, 'knife radius is outside the copper');
+  check(Math.abs(m.gasketT - 2) < 1e-9 && Math.abs(m.flangeT - 12.7) < 1e-9, 'DN40 thicknesses');
+  console.log('dn40', JSON.stringify({ gasketVsFlange: m.gasketVsFlange, tipSep: m.tipSep, boltR: m.boltR, recessR: m.recessR, knifeR: m.knifeR }));
+}
+
 if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);
