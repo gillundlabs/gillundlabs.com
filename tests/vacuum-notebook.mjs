@@ -32,7 +32,7 @@ if ((site.match(/vls-simplification/g) || []).length < 16) fail('site simplifica
 if (!play.includes('function renderNotebook') || !play.includes('scrollIntoView')) fail('scrollable book navigation missing');
 if (!play.includes('id="nb-body" class="vls-notebook scrollable"')) fail('notebook scroller missing');
 if (/tea tray|tennis player swatting|revolving door with sliding panels|lumpy, slightly soft wall/.test(play + site)) fail('analogy sentence still published');
-if (/SK\['scale'\]/.test(play)) fail('SK scale still overrides the entry sketch');
+if (/SK\['scale'\]/.test(play) || /SK\['part-blank'\]/.test(play)) fail('a flange sketch is still overridden');
 if (play.includes('hatchPoly') || /\.hatch\(/.test(play)) fail('notebook still has hatch drawing');
 {
   const p9 = site.slice(site.indexOf('id="p9"'), site.indexOf('id="p10"'));
@@ -134,23 +134,45 @@ try {
   if (!opened.closeInView) fail('close control not on screen');
   if (opened.best !== 42.5) fail('best rewritten on open');
 
-  const flange = await ev(`(() => {
-    const page = document.getElementById('note-scale');
-    const svg = page && page.querySelector('svg.vm-sketch');
-    const text = svg ? svg.textContent : '';
-    return {
-      present: !!svg,
-      paths: svg ? svg.querySelectorAll('path').length : 0,
-      copper: text.includes('2 mm copper'),
-      knife: text.includes('20° knife'),
-      bolt: text.includes('M6'),
-      old: ['knife-edge', 'copper gasket', 'bore (vacuum)', '2¾'].filter((s) => text.includes(s)),
-    };
-  })()`);
+  async function flangeSvg() {
+    return ev(`(() => {
+      const page = document.getElementById('note-scale');
+      const svg = page && page.querySelector('svg.vm-sketch');
+      if (!svg) return { present: false };
+      const text = svg.textContent || '';
+      const labels = [...svg.querySelectorAll('text')].map((node) => {
+        const lead = svg.querySelector('path[data-lead="' + node.getAttribute('data-k') + '"]');
+        const tr = node.getBoundingClientRect();
+        const sr = svg.getBoundingClientRect();
+        return {
+          t: node.textContent,
+          lead: !!lead,
+          inside: tr.width > 0 && tr.left >= sr.left - 1 && tr.right <= sr.right + 1 && tr.top >= sr.top - 1 && tr.bottom <= sr.bottom + 1,
+        };
+      });
+      return {
+        present: true,
+        paths: svg.querySelectorAll('path').length,
+        inset: !!svg.querySelector('[data-inset="seal"]'),
+        copper: text.includes('2 mm copper'),
+        knife: text.includes('20° knife'),
+        bolt: text.includes('M6'),
+        bore: labels.some((l) => l.t === 'bore'),
+        flange: labels.some((l) => l.t === 'flange'),
+        leaders: labels.every((l) => l.lead),
+        clipped: labels.filter((l) => !l.inside).map((l) => l.t),
+        old: ['knife-edge', 'copper gasket', 'bore (vacuum)', '2¾'].filter((s) => text.includes(s)),
+      };
+    })()`);
+  }
+  const flange = await flangeSvg();
   console.log('flange svg', JSON.stringify(flange));
-  if (!flange.present || !flange.copper || !flange.knife || !flange.bolt) fail('rendered flange sketch is not the DN40 drawing ' + JSON.stringify(flange));
+  if (!flange.present || !flange.copper || !flange.knife || !flange.bolt || !flange.bore || !flange.flange) fail('rendered flange sketch is not the DN40 drawing ' + JSON.stringify(flange));
+  if (!flange.inset) fail('flange sketch has no enlarged seal inset');
+  if (!flange.leaders) fail('a flange label has no leader line');
   if (flange.old.length) fail('old flange labels still rendered ' + flange.old.join(','));
-  if (flange.paths > 40) fail('rendered flange sketch still has hatch paths ' + flange.paths);
+  if (flange.paths > 160) fail('rendered flange sketch still has hatch paths ' + flange.paths);
+  if (flange.clipped.length) fail('flange labels clipped on desktop ' + flange.clipped.join(','));
 
   const jumped = await ev(`(() => {
     const book = document.getElementById('nb-body');
@@ -227,6 +249,16 @@ try {
   if (closed) fail('Escape left the notebook open');
   const bestAfter = await ev(`JSON.parse(localStorage.getItem('vacuum-maze.v2')).best['1|earth'].time`);
   if (bestAfter !== 42.5) fail('best changed after navigation');
+
+  for (const theme of ['victorian', 'bw']) {
+    save.settings.theme = theme;
+    await boot(320, 568);
+    const narrow = await flangeSvg();
+    console.log('flange 320', theme, JSON.stringify({ clipped: narrow.clipped, inset: narrow.inset, leaders: narrow.leaders }));
+    if (!narrow.inset || !narrow.leaders || !narrow.copper) fail('320 px flange sketch incomplete ' + theme);
+    if (narrow.clipped && narrow.clipped.length) fail('flange labels clipped at 320 ' + theme + ' ' + narrow.clipped.join(','));
+  }
+  save.settings.theme = 'victorian';
 
   await boot(390, 844);
   const phone = await ev(`(() => {

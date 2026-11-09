@@ -671,7 +671,7 @@
   .nb-toc button { text-align: left; font-size: 13px !important; padding: 6px 10px !important; }
   .nb-toc .vm-new-label { display: block; color: var(--vls-ink-red); font-weight: 700; }
   .nb-toc h4 { grid-column: 1 / -1; margin: 8px 0 0; font-variant: small-caps; }
-  .vm-entry { color: #3a2410; } .vm-fig { margin: 0 0 10px; color: #4a2c12; } .vm-sketch { width: 100%; max-width: 420px; display: block; margin: 0 auto; font-family: var(--vls-font-hand); }
+  .vm-entry { color: #3a2410; } .vm-fig { margin: 0 0 10px; color: #4a2c12; overflow: visible; } .vm-sketch { width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; overflow: visible; font-family: var(--vls-font-hand); }
   .vm-sketch, .vm-sketch text { letter-spacing: 0; }   /* sketch labels are laid out from measured Caveat widths; the panel's .03em tracking would push them into line art */
   /* Kit .vls-note-label is --vls-font-hand (DECISIONS 0b95716); no Vac override.
      SVG sketch labels: kit does not set font-family on <text>; pin hand so they track the token. */
@@ -2904,7 +2904,7 @@
   // Gasket thickness is 2.0 mm against a 12.7 mm flange: thin along x, tall in r.
   function dn40Metrics() {
     const flangeT = 12.7, boreR = 19, odR = 35;
-    const gasketT = 2.0, gasketIn = 18.5, gasketOut = 24.2;
+    const gasketT = 2.0, gasketIn = 19.1, gasketOut = 24.2;
     const recessR = 24.4, recessD = 0.9, faceGap = 0.2;
     const knifeR = 21, knifeH = 0.4, knifeDeg = 20;
     const boltR = 29.4, shankD = 6, clearD = 6.6;
@@ -2946,13 +2946,27 @@
     ctx.fillStyle = fill; ctx.fill();
     ctx.strokeStyle = stroke || P('stainlessEdge'); ctx.lineWidth = 0.7; ctx.stroke();
   }
-  // Sprite frame: +x along the tube, +y radially outward. `borePx` is the tube radius (r = 19 mm).
-  // `thickPx` is one flange's 12.7 mm, so every other millimetre uses the same scale.
-  function cfPlace(borePx, thickPx) {
+  // One millimetre-to-pixel factor from the bore: 38 mm ID is 2 × borePx.
+  // OD 70 mm, thickness 12.7 mm and the 58.8 mm bolt circle all use that same factor.
+  function dn40Sprite(borePx) {
     const m = dn40Metrics();
-    const scale = (thickPx > 0 ? thickPx : 14) / m.flangeT;
+    const pxPerMm = borePx / m.boreR;
+    const R = (rMm) => rMm * pxPerMm;
+    return {
+      pxPerMm,
+      boreR: R(m.boreR),
+      odR: R(m.odR),
+      thick: m.flangeT * pxPerMm,
+      boltR: R(m.boltR),
+      gasketIn: R(m.gasketIn),
+      odOverId: m.odR / m.boreR,
+    };
+  }
+  function cfPlace(borePx) {
+    const m = dn40Metrics();
+    const scale = borePx / m.boreR;
     const X = (mm) => mm * scale;
-    const R = (rMm) => borePx + (rMm - m.boreR) * scale;
+    const R = (rMm) => rMm * scale;
     const outerX = m.landX + m.flangeT;
     return Object.assign({}, m, {
       scale, X, R,
@@ -3000,7 +3014,7 @@
   // `bore` is the bore radius in sprite pixels. No section hatching.
   function conflatFlange(ctx, x, y, ax, ay, bore, o = {}) {
     const bw = isBW(o), nx = -ay, ny = ax;
-    const g = cfPlace(bore, o.thick || 14);
+    const g = cfPlace(bore);
     ctx.save(); ctx.translate(x, y); ctx.transform(ax, ay, nx, ny, 0, 0);
     for (const sy of [1, -1]) {
       for (const side of [-1, 1]) paintEven(ctx, flangeMetal(side, g, sy), null, bw, side * g.X(g.outerX));
@@ -3012,7 +3026,7 @@
   // CF blank: (x, y) = centre of its inner face, (ax, ay) = outward axis
   function blankFlange(ctx, x, y, ax, ay, bore, o = {}) {
     const nx = -ay, ny = ax, bw = isBW(o);
-    const g = cfPlace(bore, o.thick || 16);
+    const g = cfPlace(bore);
     ctx.save(); ctx.translate(x, y); ctx.transform(ax, ay, nx, ny, 0, 0);
     for (const sy of [1, -1]) {
       const yy = (r) => sy * g.R(r);
@@ -3215,7 +3229,7 @@
   }
 
   VLS.hardware = { version: '1.0.0', palette: HW_PALETTE, STAINLESS_STOPS,
-    stainlessFill, stainlessRadial, stainlessStroke, glassFill, bolt, dn40Metrics,
+    stainlessFill, stainlessRadial, stainlessStroke, glassFill, bolt, dn40Metrics, dn40Sprite,
     wallBand, arcWallBand, stainlessTube, conflatFlange, blankFlange, bellows, viewport, gateValve,
     pump, gauge, laser, mirror, coldJacket, heaterTape, bubbleLevel, benchWood };
 })(typeof self !== 'undefined' ? self : this);
@@ -5409,7 +5423,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     const o = { residenceMean: 0.12, accommodation: DEFAULT_ACC, kernel: 'cl', rand: Math.random, lasersOn: true, g: 9.81, ...opts };
     if (o.wallT == null) o.wallT = wallTempFor(level, atom.m, o.g);
     const w = { level, atom, scale, g: { x: 0, y: 0 }, opts: o, exitPlanes: M.exitPlanes(level),
-      stats: { contacts: 0, desorbs: 0, time: 0, maxSubsteps: 0, photons: 0 }, hist: new Array(36).fill(0), won: false, wonExit: null, extraction: null, visited: new Set(), seen: new Set() };
+      stats: { contacts: 0, desorbs: 0, time: 0, refTime: 0, maxSubsteps: 0, photons: 0 }, hist: new Array(36).fill(0), won: false, wonExit: null, extraction: null, visited: new Set(), seen: new Set() };
     // release: the source emits the atom at the wall temperature, in a random direction
     const ang = o.rand() * 2 * Math.PI, v = sampleWallSpeed(o.wallT, atom.m, o.rand) / scale;
     atom.vx = v * Math.cos(ang); atom.vy = v * Math.sin(ang); atom.T = kinT(atom, scale);
@@ -5589,7 +5603,10 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       t += h; sub++;
       // exits: past any pump flange plane by one radius
       for (const ep of w.exitPlanes) if ((a.x - ep.x) * ep.ax + (a.y - ep.y) * ep.ay > a.r && Math.abs((a.x - ep.x) * -ep.ay + (a.y - ep.y) * ep.ax) < M.H) {
-        w.won = true; w.wonExit = ep.exit; w.stats.time += t; beginExtraction(w, ep); return;
+        w.won = true; w.wonExit = ep.exit;
+        const paceWin = w.opts.pace > 0 && isFinite(w.opts.pace) ? w.opts.pace : 1;
+        w.stats.refTime = (w.stats.refTime || 0) + t * paceWin;
+        w.stats.time += t; beginExtraction(w, ep); return;
       }
       const now = w.stats.time + t;
       if (gateSweep(w, a, now)) continue;
@@ -5606,12 +5623,30 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       if (sub > 40000) break;
     }
     w.stats.maxSubsteps = Math.max(w.stats.maxSubsteps, sub);
+    const paceNow = w.opts.pace > 0 && isFinite(w.opts.pace) ? w.opts.pace : 1;
+    w.stats.refTime = (w.stats.refTime || 0) + dt * paceNow;
     w.stats.time += dt;
+  }
+  // A resize changes the shown width. Speed scales with that width and wall temperature
+  // with its square, so the time to cross the screen stays the same. Reference time is
+  // the sum of dt × the pace in effect at that moment, so a resize does not recount the past.
+  function retunePace(w, newPace) {
+    if (!w) return;
+    const old = w.opts.pace > 0 && isFinite(w.opts.pace) ? w.opts.pace : 1;
+    const next = newPace > 0 && isFinite(newPace) ? newPace : old;
+    const f = next / old;
+    const a = w.atom;
+    if (a && f > 0 && isFinite(f)) {
+      if (a.stuck) a.T *= f * f;
+      else { a.vx *= f; a.vy *= f; a.T = kinT(a, w.scale); }
+    }
+    if (w.opts.wallT > 0 && isFinite(f)) w.opts.wallT *= f * f;
+    w.opts.pace = next;
   }
 
   return { K_B, G_EARTH, BODIES, PACE_SCALE, paceG, THERMAL, MAX_SUBSTEP_FRAC, BORE_PX, scaleFor, wallTempFor, makeAtom, createWorld, step, adsorb, desorb,
     EXTRACTION_INTAKE, EXTRACTION_DURATION, PUMP_ROUTES, extractionPose, advanceExtraction, kinT, sampleWallSpeed, wallTempAt, beamsAt, DEFAULT_ACC, accOf, scatterCL, scatterMaxwell, scatter, wallFluxSample, kernelCheck,
-    VIEW_SHORT_WORLD, VIEW_ZOOM_CAP, viewZoom, visibleWidthPx, crossingPace, crossingFactor, meanThermalSpeed, crossingSeconds };
+    VIEW_SHORT_WORLD, VIEW_ZOOM_CAP, viewZoom, visibleWidthPx, crossingPace, crossingFactor, meanThermalSpeed, crossingSeconds, retunePace };
 });
 
 </script>
@@ -5970,7 +6005,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   const textW = (text, size) => { let w = 0; for (const c of String(text)) w += CAVEAT_ADV[c] != null ? CAVEAT_ADV[c] : 0.45; return w * size; };
   // ---------------------------------------------------------------- the SVG pen (viewBox 0 0 320 190)
   function svgPen(seed = 7, jitter = 1.0) {
-    const r = mulberry(seed), out = []; let nText = 0, leadAttr = ''; const wob = () => (r() - 0.5) * 2 * jitter;
+    const r = mulberry(seed), out = []; let nText = 0, leadAttr = '', vb = '0 0 320 190'; const wob = () => (r() - 0.5) * 2 * jitter;
     const pathOf = (pts) => pts.map(([x, y], i) => `${i ? 'L' : 'M'}${(x + wob() * 0.6).toFixed(1)} ${(y + wob() * 0.6).toFixed(1)}`).join('');
     const stroke = (pts, w = 1.6, extra = leadAttr) => { out.push(`<path d="${pathOf(pts)}" stroke-width="${w}" ${extra}/>`); out.push(`<path d="${pathOf(pts)}" stroke-width="${(w * 0.55).toFixed(2)}" opacity=".45" ${extra}/>`); };
     const seg = (x0, y0, x1, y1) => { const L = Math.hypot(x1 - x0, y1 - y0) || 1, n = Math.max(2, Math.ceil(L / 12)), bow = wob() * 1.4, pts = [];
@@ -5984,7 +6019,14 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       circle(cx, cy, rr, w) { return p.ellipse(cx, cy, rr, rr, w); },
       arrow(x0, y0, x1, y1, w = 1.4, head = 8) { p.line(x0, y0, x1, y1, w); const a = Math.atan2(y1 - y0, x1 - x0); for (const s of [-1, 1]) p.line(x1, y1, x1 - head * Math.cos(a + s * 0.42), y1 - head * Math.sin(a + s * 0.42), w); return p; },
       dot(x, y, rr = 2.2) { out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rr}" fill="currentColor" stroke="none"/>`); return p; },
-      
+      fill(pts, opacity = 0.2) {
+        const d = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join('') + 'Z';
+        out.push(`<path d="${d}" fill="currentColor" fill-opacity="${opacity}" stroke="currentColor" stroke-width="1.05"/>`);
+        return p;
+      },
+      viewBox(w, h) { vb = `0 0 ${w} ${h}`; return p; },
+      clip(id, x, y, w, h) { out.push(`<clipPath id="${id}"><rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}"/></clipPath><g clip-path="url(#${id})" data-inset="${esc(id)}">`); return p; },
+      clipEnd() { out.push('</g>'); return p; },
       label(text, x, y, o = {}) { const rot = o.rotate == null ? (r() - 0.5) * 3 : o.rotate; out.push(`<text data-k="${nText++}" x="${x}" y="${y}" font-size="${o.size || 13}" font-family='${HAND_FONT}' text-anchor="${o.align || 'middle'}" transform="rotate(${rot.toFixed(1)} ${x} ${y})" fill="currentColor" stroke="none">${esc(text)}</text>`); return p; },
       
       // a label with a thin leader line to the thing it names
@@ -5998,7 +6040,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       // strokes drawn between leadFrom(label) and leadEnd() are that label's own leader/arrow (tagged for the layout tests)
       leadFrom(text, x, y, o = {}) { const k = nText; p.label(text, x, y, o); leadAttr = `data-lead="${k}"`; return p; },
       leadEnd() { leadAttr = ''; return p; },
-      svg(title) { return `<svg class="vm-sketch" viewBox="0 0 320 190" role="img" aria-label="${esc(title)}" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${out.join('')}</svg>`; },
+      svg(title) { return `<svg class="vm-sketch" viewBox="${vb}" role="img" aria-label="${esc(title)}" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" overflow="visible">${out.join('')}</svg>`; },
     };
     return p;
   }
@@ -6054,7 +6096,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
 
   add({ id: 'walltemp', title: 'Why the walls are colder than a microkelvin', unlock: 'start', group: 'Basics',
     body: ['Real vacuum tubes sit at room temperature, 295 K. A hydrogen atom leaving such a wall moves at about 2.7 km/s (rms). Thrown straight up, it would coast about 370 km before Earth\'s gravity stopped it (about 395 km if you allow for gravity weakening with height), so tilting a tube by a few degrees could never steer it.',
-      'So the game makes its walls fantastically cold — about a sixteenth of the temperature at which Maxwell\'s Demon releases its atoms, so the atom moves at about a quarter of that game\'s pace. Each level\'s wall temperature is T_w = κ·m·g_pace·D / k_B, with g_pace = g / 16000: the energy of falling one bore diameter D under a reference pull of one sixteen-thousandth of the world\'s surface gravity, times a level factor κ (0.98–1.11 in this edition\'s 30 levels; up to 1.56 in later chapters). An atom leaving the wall then moves at a mean speed of √(8κg_pace D/π), about 13% faster than √(2 g_pace D) at κ = 1. In this edition\'s levels that is 7–13 mm/s on Earth, 5–8 mm/s on Mars and 3–5 mm/s on the Moon (6–18, 3–11 and 2–7 mm/s across all 100 planned levels), about a quarter of the 31 mm/s at which Maxwell\'s Demon releases its atoms. The chamber pull itself is not scaled: the atom feels the full g·sin θ (see "Tilting the apparatus").',
+      'So the game makes its walls fantastically cold — about a sixteenth of the temperature at which Maxwell\'s Demon releases its atoms, so the atom moves at about a quarter of that game\'s pace. Each level\'s wall temperature is T_w = κ·m·g_pace·D / k_B, with g_pace = g / 16000: the energy of falling one bore diameter D under a reference pull of one sixteen-thousandth of the world\'s surface gravity, times a level factor κ (0.98–1.11 in this edition\'s 30 levels; up to 1.56 in later chapters). An atom leaving the wall then moves at a mean speed of √(8κg_pace D/π), about 13% faster than √(2 g_pace D) at κ = 1. In this edition\'s levels that is 7–13 mm/s on Earth, 5–8 mm/s on Mars and 3–5 mm/s on the Moon (6–18, 3–11 and 2–7 mm/s across all 100 planned levels), about a quarter of the 31 mm/s at which Maxwell\'s Demon releases its atoms. The game then scales that temperature with the width of maze on the screen, so the time an atom takes to cross the screen stays the same on every screen; on a large screen the temperature dial therefore reads higher than these few nanokelvin and the few millimetres per second. The chamber pull itself is not scaled: the atom feels the full g·sin θ (see "Tilting the apparatus").',
       'For hydrogen on Earth that gives 1 nK in a DN16CF tube and 11 nK in a DN160CF tube (at κ = 1); this edition\'s 30 levels span 3–8 nK (2–15 nK across all 100 planned levels), about a sixteenth of the 40 nK at which Maxwell\'s Demon starts its hydrogen. On the Moon the walls are six times colder still. Heavier atoms get proportionally warmer walls: krypton in a DN63CF tube on Earth needs about 371 nK.'],
     simplification: 'No real wall is this cold. Dilution refrigerators reach a few millikelvin, and real cold-atom experiments keep their atoms in traps away from the 295 K walls: an atom that touches the wall is lost. Under full Earth gravity the same nanokelvin temperatures give a gravitational scale height of only tens of micrometres, so a real atom would sit on the tube floor; the game is flat and ignores that direction (see "Tilting the apparatus").',
     game: 'Cold traps and bake-out tape arrive with the free-update chapters (and become level-editor parts then); there, the real 77/295 and 443/295 temperature ratios are applied to these nanokelvin walls, not to 295 K.',
@@ -6087,40 +6129,61 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
       'Sizes go by nominal diameter: DN16, DN40, DN63, DN100, DN160 have bores of roughly 16, 35, 60, 98 and 148 mm. Each level uses one size, shown on its card.'],
     cf: 'W. R. Wheeler, <i>Trans. Natl. Vac. Symp.</i> 10, 159 (1963); ISO 3669:2017 (bakeable flanges).',
     sketch(p) {
-      // Half-section of DN40CF, same millimetres as the in-game joint. Axis is left-right;
-      // radius increases downward. Copper is 2 mm thick against a 12.7 mm flange.
-      const k = 6.4, x0 = 148, yOf = (r) => 16 + (r - 15) * k, xOf = (mm) => x0 + mm * k;
-      const bore = 19, od = 35, recess = 24.4, knife = 21, bolt = 29.4;
-      const land = 0.1, floor = 1.0, tip = 0.6, outer = 12.8, gIn = 18.5, gOut = 24.2;
+      // DN40CF half-section. Axis is left-right, radius increases downward.
+      // The small view keeps the real ratios; the box below is the same seal at 5×.
+      p.viewBox(320, 360);
       const run = 0.4 * Math.tan(20 * Math.PI / 180);
-      const flange = (s) => p.poly([
-        [xOf(s * outer), yOf(bore)], [xOf(s * outer), yOf(bolt - 3.3)], [xOf(s * land), yOf(bolt - 3.3)],
-        [xOf(s * land), yOf(bolt + 3.3)], [xOf(s * outer), yOf(bolt + 3.3)], [xOf(s * outer), yOf(od)],
-        [xOf(s * land), yOf(od)], [xOf(s * land), yOf(recess)], [xOf(s * floor), yOf(recess)],
-        [xOf(s * floor), yOf(knife + run)], [xOf(s * tip), yOf(knife)], [xOf(s * floor), yOf(knife - run)],
-        [xOf(s * floor), yOf(bore)],
-      ], 1.45, true);
-      flange(1); flange(-1);
-      p.poly([
-        [xOf(-1), yOf(gOut)], [xOf(1), yOf(gOut)],
-        [xOf(1), yOf(knife + run)], [xOf(tip), yOf(knife)], [xOf(1), yOf(knife - run)], [xOf(1), yOf(gIn)],
-        [xOf(-1), yOf(gIn)], [xOf(-1), yOf(knife - run)], [xOf(-tip), yOf(knife)], [xOf(-1), yOf(knife + run)],
-      ], 1.3, true);
-      const yB = yOf(bolt);
-      p.poly([[xOf(-outer), yB - 3 * k], [xOf(outer + 1.6 + 5 + 2), yB - 3 * k], [xOf(outer + 1.6 + 5 + 2), yB + 3 * k], [xOf(-outer), yB + 3 * k]], 1.15, true);
-      p.poly([[xOf(-outer - 4), yB - 5 * k], [xOf(-outer - 1), yB - 5 * k], [xOf(-outer), yB - 4 * k], [xOf(-outer), yB + 4 * k], [xOf(-outer - 1), yB + 5 * k], [xOf(-outer - 4), yB + 5 * k]], 1.25, true);
-      p.rect(xOf(outer), yB - 6 * k, 1.6 * k, 12 * k, 1.15);
-      p.poly([[xOf(outer + 1.6), yB - 5 * k], [xOf(outer + 1.6 + 4), yB - 5 * k], [xOf(outer + 1.6 + 5), yB - 4 * k], [xOf(outer + 1.6 + 5), yB + 4 * k], [xOf(outer + 1.6 + 4), yB + 5 * k], [xOf(outer + 1.6), yB + 5 * k]], 1.25, true);
-      p.label('2 mm copper', 148, 12, { size: 11 });
-      p.label('20° knife', 262, 28, { size: 11 });
-      p.label('gap', 36, 178, { size: 11, align: 'start' });
-      p.label('M6', 250, 178, { size: 11 });
+      const G = { bore: 19, od: 35, land: 0.1, floor: 1, tip: 0.6, outer: 12.8, gIn: 19.1, gOut: 24.2, recess: 24.4, knife: 21, bolt: 29.4, hole: 3.3, shank: 3, headT: 4, headR: 5, washT: 1.6, washR: 6, nutT: 5, stick: 2, run };
+      const draw = (k, x0, yOf, lw) => {
+        const X = (mm) => x0 + mm * k;
+        const flange = (s) => p.poly([
+          [X(s * G.outer), yOf(G.bore)], [X(s * G.outer), yOf(G.bolt - G.hole)], [X(s * G.land), yOf(G.bolt - G.hole)],
+          [X(s * G.land), yOf(G.bolt + G.hole)], [X(s * G.outer), yOf(G.bolt + G.hole)], [X(s * G.outer), yOf(G.od)],
+          [X(s * G.land), yOf(G.od)], [X(s * G.land), yOf(G.recess)], [X(s * G.floor), yOf(G.recess)],
+          [X(s * G.floor), yOf(G.knife + G.run)], [X(s * G.tip), yOf(G.knife)], [X(s * G.floor), yOf(G.knife - G.run)],
+          [X(s * G.floor), yOf(G.bore)],
+        ], lw, true);
+        flange(1); flange(-1);
+        const copper = [
+          [X(-1), yOf(G.gOut)], [X(1), yOf(G.gOut)],
+          [X(1), yOf(G.knife + G.run)], [X(G.tip), yOf(G.knife)], [X(1), yOf(G.knife - G.run)], [X(1), yOf(G.gIn)],
+          [X(-1), yOf(G.gIn)], [X(-1), yOf(G.knife - G.run)], [X(-G.tip), yOf(G.knife)], [X(-1), yOf(G.knife + G.run)],
+        ];
+        p.fill(copper, 0.22);
+        const yB = yOf(G.bolt), hs = G.shank * k;
+        const xEnd = X(G.outer + G.washT + G.nutT + G.stick);
+        p.poly([[X(-G.outer), yB - hs], [xEnd, yB - hs], [xEnd, yB + hs], [X(-G.outer), yB + hs]], lw * 0.85, true);
+        const cham = Math.min(G.headT * k * 0.35, G.headR * k * 0.28);
+        p.poly([[X(-G.outer), yB - G.headR * k], [X(-G.outer - G.headT) + cham, yB - G.headR * k], [X(-G.outer - G.headT), yB - G.headR * k + cham], [X(-G.outer - G.headT), yB + G.headR * k - cham], [X(-G.outer - G.headT) + cham, yB + G.headR * k], [X(-G.outer), yB + G.headR * k]], lw, true);
+        p.rect(X(G.outer), yB - G.washR * k, G.washT * k, G.washR * 2 * k, lw * 0.9);
+        const nx = X(G.outer + G.washT);
+        p.poly([[nx, yB - G.headR * k], [nx + G.nutT * k - cham, yB - G.headR * k], [nx + G.nutT * k, yB - G.headR * k + cham], [nx + G.nutT * k, yB + G.headR * k - cham], [nx + G.nutT * k - cham, yB + G.headR * k], [nx, yB + G.headR * k]], lw, true);
+        return { X, yOf };
+      };
+      const k = 4.6, x0 = 132, yMain = (r) => 20 + (r - 15) * k;
+      const main = draw(k, x0, yMain, 1.15);
+      const seal = [x0, yMain(21.6)];
+      p.circle(seal[0], seal[1], k * 3.6, 0.75);
+      const box = { x: 8, y: 132, w: 304, h: 214 };
+      p.line(seal[0], seal[1] + k * 3.6, box.x + box.w * 0.72, box.y, 0.7);
+      p.rect(box.x, box.y, box.w, box.h, 1.05);
+      const ki = k * 5, ix = box.x + 118, iy = (r) => box.y + 78 + (r - 21.6) * ki;
+      p.clip('seal', box.x + 1, box.y + 1, box.w - 2, box.h - 2);
+      draw(ki, ix, iy, 1.15);
+      p.clipEnd();
+      const lead = { rotate: 0, size: 11 };
+      p.note('bore', 18, 16, x0, yMain(16.5), { ...lead, align: 'start' });
+      p.note('flange', 16, 78, main.X(-7), yMain(28), { ...lead, align: 'start' });
+      p.note('M6', 292, 96, main.X(-G.outer - G.headT * 0.5), yMain(G.bolt), { ...lead, align: 'end' });
+      p.note('2 mm copper', 16, 168, ix, iy(22.2), { ...lead, align: 'start' });
+      p.note('20° knife', 292, 156, ix + G.tip * ki, iy(G.knife), { ...lead, align: 'end' });
+      p.note('gap', 292, iy(25.4), ix, iy(25.4), { ...lead, align: 'end' });
     } });
 
   add({ id: 'mfp', title: 'Why a lone atom?', unlock: 'win', group: 'Basics',
     body: ['At 10⁻¹⁰ mbar an air molecule travels hundreds of kilometres between collisions with other molecules. Inside a pipe it only ever meets walls.',
       'So in ultra-high vacuum every molecule really does make its own way through the pipes alone, bouncing from wall to wall: molecular flow. That is the world of this game.'],
-    cf: 'Jousten (2016), ch. 3–4: mean free path λ ≈ 6.6×10⁻³ cm·mbar / for air at 20 °C.',
+    cf: 'Jousten (2016), ch. 3–4: mean free path λ ≈ 6.6×10⁻³ cm·mbar / p for air at 20 °C.',
     sketch(p) { tube(p, 30, 290, 95, 40); p.poly([[50, 70], [90, 134], [140, 56], [175, 134], [230, 60], [280, 120]], 1.1); molecule(p, 50, 70); p.label('wall to wall, never molecule to molecule', 160, 175); } });
 
   // ---- mechanics
@@ -6617,16 +6680,6 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     p.curve((t) => [10 + 46 * t, 96 + 3 * Math.sin(t * 20)], 0, 1, 20, 0.8);
     p.note('window', 300, 30, 128, 60); p.note('sleeve (kovar)', 300, 60, 112, 50);
     p.note('CF flange', 300, 170, 98, 150); p.label('light in or out', 200, 126, { size: 11 }); p.label('vacuum side', 30, 180, { size: 11, align: 'start' });
-  };
-  // blank flange: a solid disc closing a port, sealed with the same knife-edge + copper gasket as any CF joint
-  SK['part-blank'] = (p) => {
-    p.rect(70, 40, 46, 112, 1.8);
-    p.rect(130, 40, 40, 112, 1.8);
-    p.rect(116, 72, 14, 56, 1.4); for (let y = 76; y < 126; y += 5) p.line(117, y, 129, y + 3, 0.5);
-    for (const y of [80, 120]) { p.poly([[118, y - 5], [123, y], [118, y + 5]], 1.2, true); p.poly([[128, y - 5], [123, y], [128, y + 5]], 1.2, true); }
-    p.rect(40, 48, 150, 8, 1.4); p.rect(30, 44, 10, 16, 1.4); p.rect(190, 44, 10, 16, 1.4);
-    p.line(10, 136, 70, 136, 1.8); p.line(10, 142, 70, 142, 1.8);
-    p.note('blank (solid)', 300, 100, 168, 100); p.note('copper gasket', 300, 140, 128, 124); p.note('tube flange', 18, 24, 80, 42, { align: 'start' });
   };
   // all-metal angle valve, shut: the stem (sealed by a welded bellows) drives a nose onto a hard seat
   SK['part-valve'] = (p) => {
@@ -7414,10 +7467,16 @@ let store = S.load(); const settings = store.settings; const persist = () => S.s
 const sensor = SN.create();
 let vw = 0, vh = 0, dpr = 1, safe = { t: 0, r: 0, b: 0, l: 0 };
 function resize() {
+  const oldPace = state.world && state.world.opts && state.world.opts.pace;
   vw = innerWidth; vh = innerHeight; dpr = Math.min(2.5, window.devicePixelRatio || 1);
   canvas.width = Math.round(vw * dpr); canvas.height = Math.round(vh * dpr);
   const cs = getComputedStyle($('safe'));
   safe = { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
+  if (state.world && oldPace > 0) {
+    const pace = E.crossingPace(vw, vh);
+    E.retunePace(state.world, pace);
+    state.pace = pace;
+  }
 }
 
 // ------------------------------------------------------------------ purchases (thin interface, src/purchase)
@@ -7647,7 +7706,7 @@ function onWin() {
   if (state.demo) return;
   if (state.level.custom) return onCustomWin();
   const w = state.world, L = state.level, t = w.stats.time, body = bodyFor(L);
-  const pace = w.opts.pace > 0 ? w.opts.pace : 1, tRef = t * pace;
+  const pace = w.opts.pace > 0 ? w.opts.pace : 1, tRef = w.stats.refTime > 0 ? w.stats.refTime : t * pace;
   const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(tRef, par);
   const key = S.bestKey(L.id, body), prev = store.best[key];
   const rec = !prev || tRef < prev.time, exit = w.wonExit || L.exits[0];
@@ -7669,9 +7728,10 @@ function onWin() {
 // editor-made mazes never pay coins (no farming) and keep no best times or pump bonuses
 function onCustomWin() {
   const w = state.world, L = state.level, t = w.stats.time, body = bodyFor(L), exit = w.wonExit || L.exits[0];
-  const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(t, par);
+  const pace = w.opts.pace > 0 ? w.opts.pace : 1, tRef = w.stats.refTime > 0 ? w.stats.refTime : t * pace;
+  const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(tRef, par);
   unlock('win'); purchase.trial.endRun();
-  state.lastResult = { t, stars, par, rec: false, prev: null, contacts: w.stats.contacts, coins: ECO.coinsForCustomWin(), exit, body, newPump: false, custom: true };
+  state.lastResult = { t, tRef, pace, stars, par, rec: false, prev: null, contacts: w.stats.contacts, coins: ECO.coinsForCustomWin(), exit, body, newPump: false, custom: true };
   state.screen = 'won';
   clearTimeout(winTimer); winTimer = setTimeout(() => { if (state.world === w && state.screen === 'won') showWin(); }, 900);
 }
@@ -7694,7 +7754,7 @@ function showWin() {
     [`Best on ${b.name}`, `${store.best[S.bestKey(L.id, r.body)].time.toFixed(1)} s`], ['Pump', pumpName(r.exit.pump) + (r.exit.bonus ? ' (bonus ×1.5)' : '')],
     ['Coins', `+${r.coins} (${store.coins} in the purse)`], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, captured at ${formatT(state.world.atom.T)}`]];
   $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
-  const paceNote = Math.abs((r.pace || 1) - 1) > 0.02 ? ` Record pace is this screen's time × ${r.pace.toFixed(2)}, the reference where the tube fills the width.` : '';
+  const paceNote = Math.abs((r.tRef / Math.max(r.t, 1e-9)) - 1) > 0.02 ? ' Record pace adds each moment at the screen width then showing, the reference where the tube fills the width.' : '';
   $('win-note').textContent = (r.rec && r.prev ? `New best! (was ${r.prev.time.toFixed(1)} s)` : r.rec ? 'First escape from this apparatus on this world.' : '') + paceNote;
   const nxt = state.levelIdx + 1;
   $('b-next').style.display = nxt < RELEASED ? '' : 'none';
@@ -8026,7 +8086,8 @@ function deadEndLabel(part, x, y, ax, ay, h, bw) {
 // ------------------------------------------------------------------ HUD (screen space)
 function hud(theme) {
   const bw = theme === 'bw', w = state.world, L = state.level, a = w.atom, body = bodyFor(L), g = gFor(body);
-  const t = w.stats.time, par = ECO.parFor(L.pathCells, body, g), stars = ECO.starsFor(t, par);
+  const t = w.stats.time, tRef = w.stats.refTime > 0 ? w.stats.refTime : t * (w.opts.pace > 0 ? w.opts.pace : 1);
+  const par = ECO.parFor(L.pathCells, body, g), stars = ECO.starsFor(tRef, par);
   const Tk = w.won && w.extraction ? w.extraction.temperature : a.stuck ? a.T : E.kinT(a, w.scale);
   // Controls sit in a 52 px gutter; plate uses the rest so phone HUD labels (esp. TEMPERATURE) keep the full word.
   const left = safe.l + 8, top = safe.t + 8, right = vw - safe.r - 8 - 52, width = Math.min(580, Math.max(280, right - left)), h = 80;

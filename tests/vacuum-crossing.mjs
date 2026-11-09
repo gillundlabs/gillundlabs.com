@@ -112,18 +112,46 @@ check(fast.wrote && Math.abs(fast.best.time - 5) < 1e-9 && fast.best.ref === tru
 check(!html.includes('store.best') || !/resize\(\)[\s\S]{0,400}store\.best/.test(html), 'resize does not mention bests');
 
 const dn40Src = html.match(/function dn40Metrics\(\) \{[\s\S]*?\n  \}/);
-if (!dn40Src) check(false, 'dn40Metrics missing');
+const spriteSrc = html.match(/function dn40Sprite\(borePx\) \{[\s\S]*?\n  \}/);
+if (!dn40Src || !spriteSrc) check(false, 'dn40 geometry missing');
 else {
   const box = { Math };
   vm.createContext(box);
-  vm.runInContext(dn40Src[0] + '\nthis.m = dn40Metrics();', box);
-  const m = box.m;
+  vm.runInContext(dn40Src[0] + '\n' + spriteSrc[0] + '\nthis.m = dn40Metrics(); this.s = dn40Sprite(80);', box);
+  const m = box.m, s = box.s;
+  check(m.gasketIn >= 19, 'gasket inside radius enters the bore: ' + m.gasketIn);
   check(m.gasketT / m.flangeT < 0.25, 'gasket thicker than a quarter of the flange: ' + m.gasketT);
   check(m.tipX > 0 && m.tipSep > 1 && m.tipX < m.gasketT / 2, 'knife tips must stay apart inside the copper, sep ' + m.tipSep);
   check(m.boltR > m.recessR, 'bolt circle is inside the recess');
   check(m.knifeR > m.gasketIn && m.knifeR < m.gasketOut, 'knife radius is outside the copper');
   check(Math.abs(m.gasketT - 2) < 1e-9 && Math.abs(m.flangeT - 12.7) < 1e-9, 'DN40 thicknesses');
-  console.log('dn40', JSON.stringify({ gasketVsFlange: m.gasketVsFlange, tipSep: m.tipSep, boltR: m.boltR, recessR: m.recessR, knifeR: m.knifeR }));
+  check(Math.abs(s.odOverId - 70 / 38) < 1e-12, 'in-game OD/ID is ' + s.odOverId);
+  check(Math.abs(s.thick - 12.7 * s.pxPerMm) < 1e-9, 'thickness does not follow the bore scale');
+  check(Math.abs(s.boltR - 29.4 * s.pxPerMm) < 1e-9, 'bolt circle does not follow the bore scale');
+  check(s.boltR > 80 + 12, 'bolt circle is inside the 12 px tube wall');
+  console.log('dn40', JSON.stringify({ gasketIn: m.gasketIn, odOverId: s.odOverId, boltR: s.boltR, thick: s.thick }));
+}
+
+{
+  const p1 = E.crossingPace(1280, 800), p2 = E.crossingPace(1440, 800);
+  const T1 = Tref * p1 * p1;
+  const w = E.createWorld(level, 1, { rand: mulberry(4), g, wallT: T1, pace: p1 });
+  w.g.x = 0; w.g.y = 0;
+  const v = E.meanThermalSpeed(T1, w.atom.m) / w.scale;
+  w.atom.vx = v; w.atom.vy = 0; w.atom.stuck = null;
+  const cross = (span) => span / Math.hypot(w.atom.vx, w.atom.vy);
+  const tA = cross(E.visibleWidthPx(1280, 800));
+  E.step(w, 0.05);
+  const refA = w.stats.refTime;
+  E.retunePace(w, p2);
+  const tB = cross(E.visibleWidthPx(1440, 800));
+  check(Math.abs(tB - tA) / tA < 0.02, `resize crossing ${tA} -> ${tB}`);
+  check(Math.abs(w.stats.refTime - refA) < 1e-9, 'resize jumped the reference clock');
+  check(Math.abs(w.opts.wallT / T1 - (p2 / p1) ** 2) < 1e-9, 'wall temperature did not scale with pace squared');
+  E.step(w, 0.05);
+  const expect = refA + 0.05 * p2;
+  check(Math.abs(w.stats.refTime - expect) < 1e-6, `reference time ${w.stats.refTime} vs ${expect}`);
+  console.log('resize', JSON.stringify({ tA, tB, refA, refB: w.stats.refTime, p1, p2 }));
 }
 
 if (failures.length) {
