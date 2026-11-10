@@ -8607,13 +8607,13 @@ function scrollNotebook(id, behavior) {
 }
 const ACC_NAMES = { 'lasers-li': 'Lithium laser data', citations: 'Sources', levels: 'Level captions', 'levels-later': 'Level captions (later chapters)' };
 
-// Vacuum Maze's one notebook mark: two coffee drops near the middle, then the same spot on the next two pages.
+// Vacuum Maze's one notebook mark: two coffee drops on page 3 (not counting contents), then the same spot on the next two pages.
 // size stays lineGap / 18.61 (1.612 at a 30 px rule). Seed 78 is two drops, a larger one and a smaller one, with paper between them.
 const PAGE_MARK = { kind: 'coffee-drops', seed: 78 };
 const PAGE_MARK_DROP_PX = 18.61;
 const PAGE_MARK_BOX = { l: -22.75, t: -16.15, r: 18.59, b: 8.72 };
-// Full notebook is 27 pages (contents through accuracy). round(27/2) = 14: Choosing an element, then the rotary and scroll pumps.
-const PAGE_MARK_FADE = { elements: 0, 'pump-rotary': 1, 'pump-scroll': 2 };
+// Public numbering, contents not counted: page 3 Knudsen, page 4 walls, page 5 wall temperature.
+const PAGE_MARK_FADE = { cosine: 0, accommodation: 1, walltemp: 2 };
 function pageLineGap(page) {
   const cs = getComputedStyle(page);
   const token = parseFloat(cs.getPropertyValue('--vls-line'));
@@ -8626,15 +8626,14 @@ function stampPageMark(page, fade) {
   const gap = pageLineGap(page);
   const size = gap / PAGE_MARK_DROP_PX;
   const w = page.clientWidth, h = page.clientHeight;
-  let x = 5 * gap, y = 6 * gap;
+  // Left margin, lower than the first try so the smaller drop clears the temperature scale on page 5.
+  let x = 0.65 * gap, y = 9 * gap;
   const sl = PAGE_MARK_BOX.l * size, sr = PAGE_MARK_BOX.r * size, st = PAGE_MARK_BOX.t * size, sb = PAGE_MARK_BOX.b * size;
   const spanX = sr - sl, spanY = sb - st;
-  if (x + sl < 0) x = -sl;
-  if (x + sr > w) x = Math.max(-sl, w - sr);
+  if (x + sl < -spanX / 3) x = -spanX / 3 - sl;
+  if (x + sr > w) x = Math.max(-spanX / 3 - sl, w - sr);
   if (y + st < 0) y = -st;
   if (y + sb > h) y = Math.max(-st, h - sb);
-  // Keep at least two thirds of the cluster inside the page if a short page cannot hold all of it.
-  if (x + sl < -spanX / 3) x = -spanX / 3 - sl;
   if (y + st < -spanY / 3) y = -spanY / 3 - st;
   const c = document.createElement('canvas');
   c.className = 'vm-page-mark';
