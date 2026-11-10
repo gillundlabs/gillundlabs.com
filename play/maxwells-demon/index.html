@@ -5704,7 +5704,7 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
   function draw(sk, t) {
     const c = sk.canvas, cssW = Math.min(620, Math.max(240, c.parentElement.clientWidth - 8));
     const narrow = cssW < 400;
-    // Victorian Close is tall enough at 320 to cover a wrapped title drawn at the canvas top.
+    // Victorian Close is tall enough below 400px to cover a title drawn at the canvas top.
     const titleClear = sk.pg.id === 'bec' && narrow ? 36 : 0;
     const cssH = Math.round(sk.pg.h * Math.min(1, cssW / 520) + (narrow ? 30 : 0) + titleClear);
     const dpr = Math.min(2.5, root.devicePixelRatio || 1), theme = document.body.dataset.theme === 'bw' ? 'bw' : 'victorian';
@@ -5846,21 +5846,23 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     };
     if (roomy) {
       const y0 = h - 50;
+      const lead = w < 400 ? 36 : 0;
+      const plotTop = top + lead;
       for (let i = 0; i < n; i++) {
-        const x = 15 + i * cw, xm = x + cw / 2, s1 = cw * 0.2, s0 = cw * 0.05, A = y0 - top;
+        const x = 15 + i * cw, xm = x + cw / 2, s1 = cw * 0.2, s0 = cw * 0.05, A = y0 - plotTop;
         const g = (s) => (1 - frac[i]) * 0.38 * Math.exp(-((s / s1) ** 2)) + frac[i] * Math.exp(-((s / s0) ** 2));
         p.line(x + 6, y0, x + cw - 6, y0, 1.1);
         p.curve((u) => { const s = (u - 0.5) * cw * 0.9; return [xm + s, y0 - g(s) * A]; }, 0, 1, 90, 1.6);
-        p.hatch((c) => { c.moveTo(xm - cw * 0.45, y0); for (let k = 0; k <= 60; k++) { const s = (k / 60 - 0.5) * cw * 0.9; c.lineTo(xm + s, y0 - g(s) * A); } c.closePath(); }, [x, top, cw, y0 - top], 0.9, 6, 0.6);
+        p.hatch((c) => { c.moveTo(xm - cw * 0.45, y0); for (let k = 0; k <= 60; k++) { const s = (k / 60 - 0.5) * cw * 0.9; c.lineTo(xm + s, y0 - g(s) * A); } c.closePath(); }, [x, plotTop, cw, y0 - plotTop], 0.9, 6, 0.6);
         p.label(caps[i][0], xm, y0 + 18, { size: 15 });
         p.label(caps[i][1], xm, y0 + 36, { size: 14 });
         const head = inkOf(caps[i][0], 15), sub = inkOf(caps[i][1], 14);
         boxes.push({ text: caps[i][0], x: xm, y: y0 + 18, size: 15, column: i, left: xm - head.left, right: xm + head.right, top: y0 + 18 - head.up, bottom: y0 + 18 + head.down });
         boxes.push({ text: caps[i][1], x: xm, y: y0 + 36, size: 14, column: i, left: xm - sub.left, right: xm + sub.right, top: y0 + 36 - sub.up, bottom: y0 + 36 + sub.down });
       }
-      p.label(title, w / 2, 14, { size: 15 });
+      p.label(title, w / 2, 14 + lead, { size: 15 });
       const ink = inkOf(title, 15);
-      boxes.push({ text: title, x: w / 2, y: 14, size: 15, column: null, left: w / 2 - ink.left, right: w / 2 + ink.right, top: 14 - ink.up, bottom: 14 + ink.down });
+      boxes.push({ text: title, x: w / 2, y: 14 + lead, size: 15, column: null, left: w / 2 - ink.left, right: w / 2 + ink.right, top: 14 + lead - ink.up, bottom: 14 + lead + ink.down });
       ctx.canvas.__becLayout = { w, h, roomy: true, cw, boxes };
       return;
     }
