@@ -5702,7 +5702,11 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     built = true;
   }
   function draw(sk, t) {
-    const c = sk.canvas, cssW = Math.min(620, Math.max(240, c.parentElement.clientWidth - 8)), cssH = Math.round(sk.pg.h * Math.min(1, cssW / 520) + (cssW < 400 ? 30 : 0));
+    const c = sk.canvas, cssW = Math.min(620, Math.max(240, c.parentElement.clientWidth - 8));
+    const narrow = cssW < 400;
+    // Victorian Close is tall enough at 320 to cover a wrapped title drawn at the canvas top.
+    const titleClear = sk.pg.id === 'bec' && narrow ? 36 : 0;
+    const cssH = Math.round(sk.pg.h * Math.min(1, cssW / 520) + (narrow ? 30 : 0) + titleClear);
     const dpr = Math.min(2.5, root.devicePixelRatio || 1), theme = document.body.dataset.theme === 'bw' ? 'bw' : 'victorian';
     if (c.width !== Math.round(cssW * dpr) || c.height !== Math.round(cssH * dpr)) { c.width = Math.round(cssW * dpr); c.height = Math.round(cssH * dpr); c.style.width = cssW + 'px'; c.style.height = cssH + 'px'; }
     const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, cssW, cssH);
@@ -5884,7 +5888,7 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     const titleFit = fit(title, Math.max(20, w - 4), 15, 3);
     const stepOf = (lines, size) => Math.max(...lines.map((line) => { const ink = inkOf(line, size); return ink.up + ink.down + 3; }));
     const titleStep = stepOf(titleFit.lines, titleFit.size);
-    const titleLead = inkOf(titleFit.lines[0], titleFit.size).up + 1;
+    const titleLead = inkOf(titleFit.lines[0], titleFit.size).up + 1 + 36;
     const titleBottom = titleLead + (titleFit.lines.length - 1) * titleStep + inkOf(titleFit.lines[titleFit.lines.length - 1], titleFit.size).down;
     const plotTop = Math.max(top, titleBottom + 6);
     const capFits = caps.map((cap) => ({ head: fit(cap[0], Math.max(12, cw - 2), 13, 2), sub: fit(cap[1], Math.max(12, cw - 2), 12, 3) }));
