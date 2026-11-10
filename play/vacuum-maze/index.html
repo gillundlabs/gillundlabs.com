@@ -8608,10 +8608,8 @@ function scrollNotebook(id, behavior) {
 const ACC_NAMES = { 'lasers-li': 'Lithium laser data', citations: 'Sources', levels: 'Level captions', 'levels-later': 'Level captions (later chapters)' };
 
 // Vacuum Maze's one notebook mark: coffee drops on Walls, then the same spot on the next two pages.
-// pageMark('coffee-drops') at size 1, seed 12, measured from the drawn ellipses: the large drop is
-// 18.61 px across, and the three drops together span 41.34 px by 24.87 px (2.22 by 1.34 drop-widths).
-// size = lineGap / 18.61 puts that drop on one ruled line and the cluster on about 2.2 lines.
-const PAGE_MARK = { kind: 'coffee-drops', seed: 12 };
+// size stays lineGap / 18.61 (1.612 at a 30 px rule). Seed 78 is two drops, a larger one and a smaller one, with paper between them.
+const PAGE_MARK = { kind: 'coffee-drops', seed: 78 };
 const PAGE_MARK_DROP_PX = 18.61;
 const PAGE_MARK_BOX = { l: -22.75, t: -16.15, r: 18.59, b: 8.72 };
 const PAGE_MARK_FADE = { accommodation: 0, walltemp: 1, flight: 2 };

@@ -173,7 +173,7 @@ try {
   const spot = marks.found[0];
   if (marks.found.some((m) => m.x !== spot.x || m.y !== spot.y || m.size !== spot.size || m.seed !== spot.seed)) fail('the three pages do not share a spot ' + JSON.stringify(marks.found));
   for (const m of marks.found) {
-    if (m.kind !== 'coffee-drops' || m.seed !== '12') fail('mark spot changed ' + JSON.stringify(m));
+    if (m.kind !== 'coffee-drops' || m.seed !== '78') fail('mark spot changed ' + JSON.stringify(m));
     const expect = Number(m.gap) / 18.61;
     if (Math.abs(Number(m.size) - expect) > 0.01) fail('drop size is not one ruled line ' + JSON.stringify(m));
     if (m.ink < 10) fail('fade ' + m.fade + ' drew nothing');
@@ -436,7 +436,7 @@ try {
   if (bw.theme !== 'bw' || bw.analogies || bw.pages < 8) fail('black-and-white notebook broken ' + JSON.stringify(bw));
   const bwMarks = await ev(`(() => {
     const canvases = document.querySelectorAll('#nb-body canvas.vm-page-mark').length;
-    const silent = window.VLS.notebook.pageMark(document.createElement('canvas').getContext('2d'), 'coffee-drops', 150, 180, { seed: 12, theme: 'bw', fade: 0, size: 1.61 });
+    const silent = window.VLS.notebook.pageMark(document.createElement('canvas').getContext('2d'), 'coffee-drops', 150, 180, { seed: 78, theme: 'bw', fade: 0, size: 1.61 });
     const sample = getComputedStyle(document.querySelector('#nb-body .vls-page')).backgroundImage;
     return { canvases, silent, ring: /122,\\s*74,\\s*30/.test(sample) };
   })()`);
@@ -469,7 +469,7 @@ try {
   if (siteMarks.found.map((m) => m.id + ':' + m.fade).join(',') !== 'p4:0,p5:1,p6:2') fail('public mark pages ' + JSON.stringify(siteMarks.found));
   if (siteMarks.found[1].i !== siteMarks.found[0].i + 1 || siteMarks.found[2].i !== siteMarks.found[1].i + 1) fail('public marks are not consecutive');
   for (const m of siteMarks.found) {
-    if (m.kind !== 'coffee-drops' || m.seed !== '12') fail('public mark spot ' + JSON.stringify(m));
+    if (m.kind !== 'coffee-drops' || m.seed !== '78') fail('public mark spot ' + JSON.stringify(m));
     if (Math.abs(Number(m.size) - Number(m.gap) / 18.61) > 0.01) fail('public drop size ' + JSON.stringify(m));
   }
 } finally {
