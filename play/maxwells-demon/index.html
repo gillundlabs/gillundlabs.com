@@ -7720,45 +7720,81 @@ function engravedMetrics(ctx, text, size, weight) {
   const descent = m.actualBoundingBoxDescent || size * 0.22;
   return { width, ascent, descent, height: ascent + descent + 1 };
 }
+function wrapEngraved(ctx, text, size, weight, maxW) {
+  const widthOf = (s) => engravedMetrics(ctx, s, size, weight).width;
+  if (widthOf(text) <= maxW) return [text];
+  const lines = [];
+  let line = '';
+  const pieces = String(text).match(/\S+\s*/gu) || [''];
+  const push = (s) => { const t = s.trimEnd(); if (t) lines.push(t); };
+  for (const piece of pieces) {
+    if (line && widthOf((line + piece).trimEnd()) > maxW) { push(line); line = ''; }
+    const graphemes = typeof Intl.Segmenter === 'function'
+      ? [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(piece)].map((s) => s.segment)
+      : Array.from(piece);
+    for (const ch of graphemes) {
+      if (line && widthOf((line + ch).trimEnd()) > maxW) { push(line); line = ''; }
+      line += ch;
+    }
+  }
+  push(line);
+  if (lines.length >= 2 && lines[lines.length - 1].length <= 3) {
+    const words = lines[lines.length - 2].split(/\s+/);
+    if (words.length > 1) {
+      const moved = words.pop();
+      const next = `${moved} ${lines[lines.length - 1]}`.trim();
+      if (widthOf(words.join(' ')) <= maxW && widthOf(next) <= maxW) {
+        lines[lines.length - 2] = words.join(' ');
+        lines[lines.length - 1] = next;
+      }
+    }
+  }
+  return lines.length ? lines : [text];
+}
 function engraveStack(ctx, plate, lines) {
-  // The shared plaque face inset (screw + rule) leaves ~38px. Separate engrave()
-  // calls were each clamped into that one band, and a line wider than it wrapped
-  // onto its neighbours. Slots sit between the straight rules and clear of the corner arcs.
-  const side = 26, vert = 12, gap = 3;
+  // Slots sit between the straight rules and clear of the corner arcs. A caption
+  // that is wider than the slot wraps inside that slot at its own size, instead
+  // of shrinking below the other subtitle on the plate.
+  const side = 26, vert = 12, innerGap = 2;
   const box = { x: plate.x + side, y: plate.y + vert, w: plate.w - 2 * side, h: plate.h - 2 * vert };
-  const fitted = lines.filter((line) => line && line.text).map((line) => ({ ...line, weight: line.weight || '600', size: line.size }));
-  const measure = (line) => { line.ink = engravedMetrics(ctx, line.text, line.size, line.weight); };
-  for (const line of fitted) {
-    measure(line);
-    while (line.size > 7 && line.ink.width > box.w - 2) {
-      line.size = Math.max(7, line.size - 0.5);
-      measure(line);
+  const maxW = box.w - 4;
+  const items = lines.filter((line) => line && line.text).map((line) => ({ ...line, weight: line.weight || '600', size: line.size }));
+  const captionSizes = items.filter((line) => line.size < 14).map((line) => line.size);
+  const floor = captionSizes.length ? Math.min(...captionSizes) : 11;
+  const fitBlock = (line) => {
+    let size = line.size;
+    const caption = size < 14;
+    if (!caption) {
+      while (size > floor && engravedMetrics(ctx, line.text, size, line.weight).width > maxW) size = Math.max(floor, +(size - 0.5).toFixed(2));
+    }
+    const parts = wrapEngraved(ctx, line.text, size, line.weight, maxW);
+    const inks = parts.map((part) => engravedMetrics(ctx, part, size, line.weight));
+    const height = inks.reduce((sum, ink) => sum + ink.height, 0) + innerGap * Math.max(0, parts.length - 1);
+    return { ...line, size, parts, inks, height };
+  };
+  const blocks = items.map(fitBlock);
+  let gap = 3;
+  const totalOf = () => blocks.reduce((sum, block) => sum + block.height, 0) + gap * Math.max(0, blocks.length - 1);
+  if (totalOf() > box.h) gap = 2;
+  for (const block of blocks) {
+    if (block.size < 14) continue;
+    while (block.size > floor && totalOf() > box.h) {
+      block.size = Math.max(floor, +(block.size - 0.5).toFixed(2));
+      block.parts = wrapEngraved(ctx, block.text, block.size, block.weight, maxW);
+      block.inks = block.parts.map((part) => engravedMetrics(ctx, part, block.size, block.weight));
+      block.height = block.inks.reduce((sum, ink) => sum + ink.height, 0) + innerGap * Math.max(0, block.parts.length - 1);
     }
   }
-  for (let pass = 0; pass < 8; pass++) {
-    const inkSum = fitted.reduce((sum, line) => sum + line.ink.height, 0);
-    const total = inkSum + gap * Math.max(0, fitted.length - 1);
-    if (total <= box.h + 0.25) break;
-    const room = Math.max(8, box.h - gap * Math.max(0, fitted.length - 1));
-    const scale = room / inkSum;
-    let changed = false;
-    for (const line of fitted) {
-      const next = Math.max(7, line.size * scale);
-      if (next < line.size - 0.05) { line.size = next; changed = true; }
-    }
-    if (!changed) break;
-    for (const line of fitted) measure(line);
-  }
-  const inkSum = fitted.reduce((sum, line) => sum + line.ink.height, 0);
-  const total = inkSum + gap * Math.max(0, fitted.length - 1);
-  let y = box.y + Math.max(0, (box.h - total) / 2);
-  for (const line of fitted) {
-    const baseline = y + line.ink.ascent;
-    const face = { x: box.x, y: y, w: box.w, h: line.ink.height, inset: 0 };
-    R.faceText(ctx, line.text, box.x + box.w / 2, baseline, line.size, {
-      align: 'center', weight: line.weight, cut: line.cut, face, minSize: line.size,
+  let y = box.y + Math.max(0, (box.h - totalOf()) / 2);
+  for (const block of blocks) {
+    block.parts.forEach((part, i) => {
+      const ink = block.inks[i];
+      const face = { x: box.x, y, w: box.w, h: ink.height, inset: 0 };
+      R.faceText(ctx, part, box.x + box.w / 2, y + ink.ascent, block.size, {
+        align: 'center', weight: block.weight, cut: block.cut, face, minSize: block.size,
+      });
+      y += ink.height + (i < block.parts.length - 1 ? innerGap : gap);
     });
-    y += line.ink.height + gap;
   }
 }
 function hud(theme) {
