@@ -83,7 +83,7 @@
 .vls-analogy .vls-note-label { color: var(--vls-ink-blue); }
 .vls-simplification { background: var(--vls-note-simplification); border-left: 3px double var(--vls-ink-red); transform: rotate(0.6deg); box-shadow: 1px 2px 6px rgba(60,30,5,0.25); }
 .vls-simplification .vls-note-label { color: var(--vls-ink-red); }
-.vls-cf { font-size: 17px; line-height: 22px; color: var(--vls-ink-faded); border-top: 1px solid rgba(112,66,20,0.35); padding-top: 6px; margin: 4px 0 0; }
+.vls-cf { font-size: 17px; line-height: 22px; color: var(--vls-ink-faded); border-top: 1px solid rgba(112,66,20,0.35); padding-top: 6px; margin: 4px 0 0; overflow-wrap: anywhere; word-break: break-word; }
 .vls-cf-mark { font-style: italic; font-weight: 700; }
 .vls-cf a { color: inherit; }
 
@@ -533,7 +533,7 @@
   #notes-book .vls-page h2 { font-variant: normal; letter-spacing: 0; text-transform: none; border-bottom: 0; padding-bottom: 0; text-align: left; }
   #notes-book .vls-page p { margin: 0 0 var(--vls-line); line-height: var(--vls-line); }
   #notes-book .vls-note p { margin: 0; line-height: inherit; }
-  #notes-book .vls-cf { line-height: 22px; }
+  #notes-book .vls-cf { line-height: 22px; overflow-wrap: anywhere; word-break: break-word; }
   #notes-book sub, #notes-book sup { line-height: 0; }
   .notes-toc { margin: 0 0 30px; padding-left: 26px; }
   .notes-toc li { margin: 0; line-height: 44px; }
@@ -1524,7 +1524,7 @@
     font-family: var(--vls-font-hand) !important; font-size: 15px !important; font-weight: 400 !important;
     font-style: normal !important; letter-spacing: 0.02em;
     text-decoration: none; border-bottom: 1px solid #3d2706;
-    white-space: nowrap !important; overflow: hidden; text-overflow: clip;
+    white-space: normal !important; overflow: visible; height: auto; overflow-wrap: break-word;
     max-width: 100%; line-height: 1.2 !important;
   }
   .notes-toc a:hover { filter: brightness(1.04); }
@@ -1551,9 +1551,12 @@
   .ach-note.vls-plaque > .vls-plaque__label[hidden] { display: none !important; }
 
   @media (max-width: 480px) {
-    .notes-toc { grid-template-columns: 1fr !important; }
+    .notes-toc { grid-template-columns: minmax(0, 1fr) !important; }
+    .notes-toc li { min-width: 0; max-width: 100%; }
     .notes-toc a, .notes-toc .toc-locked,
-    #notes-book .notes-toc a { font-size: 13px !important; }
+    #notes-book .notes-toc a, #notes-book .notes-toc .toc-locked {
+      font-size: 13px !important; white-space: normal !important; overflow: visible; height: auto;
+    }
   }
 
   body[data-theme] #p-full .fv-plaque .fv-stores-row .fv-store-btn,
@@ -5806,17 +5809,103 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
     p.label('the hottest leave;', xm, h - 30, { size: 15 }).label('the rest re-share and cool', xm, h - 12, { size: 15 });
   }
   function sketchBEC(ctx, w, h, theme) {
-    const p = NB.pen(ctx, { theme, seed: 141 }), n = 3, cw = (w - 30) / n, y0 = h - 50, top = 34;
+    const p = NB.pen(ctx, { theme, seed: 141 }), n = 3, cw = (w - 30) / n, top = 34;
     const caps = [['above T꜀', 'all thermal'], ['just below', 'a spike appears'], ['far below', 'nearly all condensate']], frac = [0, 0.35, 0.9];
-    for (let i = 0; i < n; i++) {
-      const x = 15 + i * cw, xm = x + cw / 2, s1 = cw * 0.2, s0 = cw * 0.05, A = y0 - top;
-      const g = (s) => (1 - frac[i]) * 0.38 * Math.exp(-((s / s1) ** 2)) + frac[i] * Math.exp(-((s / s0) ** 2));
-      p.line(x + 6, y0, x + cw - 6, y0, 1.1);
-      p.curve((u) => { const s = (u - 0.5) * cw * 0.9; return [xm + s, y0 - g(s) * A]; }, 0, 1, 90, 1.6);
-      p.hatch((c) => { c.moveTo(xm - cw * 0.45, y0); for (let k = 0; k <= 60; k++) { const s = (k / 60 - 0.5) * cw * 0.9; c.lineTo(xm + s, y0 - g(s) * A); } c.closePath(); }, [x, top, cw, y0 - top], 0.9, 6, 0.6);
-      p.label(caps[i][0], xm, y0 + 18, { size: 15 }).label(caps[i][1], xm, y0 + 36, { size: 14 });
+    const title = 'atoms per position, after the trap is switched off';
+    const hand = (getComputedStyle(document.body).getPropertyValue('--vls-font-hand') || '').trim() || 'sans-serif';
+    const advance = (text, size) => { ctx.save(); ctx.font = `500 ${size}px ${hand}`; const width = ctx.measureText(text).width; ctx.restore(); return width; };
+    const inkOf = (text, size) => {
+      ctx.save(); ctx.font = `500 ${size}px ${hand}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const m = ctx.measureText(text); ctx.restore();
+      const left = Number.isFinite(m.actualBoundingBoxLeft) ? m.actualBoundingBoxLeft : m.width / 2;
+      const right = Number.isFinite(m.actualBoundingBoxRight) ? m.actualBoundingBoxRight : m.width / 2;
+      const up = Number.isFinite(m.actualBoundingBoxAscent) ? m.actualBoundingBoxAscent : size * 0.8;
+      const down = Number.isFinite(m.actualBoundingBoxDescent) ? m.actualBoundingBoxDescent : size * 0.25;
+      const theta = 0.03, c = Math.cos(theta), s = Math.sin(theta);
+      return { left: left * c + up * s, right: right * c + down * s, up: up * c + left * s, down: down * c + right * s };
+    };
+    const roomy = caps.every((cap) => advance(cap[0], 15) <= cw - 8 && advance(cap[1], 14) <= cw - 8);
+    const boxes = [];
+    const place = (text, x, y, size, column) => {
+      const ink = inkOf(text, size);
+      boxes.push({ text, x, y, size, column, left: x - ink.left, right: x + ink.right, top: y - ink.up, bottom: y + ink.down });
+      p.label(text, x, y, { size });
+    };
+    const drawPeaks = (y0, plotTop) => {
+      for (let i = 0; i < n; i++) {
+        const x = 15 + i * cw, xm = x + cw / 2, s1 = cw * 0.2, s0 = cw * 0.05, A = y0 - plotTop;
+        const g = (s) => (1 - frac[i]) * 0.38 * Math.exp(-((s / s1) ** 2)) + frac[i] * Math.exp(-((s / s0) ** 2));
+        p.line(x + 6, y0, x + cw - 6, y0, 1.1);
+        p.curve((u) => { const s = (u - 0.5) * cw * 0.9; return [xm + s, y0 - g(s) * A]; }, 0, 1, 90, 1.6);
+        p.hatch((c) => { c.moveTo(xm - cw * 0.45, y0); for (let k = 0; k <= 60; k++) { const s = (k / 60 - 0.5) * cw * 0.9; c.lineTo(xm + s, y0 - g(s) * A); } c.closePath(); }, [x, plotTop, cw, y0 - plotTop], 0.9, 6, 0.6);
+      }
+    };
+    if (roomy) {
+      const y0 = h - 50;
+      for (let i = 0; i < n; i++) {
+        const x = 15 + i * cw, xm = x + cw / 2, s1 = cw * 0.2, s0 = cw * 0.05, A = y0 - top;
+        const g = (s) => (1 - frac[i]) * 0.38 * Math.exp(-((s / s1) ** 2)) + frac[i] * Math.exp(-((s / s0) ** 2));
+        p.line(x + 6, y0, x + cw - 6, y0, 1.1);
+        p.curve((u) => { const s = (u - 0.5) * cw * 0.9; return [xm + s, y0 - g(s) * A]; }, 0, 1, 90, 1.6);
+        p.hatch((c) => { c.moveTo(xm - cw * 0.45, y0); for (let k = 0; k <= 60; k++) { const s = (k / 60 - 0.5) * cw * 0.9; c.lineTo(xm + s, y0 - g(s) * A); } c.closePath(); }, [x, top, cw, y0 - top], 0.9, 6, 0.6);
+        p.label(caps[i][0], xm, y0 + 18, { size: 15 });
+        p.label(caps[i][1], xm, y0 + 36, { size: 14 });
+        const head = inkOf(caps[i][0], 15), sub = inkOf(caps[i][1], 14);
+        boxes.push({ text: caps[i][0], x: xm, y: y0 + 18, size: 15, column: i, left: xm - head.left, right: xm + head.right, top: y0 + 18 - head.up, bottom: y0 + 18 + head.down });
+        boxes.push({ text: caps[i][1], x: xm, y: y0 + 36, size: 14, column: i, left: xm - sub.left, right: xm + sub.right, top: y0 + 36 - sub.up, bottom: y0 + 36 + sub.down });
+      }
+      p.label(title, w / 2, 14, { size: 15 });
+      const ink = inkOf(title, 15);
+      boxes.push({ text: title, x: w / 2, y: 14, size: 15, column: null, left: w / 2 - ink.left, right: w / 2 + ink.right, top: 14 - ink.up, bottom: 14 + ink.down });
+      ctx.canvas.__becLayout = { w, h, roomy: true, cw, boxes };
+      return;
     }
-    p.label('atoms per position, after the trap is switched off', w / 2, 14, { size: 15 });
+    const fit = (text, limit, start, maxLines) => {
+      let size = start;
+      while (size >= 8) {
+        const words = text.split(' '), lines = [];
+        let cur = '', ok = true;
+        for (const word of words) {
+          const wordInk = inkOf(word, size);
+          if (wordInk.left + wordInk.right > limit) { ok = false; break; }
+          const next = cur ? `${cur} ${word}` : word;
+          const nextInk = inkOf(next, size);
+          if (cur && nextInk.left + nextInk.right > limit) { lines.push(cur); cur = word; }
+          else cur = next;
+        }
+        if (ok) {
+          if (cur) lines.push(cur);
+          if (!maxLines || lines.length <= maxLines) return { size, lines };
+        }
+        size -= 0.5;
+      }
+      return { size: 8, lines: text.split(' ') };
+    };
+    const titleFit = fit(title, Math.max(20, w - 4), 15, 3);
+    const stepOf = (lines, size) => Math.max(...lines.map((line) => { const ink = inkOf(line, size); return ink.up + ink.down + 3; }));
+    const titleStep = stepOf(titleFit.lines, titleFit.size);
+    const titleLead = inkOf(titleFit.lines[0], titleFit.size).up + 1;
+    const titleBottom = titleLead + (titleFit.lines.length - 1) * titleStep + inkOf(titleFit.lines[titleFit.lines.length - 1], titleFit.size).down;
+    const plotTop = Math.max(top, titleBottom + 6);
+    const capFits = caps.map((cap) => ({ head: fit(cap[0], Math.max(12, cw - 2), 13, 2), sub: fit(cap[1], Math.max(12, cw - 2), 12, 3) }));
+    const blockOf = (fitCap) => {
+      const headStep = stepOf(fitCap.head.lines, fitCap.head.size), subStep = stepOf(fitCap.sub.lines, fitCap.sub.size);
+      let y = inkOf(fitCap.head.lines[0], fitCap.head.size).up + 4, bottom = y;
+      for (const line of fitCap.head.lines) { bottom = y + inkOf(line, fitCap.head.size).down; y += headStep; }
+      for (const line of fitCap.sub.lines) { bottom = y + inkOf(line, fitCap.sub.size).down; y += subStep; }
+      return bottom + 2;
+    };
+    const y0 = h - Math.max(...capFits.map(blockOf));
+    drawPeaks(y0, plotTop);
+    for (let i = 0; i < n; i++) {
+      const xm = 15 + i * cw + cw / 2, fitCap = capFits[i];
+      const headStep = stepOf(fitCap.head.lines, fitCap.head.size), subStep = stepOf(fitCap.sub.lines, fitCap.sub.size);
+      let y = y0 + inkOf(fitCap.head.lines[0], fitCap.head.size).up + 4;
+      for (const line of fitCap.head.lines) { place(line, xm, y, fitCap.head.size, i); y += headStep; }
+      for (const line of fitCap.sub.lines) { place(line, xm, y, fitCap.sub.size, i); y += subStep; }
+    }
+    titleFit.lines.forEach((line, k) => place(line, w / 2, titleLead + k * titleStep, titleFit.size, null));
+    ctx.canvas.__becLayout = { w, h, roomy: false, cw, boxes };
   }
   function sketchEffusion(ctx, w, h, theme, t, st) {
     const p = NB.pen(ctx, { theme, seed: 151 }), wx = w * 0.42, gy0 = h / 2 - 12, gy1 = h / 2 + 12, top = 22, bot = h - 40, dt = stepLive(st, t);
