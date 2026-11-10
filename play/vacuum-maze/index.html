@@ -314,7 +314,7 @@
   .stepper { display: inline-flex; align-items: center; gap: 6px; }
   .stepper b { min-width: 1.4em; text-align: center; }
   .stepper button { min-width: 44px; padding: 0 !important; font-size: 18px !important; }
-  #rotate-hint { display: none; position: fixed; left: 0; right: 0; bottom: calc(var(--sab) + 18px); text-align: center; font-size: 14px; opacity: .8; color: var(--vls-paper-light); pointer-events: none; }
+  #rotate-hint { display: none; position: fixed; left: 12px; right: 12px; width: auto; bottom: calc(var(--sab) + 112px); text-align: center; font-size: 13px; line-height: 1.25; opacity: .8; color: var(--vls-paper-light); pointer-events: none; }
   body[data-theme="bw"] #rotate-hint { color: #fff; }
   @media (orientation: portrait) and (max-width: 820px) { #rotate-hint { display: block; } }
   @media (max-height: 520px), (max-width: 520px) {
@@ -352,8 +352,9 @@
   .shop-top { display: flex; gap: 16px; align-items: center; }
   .shop-top canvas { width: 120px; height: 120px; flex: none; }
   .shop-scroll { max-height: 300px; overflow: auto; margin-top: 10px; }
-  .stat { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; margin: 10px auto; max-width: 380px; }
-  .stat b { text-align: right; }
+  .stat { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; margin: 10px auto; max-width: 420px; }
+  .stat span { white-space: nowrap; }
+  .stat b { text-align: right; white-space: nowrap; }
   .muted { opacity: .7; }
 
   /* ---- Victorian apparatus (period plates: lacquered brass + ivory enamel on dark wood; no soft-gold pills) ---- */
@@ -713,9 +714,9 @@
     overflow: visible;
   }
   #level0-hud {
-    position: fixed; z-index: 7; display: none; flex-direction: column; gap: 8px; align-items: stretch;
-    left: 12px; right: calc(var(--sar) + 76px); top: calc(var(--sat) + 8px);
-    max-width: 520px; pointer-events: none;
+    position: fixed; z-index: 8; display: none; flex-direction: column; gap: 8px; align-items: flex-start;
+    left: 12px; right: 12px; top: var(--vm-hud-bottom, 132px);
+    max-width: 420px; pointer-events: none;
   }
   #level0-hud.show { display: flex; }
   #level0-plaque {
@@ -747,6 +748,7 @@
   #b-replay-level0 span { display: block; font-weight: normal; font-size: 13px; }
   @media (max-width: 520px) {
     #level0-plaque, #level0-plaque .vls-plaque__label { font-size: 13px; }
+    #level0-hud { top: auto; bottom: calc(var(--sab) + 168px); max-width: none; }
   }
   #hint-plaque.vls-plaque:not(.show) { display: none !important; }
   #hint-plaque.show { display: inline-flex !important; align-items: center; justify-content: center; }
@@ -7779,8 +7781,8 @@ function tutorialLine() {
   if (!t || !t.steered) return desk
     ? 'Level 0. Drag, or the arrow keys, to tip the tube. Space pauses.'
     : 'Level 0. Tip the phone, or drag, to steer the atom along the tube.';
-  if (!t.aimed) return 'The open end is a rotary pump. Steer the atom into it. The clock is your time.';
-  return 'Stars compare that time with par. Record pace is the same crossing on every screen. This run writes nothing.';
+  if (!t.aimed) return 'The open end is a rotary pump. Steer the atom into it. The clock is time on this screen.';
+  return 'Stars use that screen time against par. Record pace is the same crossing on every screen. This run writes nothing.';
 }
 function tutorialTick() {
   const t = state.tutorial;
@@ -7822,7 +7824,7 @@ function skipTutorial() {
 function onTutorialWin() {
   const w = state.world, L = state.level, t = w.stats.time, body = bodyFor(L);
   const pace = w.opts.pace > 0 ? w.opts.pace : 1, tRef = w.stats.refTime > 0 ? w.stats.refTime : t * pace;
-  const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(tRef, par);
+  const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(t, par);
   store.tutorialSeen = true;
   persist();
   state.tutorial = null;
@@ -7837,10 +7839,10 @@ function showTutorialWin() {
   ensureWinPump();
   $('win-title').textContent = 'Level 0 complete';
   $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
-  const rows = [['Time on this screen', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par (★★★)', `${r.par} s`],
-    ['Stars', 'within par, twice par, or any escape'], ['Pump', pumpName(r.exit.pump)], ['Recorded', 'Nothing: no coins, unlocks, or best time']];
+  const rows = [['Screen time', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par', `${r.par} s, screen time`],
+    ['Stars', 'screen time'], ['Pump', pumpName(r.exit.pump)], ['Saved', 'Nothing']];
   $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
-  $('win-note').textContent = `Record pace keeps the same crossing on every screen (${b.name}). This practice run wrote nothing.`;
+  $('win-note').textContent = `Stars use screen time against par. Record pace is the same crossing on every screen (${b.name}). This run wrote nothing.`;
   $('b-next').style.display = ''; $('b-next').textContent = 'Level 1 ▸';
   showPanel('win');
 }
@@ -8188,8 +8190,8 @@ function drawPiston(x, y, r, ax, ay, bw, g = ctx, plate = true) {
 }
 function drawStart(L, bw) {
   const cell = L.cells[L.start.j * L.cols + L.start.i];
-  ctx.save(); ctx.font = bw ? `10px ${face(true)}` : `italic 700 11px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : PAL.paperEdge; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  clampedText(bw ? 'SOURCE' : 'atom source', cell.cx, cell.cy + H - 14); ctx.restore();
+  ctx.save(); ctx.font = bw ? `10px ${face(true)}` : `italic 700 11px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : PAL.paperEdge;   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  clampedText(bw ? 'SOURCE' : 'atom source', cell.cx, cell.cy - H - 8); ctx.restore();
   ctx.save(); ctx.strokeStyle = bw ? '#fff' : 'rgba(217,169,67,0.35)'; ctx.setLineDash([3, 5]); ctx.beginPath(); ctx.arc(cell.cx, cell.cy, 26, 0, 7); ctx.stroke(); ctx.restore();
 }
 
@@ -8230,25 +8232,33 @@ function deadEndLabel(part, x, y, ax, ay, h, bw) {
 function hud(theme) {
   const bw = theme === 'bw', w = state.world, L = state.level, a = w.atom, body = bodyFor(L), g = gFor(body);
   const t = w.stats.time, tRef = w.stats.refTime > 0 ? w.stats.refTime : t * (w.opts.pace > 0 ? w.opts.pace : 1);
-  const par = ECO.parFor(L.pathCells, body, g), stars = ECO.starsFor(tRef, par);
+  // Level 0 prints screen time next to par, so its stars use that same clock. Levels 1–30 keep record pace.
+  const judged = L.tutorial ? t : tRef;
+  const par = ECO.parFor(L.pathCells, body, g), stars = ECO.starsFor(judged, par);
   const Tk = w.won && w.extraction ? w.extraction.temperature : a.stuck ? a.T : E.kinT(a, w.scale);
   // Controls sit in a 52 px gutter; plate uses the rest so phone HUD labels (esp. TEMPERATURE) keep the full word.
-  const left = safe.l + 8, top = safe.t + 8, right = vw - safe.r - 8 - 52, width = Math.min(580, Math.max(280, right - left)), h = 80;
-  const best = store.best[S.bestKey(L.id, body)], bname = body === 'arcade' ? `Arcade ${g.toFixed(2)} m/s²` : E.BODIES[body].name;
+  // Each line is its own slot inside the screw inset, clear of the corner rules.
+  const left = safe.l + 8, top = safe.t + 8, right = vw - safe.r - 8 - 52, width = Math.min(580, Math.max(280, right - left));
+  const inset = bw ? 12 : 18, h = inset * 2 + 78;
+  const best = !L.tutorial && store.best[S.bestKey(L.id, body)], bname = body === 'arcade' ? `Arcade ${g.toFixed(2)} m/s²` : E.BODIES[body].name;
   if (!bw) AP.plaque(ctx, left, top, width, h, 3);
   else { ctx.fillStyle = '#000'; ctx.fillRect(left, top, width, h); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(left, top, width, h); }
-  const x0 = left + 12, inner = width - 24;
-  // TIME / CONTACTS / TEMPERATURE — temperature column is wider so the full word fits on a phone plate.
+  const x0 = left + inset, inner = width - inset * 2;
   const colW = [inner * 0.28, inner * 0.30, inner * 0.42];
   const colX = [x0, x0 + colW[0], x0 + colW[0] + colW[1]];
   const field = (text, x, y, w, hh, size, weight = '600') => window.VMChrome.faceText(ctx, text, x + w / 2, y + hh / 2, size,
     { face: { x, y, w, h: hh, inset: 0 }, engraved: !bw, font: bw ? face(true) : FONTS.engraved, weight, minSize: 7 });
-  field(`${L.custom ? '' : L.id + '. '}${L.name.toUpperCase()} · ${L.cf}`, x0, top + 11, inner, 15, 11, '700');
+  const title = L.tutorial ? `LEVEL 0 · ${L.cf}` : `${L.custom ? '' : L.id + '. '}${L.name.toUpperCase()} · ${L.cf}`;
+  const y0 = top + inset;
+  field(title, x0, y0, inner, 16, 11, '700');
   for (const [i,label,value,size] of [[0,'TIME',`${t.toFixed(1)} s`,18],[1,'CONTACTS',String(w.stats.contacts),18],[2,'TEMPERATURE',formatT(Tk),16]]) {
-    field(label, colX[i], top + 27, colW[i], 14, 9);
-    field(value, colX[i], top + 42, colW[i], 20, size, '700');
+    field(label, colX[i], y0 + 18, colW[i], 12, 9);
+    field(value, colX[i], y0 + 32, colW[i], 22, size, '700');
   }
-  field(`${'★'.repeat(stars)}${'☆'.repeat(3 - stars)} par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`, x0, top + 61, width - 24, 11, 9);
+  const marks = `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`;
+  const parLine = L.tutorial ? `${marks} par ${par} s on this screen` : `${marks} par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
+  field(parLine, x0, y0 + 56, inner, 16, 9);
+  document.documentElement.style.setProperty('--vm-hud-bottom', `${top + h + 10}px`);
   // spirit level: in-plane gravity g·sin θ
   const gm = Math.hypot(state.tilt.x, state.tilt.y), ang = T.angleOf(state.tilt);
   HW.bubbleLevel(ctx, safe.l + 52, vh - safe.b - 56, 34, state.tilt.x, state.tilt.y, { theme: settings.theme });
