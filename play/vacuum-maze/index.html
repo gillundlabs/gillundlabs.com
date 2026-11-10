@@ -1146,7 +1146,7 @@
   <div class="panel scrollable" id="p-pause" data-vls-ivory="vm/panel/pause">
     <h2>Paused</h2>
     <div class="row"><button id="b-resume">Resume ▸</button><button id="b-restart">Restart</button><button id="b-pause-settings">Settings</button><button id="b-pause-notebook">Notebook</button><button id="b-pause-levels">Levels</button></div>
-    <p class="sub">Tap Resume, or press P or Esc</p>
+    <p class="sub">Tap Resume, or press P or Esc. On a computer, Space does the same.</p>
   </div>
 
   <div class="panel scrollable" id="p-win" data-vls-ivory="vm/panel/win">
@@ -8558,6 +8558,20 @@ function runCheck(kernel, A) {
 }
 
 // ------------------------------------------------------------------ input events
+// A focused control that uses Space for itself: typing, or activating a button, link, or checkbox.
+function spaceKeepsDefault(el) {
+  if (!el || !el.tagName) return false;
+  if (el.isContentEditable || (el.closest && el.closest('[contenteditable="true"]'))) return true;
+  const tag = el.tagName;
+  if (tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'SUMMARY') return true;
+  if (tag === 'A' && el.hasAttribute('href')) return true;
+  if (tag === 'INPUT') {
+    const type = (el.getAttribute('type') || 'text').toLowerCase();
+    return !['range', 'color', 'file', 'image'].includes(type);
+  }
+  const role = el.getAttribute && el.getAttribute('role');
+  return role === 'textbox' || role === 'searchbox' || role === 'button' || role === 'checkbox' || role === 'radio' || role === 'switch';
+}
 addEventListener('keydown', (e) => {
   if ($('p-notebook').classList.contains('show')) {
     const book = $('nb-body');
@@ -8572,10 +8586,13 @@ addEventListener('keydown', (e) => {
     }
     return;
   }
+  // Space types in a field and activates a focused button. Leave it alone in both cases.
+  if (e.code === 'Space' && spaceKeepsDefault(e.target)) return;
   if (e.target.closest && e.target.closest('.panel') && e.target.tagName !== 'BUTTON') return;
   keys.add(e.code);
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
-  if (e.code === 'KeyP' || e.code === 'Escape') { if (state.screen === 'playing') pause(); else if (state.screen === 'paused' && $('p-pause').classList.contains('show')) resume(); }
+  // Space pauses only on a computer. Phones keep the old keys: P and Escape. The computer check is the same one used to choose manual steering.
+  if (e.code === 'KeyP' || e.code === 'Escape' || (e.code === 'Space' && !('ontouchstart' in window))) { if (state.screen === 'playing') pause(); else if (state.screen === 'paused' && $('p-pause').classList.contains('show')) resume(); }
   if (e.code === 'KeyR' && state.screen === 'playing') restart();
   if (e.code === 'KeyL' && state.screen === 'playing') zeroLevel();
   if (e.code === 'KeyH' && state.screen === 'playing') { settings.holdTilt = !settings.holdTilt; persist(); toast(settings.holdTilt ? 'Hold tilt: on (the apparatus stays tipped)' : 'Hold tilt: off (eases back to level)'); }
