@@ -6,15 +6,28 @@
 <meta property="og:description" content="The lab notebook pages from Maxwell&#x27;s Demon, reproduced from the game."><meta property="og:url" content="https://gillundlabs.com/notebook/maxwells-demon/"><meta property="og:image" content="https://gillundlabs.com/assets/img/og-maxwells-demon.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="../../favicon.ico" sizes="32x32"><link rel="icon" type="image/png" href="../../assets/img/favicon-192.png"><link rel="apple-touch-icon" href="../../assets/img/apple-touch-icon.png">
-<link rel="stylesheet" href="../../assets/tokens.css"><link rel="stylesheet" href="../../assets/ivory/ivory.css"><link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="../../assets/tokens.css" data-kit-sha256="336e0da3c5a689c0098b576f2c0ce495fec6bb8746139f8615622a8af1711a30"><link rel="stylesheet" href="../../assets/ivory/ivory.css"><link rel="stylesheet" href="../../assets/site.css">
 <style>
 .vls-notebook .vls-cf{overflow-wrap:anywhere;word-break:break-word}
+/* Kit tokens.css 336e0da3c5a689c0098b576f2c0ce495fec6bb8746139f8615622a8af1711a30: drop the baked ring. Shared assets/tokens.css is left for the other notebooks. */
+html:not([data-theme="bw"]) body:not([data-theme="bw"]) #book.vls-notebook .vls-page{
+  background-image:
+    radial-gradient(circle at 12% 78%, rgba(168,116,58,0.22) 0, rgba(168,116,58,0) 6px),
+    radial-gradient(circle at 63% 41%, rgba(168,116,58,0.16) 0, rgba(168,116,58,0) 4px),
+    radial-gradient(circle at 91% 66%, rgba(168,116,58,0.18) 0, rgba(168,116,58,0) 7px),
+    radial-gradient(circle at 37% 93%, rgba(168,116,58,0.14) 0, rgba(168,116,58,0) 5px),
+    radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(120,80,30,0.28) 100%),
+    linear-gradient(90deg, transparent 47px, rgba(201,106,90,0.55) 47px, rgba(201,106,90,0.55) 48.5px, transparent 48.5px),
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--vls-line) - 1px), rgba(159,179,200,0.5) calc(var(--vls-line) - 1px), rgba(159,179,200,0.5) var(--vls-line));
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 14px;
+}
+#book canvas.vls-mark{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 @media (max-width:480px){
   .vls-notebook #note-contents,.vls-notebook .notes-toc,.vls-notebook .notes-toc li{max-width:100%;min-width:0}
   .vls-notebook .notes-toc a{white-space:normal;overflow-wrap:anywhere}
 }
 </style>
-<script src="../../assets/config.js" defer></script><script src="../../assets/tokens.js" defer></script><script src="../../assets/apparatus.js" defer></script><script src="../../assets/ivory/ivory.js" defer></script><script src="../../assets/plaque-boot.js" defer></script></head>
+<script src="../../assets/config.js" defer></script><script src="../../assets/tokens.js" defer></script><script src="../../assets/apparatus.js" defer></script><script src="../../assets/ivory/ivory.js" defer></script><script src="../../assets/plaque-boot.js" defer></script><script src="vls-notebook.js" defer data-kit-sha256="5479b6df3d76865098e3f38555a74ba9485b1b8f9e927cf9cac45aff328153d0"></script></head>
 <body class="nbpage"><a class="skip" href="#main">Skip to content</a>
 <header class="bar"><a class="brand" href="../../"><img src="../../assets/img/logo.png" alt="" width="40" height="40"><span>Gillund Labs</span></a>
 <nav aria-label="Main"><a href="../../">Home</a><a href="../../games/maxwells-demon/">Maxwell's Demon</a><a href="../../games/vacuum-maze/">Vacuum Maze</a><a href="../../games/fantastic-apparatus/">Fantastic Apparatus</a><a href="../../notebook/">Notebook</a><a href="../../about/">About</a></nav></header>
@@ -107,6 +120,41 @@
         <p><b>Many bounces: a piston.</b> Push a piston slowly into a gas and every molecule that strikes it gains a little. Together, those gains are exactly the work the piston does, W = −∫p dV. If no heat escapes, the gas warms: a monatomic gas obeys T V<sup>2/3</sup> = constant in three dimensions, and T A = constant in a flat gas. That is why a bicycle pump gets hot, and why a fire piston, a sealed tube rammed shut by hand, can light tinder. Pull the piston out and the gas cools by the same rule.</p>
         <p><b>Cosmic pistons.</b> In 1949 Enrico Fermi proposed that cosmic rays gain their enormous energies the same way, by bouncing again and again off moving magnetic clouds in space. Head-on collisions slightly outnumber overtaking ones, so on average the particles speed up. Fermi acceleration, now mostly at the shock waves of supernova remnants, is still the leading explanation.</p></div><aside class="vls-note vls-simplification" role="note"><span class="vls-note-label">In the game</span><p>The game's paddle is not a moving wall in this sense. An atom never bounces off it: it sticks, rides along for a moment, and then leaves at a speed set by the wall-heating rule, with none of the paddle's velocity added. With the keyboard the paddle moves about <span data-live="padRatio">4.7</span> times faster than a freshly started atom on this screen, so a real moving paddle would hit atoms much harder than the game's does. The Sorting mode's trapdoor blade, likewise, moves without pushing atoms. Nothing in the game ever does work on the gas by moving.</p></aside><p class="vls-cf"><span class="vls-cf-mark">cf.</span> E. Fermi, "On the origin of the cosmic radiation", <i>Phys. Rev.</i> 75, 1169–1174 (1949); F. Reif, <i>Fundamentals of Statistical and Thermal Physics</i> (McGraw-Hill, 1965), ch. 5 (adiabatic processes); Callen (1985), ch. 4; this game's <code>src/game.js</code> (<code>desorb</code>).</p><p class="glnote">Margin note: read more <a href="../../games/maxwells-demon/">about Maxwell&#x27;s Demon</a>, or <a href="../../play/maxwells-demon/">try it now</a>.</p></section></div>
 <p class="row center"><a class="btn" href="../../play/maxwells-demon/">Play Maxwell&#x27;s Demon</a><a class="btn ghost" href="../">All notebooks</a></p>
-<script>document.getElementById('plain').onclick=function(){var b=document.getElementById('book'),on=b.classList.toggle('vls-plain');this.setAttribute('aria-pressed',on);this.textContent=on?'Handwriting':'Plain text';};document.querySelectorAll('#book a[href^="#note-"]').forEach(function(a){a.removeAttribute('data-page');});</script></main>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var MUG = { kind: 'mug-ring', seed: 1867, size: 1, x: 4, y: 188 };
+  var FADE = { demon: 0, temperature: 1, surfaces: 2 };
+  function themeNow() {
+    var t = document.body.getAttribute('data-theme') || document.documentElement.getAttribute('data-theme');
+    return t === 'bw' ? 'bw' : 'victorian';
+  }
+  function paint() {
+    var NB = window.VLS && window.VLS.notebook;
+    if (!NB || !NB.pageMark) return;
+    var dpr = Math.min(2.5, window.devicePixelRatio || 1), th = themeNow();
+    document.querySelectorAll('#book .vls-page').forEach(function (s) {
+      var id = s.id.indexOf('note-') === 0 ? s.id.slice(5) : '';
+      var fade = Object.prototype.hasOwnProperty.call(FADE, id) ? FADE[id] : undefined;
+      var c = s.querySelector('canvas.vls-mark');
+      if (fade === undefined) { if (c) c.remove(); return; }
+      if (!c) { c = document.createElement('canvas'); c.className = 'vls-mark'; c.setAttribute('aria-hidden', 'true'); s.appendChild(c); }
+      var w = s.clientWidth, h = s.clientHeight;
+      if (w < 8 || h < 8) return;
+      c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+      c.style.width = w + 'px'; c.style.height = h + 'px';
+      var g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+      NB.pageMark(g, MUG.kind, MUG.x, MUG.y, { seed: MUG.seed, theme: th, fade: fade, size: MUG.size });
+    });
+  }
+  paint();
+  window.addEventListener('resize', paint);
+  var book = document.getElementById('book');
+  if (book && window.ResizeObserver) new ResizeObserver(paint).observe(book);
+  if (window.MutationObserver) {
+    new MutationObserver(paint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    new MutationObserver(paint).observe(document.body, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+});
+</script><script>document.getElementById('plain').onclick=function(){var b=document.getElementById('book'),on=b.classList.toggle('vls-plain');this.setAttribute('aria-pressed',on);this.textContent=on?'Handwriting':'Plain text';};document.querySelectorAll('#book a[href^="#note-"]').forEach(function(a){a.removeAttribute('data-page');});</script></main>
 <footer class="foot gl-plaque vls-plaque vls-plaque--ivory" data-vls-ivory="site/foot"><p>© 2026 Gillund Labs · Gillund’s Laboratory · <span class="foot-links"><a href="../../about/">About</a> · <a href="../../notebook/">Notebook</a></span></p><p class="small">No ads, no trackers, no cookies.</p></footer>
 </body></html>
