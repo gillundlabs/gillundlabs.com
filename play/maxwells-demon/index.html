@@ -1723,7 +1723,7 @@
     <h2>Select mode</h2>
     <div class="col">
       <button id="b-single" aria-describedby="b-single-description"><b>The Demon's Trap</b></button><p class="mode-description" id="b-single-description">Guard the open side of a three-walled vacuum chamber with one paddle: drag anywhere on the screen, or use W/S, ↑/↓ or the mouse. An atom that slips past you is lost. Your score is the hottest temperature you reach.</p>
-      <button id="b-sort" aria-describedby="b-sort-description"><b>Sorting <i class="fv-tag" hidden>Full version</i></b></button><p class="mode-description" id="b-sort-description">A closed box, two chambers, one trapdoor, and a hot gas and a cold gas mixed together. Hold anywhere (or Space) to open the door. Separate them, hot atoms on one side and cold on the other, before collisions blend them, or crowd atoms onto one side. Your score is the entropy you remove from the gas, minus k_B ln 2 for every door opening your memory has to record.</p>
+      <button id="b-sort" aria-describedby="b-sort-description"><b>Sorting <i class="fv-tag" hidden>Full version</i></b></button><p class="mode-description" id="b-sort-description">A closed box, two chambers, one trapdoor, and a hot gas and a cold gas mixed together. Hold anywhere (or Enter) to open the door. Separate them, hot atoms on one side and cold on the other, before collisions blend them, or crowd atoms onto one side. Your score is the entropy you remove from the gas, minus k_B ln 2 for every door opening your memory has to record.</p>
       <label class="inline">Sorting difficulty <select id="m-sortdiff"><option value="apprentice">Apprentice</option><option value="demon">Demon</option><option value="maxwell">Maxwell</option><option value="custom">Custom…</option></select></label>
       <div class="row inline-row" id="m-sortcustom" hidden>
         <label class="inline">Spread T_h/T_c <select id="m-spread"><option value="1">1 (one temperature)</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="20">20</option><option value="30">30</option></select></label>
@@ -1771,7 +1771,7 @@
       <div class="row"><button id="s-calsave" type="button">Save</button><button id="s-calcancel" type="button">Cancel</button></div></div>
     <label><span>Vacuum level<small>Worse vacuum puts more atoms in the chamber</small></span><span><input id="s-vac" type="range" min="1" max="20" step="1"><small id="l-vac"></small></span></label>
     <label><span>Vacuum level, Sorting mode<small>Atoms in the Sorting box (20 to 200; 100 is the challenge). The mix comes from the Element shop.</small></span><span><input id="s-sortn" type="range" min="20" max="200" step="10"><small id="l-sortn"></small></span></label>
-    <label><span>Trapdoor control<small>Sorting mode: touch, mouse or Space</small></span><select id="s-door"><option value="hold">Hold to open (default)</option><option value="toggle">Tap to toggle</option></select></label>
+    <label><span>Trapdoor control<small>Sorting mode: touch, mouse or Enter</small></span><select id="s-door"><option value="hold">Hold to open (default)</option><option value="toggle">Tap to toggle</option></select></label>
     <label><span>Highlight atoms worth passing<small>Sorting: Apprentice and Demon at chamber size ×1. Green (Victorian) or solid + (B&amp;W) when passing an atom should raise the score by more than the opening cost. Off in Custom and above ×1.</small></span><input id="s-preview" type="checkbox" checked style="justify-self:start"></label>
     <label><span>Residence time<small>Mean time an atom stays adsorbed</small></span><span><input id="s-res" type="range" min="0" max="1.5" step="0.05"><small id="l-res"></small></span></label>
     <label><span>Atom–atom collisions<small>How two atoms scatter when they meet</small></span><select id="s-coll"><option value="quantum">Quantum s-wave (default)</option><option value="classical">Classical billiard</option></select></label>
@@ -1787,7 +1787,7 @@
     <span class="vls-plaque__label" hidden aria-hidden="true"></span>
     <h2>Paused</h2>
     <div class="row"><button id="b-resume">Resume ▸</button><button id="b-pause-settings">Settings</button><button id="b-pause-physics">The Physics</button><button id="b-end">End game</button></div>
-    <p class="sub">Tap Resume, or press P or Esc</p>
+    <p class="sub">Tap Resume, or press Space, P or Esc</p>
   </div>
 
   <div class="panel notes-panel" id="p-physics" role="dialog" aria-label="The Physics: a laboratory notebook">
@@ -7245,7 +7245,7 @@ function startSort(watch) {
   SORT.start({ mix: sortMix(), difficulty: settings.sortDifficulty, custom: sortCustom(), pace: state.runPace });
   document.body.classList.add('sorting');
   if (watch) return startWatchRun();
-  const doorHelp = settings.sortDoorControl === 'toggle' ? 'Tap / Space: door open/shut.' : 'Hold / Space: open door. Release: shut.';
+  const doorHelp = settings.sortDoorControl === 'toggle' ? 'Tap / Enter: door open/shut. Space pauses.' : 'Hold / Enter: open door. Release: shut. Space pauses.';
   const pv = settings.sortPreview !== false && (settings.sortDifficulty === 'apprentice' || settings.sortDifficulty === 'demon') && sortMag() <= 1;
   const ringHelp = `${settings.theme === 'bw' ? 'Solid + ring' : 'Green ring'}: worth more than door cost.`;
   toast(pv ? doorHelp + '\n' + ringHelp : doorHelp);
@@ -7708,6 +7708,59 @@ function banner(text, theme, y0 = CH.y) {
   }
   ctx.restore();
 }
+function engravedMetrics(ctx, text, size, weight) {
+  ctx.save();
+  ctx.font = `${weight} ${size}px ${R.font()}`;
+  ctx.textBaseline = 'middle';
+  ctx.letterSpacing = `${Math.max(0.5, size * 0.08)}px`;
+  const m = ctx.measureText(String(text));
+  ctx.restore();
+  const width = Math.max(m.width || 0, (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || 0));
+  const ascent = m.actualBoundingBoxAscent || size * 0.45;
+  const descent = m.actualBoundingBoxDescent || size * 0.22;
+  return { width, ascent, descent, height: ascent + descent + 1 };
+}
+function engraveStack(ctx, plate, lines) {
+  // The shared plaque face inset (screw + rule) leaves ~38px. Separate engrave()
+  // calls were each clamped into that one band, and a line wider than it wrapped
+  // onto its neighbours. Slots sit between the straight rules and clear of the corner arcs.
+  const side = 26, vert = 12, gap = 3;
+  const box = { x: plate.x + side, y: plate.y + vert, w: plate.w - 2 * side, h: plate.h - 2 * vert };
+  const fitted = lines.filter((line) => line && line.text).map((line) => ({ ...line, weight: line.weight || '600', size: line.size }));
+  const measure = (line) => { line.ink = engravedMetrics(ctx, line.text, line.size, line.weight); };
+  for (const line of fitted) {
+    measure(line);
+    while (line.size > 7 && line.ink.width > box.w - 2) {
+      line.size = Math.max(7, line.size - 0.5);
+      measure(line);
+    }
+  }
+  for (let pass = 0; pass < 8; pass++) {
+    const inkSum = fitted.reduce((sum, line) => sum + line.ink.height, 0);
+    const total = inkSum + gap * Math.max(0, fitted.length - 1);
+    if (total <= box.h + 0.25) break;
+    const room = Math.max(8, box.h - gap * Math.max(0, fitted.length - 1));
+    const scale = room / inkSum;
+    let changed = false;
+    for (const line of fitted) {
+      const next = Math.max(7, line.size * scale);
+      if (next < line.size - 0.05) { line.size = next; changed = true; }
+    }
+    if (!changed) break;
+    for (const line of fitted) measure(line);
+  }
+  const inkSum = fitted.reduce((sum, line) => sum + line.ink.height, 0);
+  const total = inkSum + gap * Math.max(0, fitted.length - 1);
+  let y = box.y + Math.max(0, (box.h - total) / 2);
+  for (const line of fitted) {
+    const baseline = y + line.ink.ascent;
+    const face = { x: box.x, y: y, w: box.w, h: line.ink.height, inset: 0 };
+    R.faceText(ctx, line.text, box.x + box.w / 2, baseline, line.size, {
+      align: 'center', weight: line.weight, cut: line.cut, face, minSize: line.size,
+    });
+    y += line.ink.height + gap;
+  }
+}
 function hud(theme) {
   const bw = theme === 'bw', single = state.mode === 'single';
   R.setFaces(ctx, bw && !single ? [{x:24,y:14,w:400,h:92},{x:424,y:14,w:152,h:96},{x:576,y:14,w:400,h:92}] : [{x:24,y:14,w:300,h:88},{x:340,y:14,w:320,h:bw?96:88},{x:676,y:14,w:300,h:88}]);
@@ -7727,20 +7780,42 @@ function hud(theme) {
   const foot = `${lawTxt} law · wall kick ${formatT(wallKick().mean)} · τ ${settings.residenceMean.toFixed(2)} s · purse ${store.coins}`;
   const help = single ? 'drag, W/S, ↑/↓ or mouse · ❚❚/P pause' : 'drag your half or W/S · ↑/↓ · ❚❚/P pause';
   if (!bw) {
-    R.plaque(ctx, 24, 14, 300, 88, 3); R.plaque(ctx, 340, 14, 320, 88, 5); R.plaque(ctx, 676, 14, 300, 88, 9);
-    R.engrave(ctx, "MAXWELL'S DEMON", 500, 36, 16, 'center', '700');
+    const plates = { left: { x: 24, y: 14, w: 300, h: 88 }, mid: { x: 340, y: 14, w: 320, h: 88 }, right: { x: 676, y: 14, w: 300, h: 88 } };
+    R.plaque(ctx, plates.left.x, plates.left.y, plates.left.w, plates.left.h, 3);
+    R.plaque(ctx, plates.mid.x, plates.mid.y, plates.mid.w, plates.mid.h, 5);
+    R.plaque(ctx, plates.right.x, plates.right.y, plates.right.w, plates.right.h, 9);
+    const tempCut = { highlight: 0.18, deviceRim: true };
     if (single) {
-      const tempCut = { highlight: 0.18, deviceRim: true };
-      R.engrave(ctx, scoreLabel, 174, 34, 11); R.engrave(ctx, T, 174, 60, 26, 'center', '700', tempCut); R.engrave(ctx, sub, 174, 86, 11, 'center', 'italic 500');
-      R.engrave(ctx, `${gasTxt} · ${atomsTxt}`, 500, 60, mixed ? 11 : 12, 'center', '500');
-      R.engrave(ctx, next || `Purse: ${store.coins} coins`, 500, 82, 11, 'center', 'italic 500');
-      R.engrave(ctx, 'PURSE', 826, 34, 11); R.engrave(ctx, `${store.coins} coins`, 826, 60, 24, 'center', '700'); R.engrave(ctx, `paddle hits this game: ${state.hits}`, 826, 86, 11, 'center', 'italic 500');
+      engraveStack(ctx, plates.left, [
+        { text: scoreLabel, size: 11, weight: '600' },
+        { text: T, size: 26, weight: '700', cut: tempCut },
+        { text: sub, size: 11, weight: 'italic 500' },
+      ]);
+      engraveStack(ctx, plates.mid, [
+        { text: "MAXWELL'S DEMON", size: 16, weight: '700' },
+        { text: `${gasTxt} · ${atomsTxt}`, size: mixed ? 11 : 12, weight: '500' },
+        { text: next || `Purse: ${store.coins} coins`, size: 11, weight: 'italic 500' },
+      ]);
+      engraveStack(ctx, plates.right, [
+        { text: 'PURSE', size: 11, weight: '600' },
+        { text: `${store.coins} coins`, size: 24, weight: '700' },
+        { text: `paddle hits this game: ${state.hits}`, size: 11, weight: 'italic 500' },
+      ]);
     } else {
-      R.engrave(ctx, 'PLAYER 1 · LEFT HALF / W·S', 174, 34, 11); R.engrave(ctx, String(state.points[0]), 174, 64, 34, 'center', '700');
-      R.engrave(ctx, 'PLAYER 2 · RIGHT HALF / ↑↓', 826, 34, 11); R.engrave(ctx, String(state.points[1]), 826, 64, 34, 'center', '700');
-      R.engrave(ctx, `${multi ? 'mean T' : 'T'} = ${T}`, 500, 62, 22, 'center', '700', { highlight: 0.18, deviceRim: true });
-      R.engrave(ctx, `${sub} · ${state.pure ? el(state.pure).sym + ' · ' : ''}${atomsTxt}`, 500, 86, 11, 'center', 'italic 500');
-      if (next) R.engrave(ctx, next, 174, 88, 10, 'center', 'italic 500');
+      engraveStack(ctx, plates.left, [
+        { text: 'PLAYER 1 · LEFT HALF / W·S', size: 11, weight: '600' },
+        { text: String(state.points[0]), size: 34, weight: '700' },
+        next ? { text: next, size: 10, weight: 'italic 500' } : null,
+      ]);
+      engraveStack(ctx, plates.mid, [
+        { text: "MAXWELL'S DEMON", size: 16, weight: '700' },
+        { text: `${multi ? 'mean T' : 'T'} = ${T}`, size: 22, weight: '700', cut: tempCut },
+        { text: `${sub} · ${state.pure ? el(state.pure).sym + ' · ' : ''}${atomsTxt}`, size: 11, weight: 'italic 500' },
+      ]);
+      engraveStack(ctx, plates.right, [
+        { text: 'PLAYER 2 · RIGHT HALF / ↑↓', size: 11, weight: '600' },
+        { text: String(state.points[1]), size: 34, weight: '700' },
+      ]);
     }
     const sb = scaleBarSpec(); R.scaleBar(ctx, CH.x, H - 26, sb.px, sb.label, theme);
     const pr = gasPressure();
@@ -8238,17 +8313,27 @@ function runCheck(law) {
   return h;
 }
 
+function focusOwnsKey(el) {
+  if (!el || el === document.body || el === document.documentElement) return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY') return true;
+  const role = el.getAttribute && el.getAttribute('role');
+  return !!(role && /^(button|link|checkbox|switch|menuitem|tab|textbox|combobox|listbox|option|slider|radio|searchbox)$/.test(role));
+}
 addEventListener('keydown', (e) => {
   if (e.code === 'Escape' && $('p-physics').classList.contains('show')) { closePhysics(); return; }
   if (e.target.closest && e.target.closest('.panel') && e.target.tagName !== 'BUTTON') return;
+  if ((e.code === 'Space' || e.code === 'Enter') && focusOwnsKey(e.target)) return;
   keys.add(e.code);
   if (['ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault();
-  if (e.code === 'KeyP' || e.code === 'Escape') {
+  if (e.code === 'KeyP' || e.code === 'Escape' || (e.code === 'Space' && !e.repeat)) {
     if (state.screen === 'playing') pause();
     else if (state.screen === 'paused' && $('p-pause').classList.contains('show')) resume();
   }
   if (e.code === 'Enter' && $('p-title').classList.contains('show')) { e.preventDefault(); showPanel('mode'); }
-  if (state.mode === 'sort' && state.screen === 'playing' && !state.watch && !e.repeat && (e.code === 'Space' || e.code === 'Enter')) {
+  if (state.mode === 'sort' && state.screen === 'playing' && !state.watch && !e.repeat && e.code === 'Enter') {
+    e.preventDefault();
     if (settings.sortDoorControl === 'toggle') SORT.toggle(); else SORT.doorDown();
   }
   if (state.screen === 'playing' && !e.repeat && state.mode !== 'sort') {
@@ -8257,7 +8342,10 @@ addEventListener('keydown', (e) => {
     if (e.code === 'KeyQ') cycleBuyElement(-1);
   }
 });
-addEventListener('keyup', (e) => { keys.delete(e.code); if (state.mode === 'sort' && (e.code === 'Space' || e.code === 'Enter') && settings.sortDoorControl !== 'toggle') SORT.doorUp(); });
+addEventListener('keyup', (e) => {
+  keys.delete(e.code);
+  if (e.code === 'Enter' && state.mode === 'sort' && settings.sortDoorControl !== 'toggle' && !focusOwnsKey(e.target)) SORT.doorUp();
+});
 addEventListener('blur', () => { keys.clear(); pause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); else if (state.screen === 'playing') keepAwake(true); });
 canvas.addEventListener('mousemove', (e) => { if (e.pointerType && e.pointerType !== 'mouse') return; const r = canvas.getBoundingClientRect(); mouseY = ((e.clientY - r.top) / r.height) * H; });
