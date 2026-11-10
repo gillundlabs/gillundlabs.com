@@ -5752,11 +5752,20 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
 
   let built = false, raf = 0, plain = false;
   const sketches = [];
-  // One mug ring for this notebook (owner, 2026-11-09). Fade 0 on page 1,
-  // the same seed, spot and size at fade 1 and 2 on pages 2 and 3. The ring
-  // sits in the left margin, partly off the page, below the date.
-  const MUG = { kind: 'mug-ring', seed: 1867, size: 1, x: 4, y: 188 };
+  // One mug ring (owner, 2026-11-09), scaled to this page's rules.
+  // Kit radius is 48*size, so size = lineGap/12 makes the nominal diameter
+  // 8 ruled lines. The outer ink sits about 4*size past that. Centre x at
+  // half that outer radius leaves a 120° cap off the left edge, so two thirds
+  // of the ring stays on the page. Same seed and spot on pages 1–3.
+  const MUG = { kind: 'mug-ring', seed: 1867 };
   const MUG_FADE = { demon: 0, temperature: 1, surfaces: 2 };
+  function mugPlace(section) {
+    const lineGap = parseFloat(getComputedStyle(section).getPropertyValue('--vls-line')) || 30;
+    const size = lineGap / 12;
+    const R = 48 * size;
+    const outer = R + 4 * size;
+    return { lineGap, size, R, outer, x: outer / 2, y: 6.25 * lineGap };
+  }
   function paintMarks() {
     const theme = document.body.dataset.theme === 'bw' ? 'bw' : 'victorian';
     const dpr = Math.min(2.5, root.devicePixelRatio || 1);
@@ -5770,10 +5779,11 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
       }
       const w = s.clientWidth, h = s.clientHeight;
       if (w < 8 || h < 8) continue;
+      const spot = mugPlace(s);
       c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
       c.style.width = w + 'px'; c.style.height = h + 'px';
       const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-      NB.pageMark(g, MUG.kind, MUG.x, MUG.y, { seed: MUG.seed, theme, fade, size: MUG.size });
+      NB.pageMark(g, MUG.kind, spot.x, spot.y, { seed: MUG.seed, theme, fade, size: spot.size });
     }
   }
   const $ = (id) => document.getElementById(id);

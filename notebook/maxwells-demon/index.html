@@ -122,8 +122,13 @@ html:not([data-theme="bw"]) body:not([data-theme="bw"]) #book.vls-notebook .vls-
 <p class="row center"><a class="btn" href="../../play/maxwells-demon/">Play Maxwell&#x27;s Demon</a><a class="btn ghost" href="../">All notebooks</a></p>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  var MUG = { kind: 'mug-ring', seed: 1867, size: 1, x: 4, y: 188 };
+  var MUG = { kind: 'mug-ring', seed: 1867 };
   var FADE = { demon: 0, temperature: 1, surfaces: 2 };
+  function mugPlace(section) {
+    var lineGap = parseFloat(getComputedStyle(section).getPropertyValue('--vls-line')) || 30;
+    var size = lineGap / 12, R = 48 * size, outer = R + 4 * size;
+    return { lineGap: lineGap, size: size, R: R, outer: outer, x: outer / 2, y: 6.25 * lineGap };
+  }
   function themeNow() {
     var t = document.body.getAttribute('data-theme') || document.documentElement.getAttribute('data-theme');
     return t === 'bw' ? 'bw' : 'victorian';
@@ -138,12 +143,12 @@ document.addEventListener('DOMContentLoaded', function () {
       var c = s.querySelector('canvas.vls-mark');
       if (fade === undefined) { if (c) c.remove(); return; }
       if (!c) { c = document.createElement('canvas'); c.className = 'vls-mark'; c.setAttribute('aria-hidden', 'true'); s.appendChild(c); }
-      var w = s.clientWidth, h = s.clientHeight;
+      var w = s.clientWidth, h = s.clientHeight, spot = mugPlace(s);
       if (w < 8 || h < 8) return;
       c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
       c.style.width = w + 'px'; c.style.height = h + 'px';
       var g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-      NB.pageMark(g, MUG.kind, MUG.x, MUG.y, { seed: MUG.seed, theme: th, fade: fade, size: MUG.size });
+      NB.pageMark(g, MUG.kind, spot.x, spot.y, { seed: MUG.seed, theme: th, fade: fade, size: spot.size });
     });
   }
   paint();
