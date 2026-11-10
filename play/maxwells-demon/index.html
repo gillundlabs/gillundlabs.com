@@ -288,7 +288,7 @@
   #b-buy { height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
   #b-buy b { font-size: 20px; } #b-buy small { font-size: 12px; font-weight: 600; }
   #b-cycle { height: 44px; font-size: 20px; }
-  body.sorting #b-buy, body.sorting #b-cycle { display: none; }
+  body.sorting #b-buy, body.sorting #b-cycle, body.tutorial #b-buy, body.tutorial #b-cycle { display: none; }
   #s-card { height: 0; border: 0; border-radius: 0; margin: 8px 0; aspect-ratio: 85.6 / 53.98; height: auto; display: flex; align-items: center; justify-content: center; color: #2a1803; font: italic 12px var(--vls-font-ivory); }
   body[data-theme="bw"] #s-card { border-color: #fff; border-radius: 0; color: #fff; }
   .fv-stores { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 6px 0; }
@@ -1728,7 +1728,7 @@
     <p class="sub" id="title-grav">Chambers in microgravity (orbital laboratory)</p>
     <p>The atom isn't a billiard ball. It sticks to whatever it strikes for a random time, then leaves at a random angle (Knudsen's cosine law) a little hotter than before. Its temperature is its speed, and its speed is your score.</p>
     <div class="row"><button id="b-begin">Begin</button><button id="b-shop">Element shop</button><button id="b-settings">Settings</button><button id="b-physics">The Physics</button><button id="b-full">Full Version</button></div>
-    <p class="sub" id="title-level0" hidden>Begin opens Level 0, a short turn at the trapdoor. Skip any time.</p>
+    <p class="sub" id="title-level0" hidden>Begin opens Level 0, a short turn with the paddle. Skip any time.</p>
     <p class="sub" id="title-status"></p>
     <p class="credit">A <b>Gillund Labs</b> game · <a href="https://gillundlabs.com" target="_blank" rel="noopener">gillundlabs.com</a></p>
   </div>
@@ -1737,7 +1737,7 @@
     <span class="vls-plaque__label" hidden aria-hidden="true"></span>
     <h2>Select mode</h2>
     <div class="col">
-      <button id="b-level0" aria-describedby="b-level0-description"><b>Level 0</b></button><p class="mode-description" id="b-level0-description">A short turn with hydrogen. Open the trapdoor, pass a marked atom, and shut it. Score and temperature are on the dials. Nothing is recorded.</p>
+      <button id="b-level0" aria-describedby="b-level0-description"><b>Level 0</b></button><p class="mode-description" id="b-level0-description">One hydrogen atom in the open chamber. Move the paddle and keep it in. The score is its temperature. Nothing is recorded.</p>
       <button id="b-single" aria-describedby="b-single-description"><b>The Demon's Trap</b></button><p class="mode-description" id="b-single-description">Guard the open side of a three-walled vacuum chamber with one paddle: drag anywhere on the screen, or use W/S, ↑/↓ or the mouse. An atom that slips past you is lost. Your score is the hottest temperature you reach.</p>
       <button id="b-sort" aria-describedby="b-sort-description"><b>Sorting <i class="fv-tag" hidden>Full version</i></b></button><p class="mode-description" id="b-sort-description">A closed box, two chambers, one trapdoor, and a hot gas and a cold gas mixed together. Hold anywhere (or Enter) to open the door. Separate them, hot atoms on one side and cold on the other, before collisions blend them, or crowd atoms onto one side. Your score is the entropy you remove from the gas, minus k_B ln 2 for every door opening your memory has to record.</p>
       <label class="inline">Sorting difficulty <select id="m-sortdiff"><option value="apprentice">Apprentice</option><option value="demon">Demon</option><option value="maxwell">Maxwell</option><option value="custom">Custom…</option></select></label>
@@ -1788,7 +1788,7 @@
       <div class="row"><button id="s-calsave" type="button">Save</button><button id="s-calcancel" type="button">Cancel</button></div></div>
     <label><span>Vacuum level<small>Worse vacuum puts more atoms in the chamber</small></span><span><input id="s-vac" type="range" min="1" max="20" step="1"><small id="l-vac"></small></span></label>
     <label><span>Vacuum level, Sorting mode<small>Atoms in the Sorting box (20 to 200; 100 is the challenge). The mix comes from the Element shop.</small></span><span><input id="s-sortn" type="range" min="20" max="200" step="10"><small id="l-sortn"></small></span></label>
-    <label><span>Trapdoor control<small>Sorting mode: touch, mouse or Enter</small></span><select id="s-door"><option value="hold">Hold to open (default)</option><option value="toggle">Tap to toggle</option></select></label>
+    <label><span>Trapdoor control<small>Sorting mode: touch, mouse or Enter. Space pauses.</small></span><select id="s-door"><option value="hold">Hold to open (default)</option><option value="toggle">Tap to toggle</option></select></label>
     <label><span>Highlight atoms worth passing<small>Sorting: Apprentice and Demon at chamber size ×1. Green (Victorian) or solid + (B&amp;W) when passing an atom should raise the score by more than the opening cost. Off in Custom and above ×1.</small></span><input id="s-preview" type="checkbox" checked style="justify-self:start"></label>
     <label><span>Residence time<small>Mean time an atom stays adsorbed</small></span><span><input id="s-res" type="range" min="0" max="1.5" step="0.05"><small id="l-res"></small></span></label>
     <label><span>Atom–atom collisions<small>How two atoms scatter when they meet</small></span><select id="s-coll"><option value="quantum">Quantum s-wave (default)</option><option value="classical">Classical billiard</option></select></label>
@@ -6285,8 +6285,6 @@ function create(env) {
     S.diff = resolve(opts.difficulty, opts.custom);
     if (opts.spread != null) S.diff.spread = Math.max(1, +opts.spread);
     if (opts.mean != null) S.diff.mean = +opts.mean;
-    S.tutorial = !!opts.tutorial;
-    if (S.tutorial) S.diff = { ...S.diff, label: 'Level 0', key: 'level0', time: opts.time > 0 ? +opts.time : 90 };
     S.mix = { ...opts.mix }; S.zs = Object.keys(S.mix).map(Number).filter((z) => S.mix[z] > 0).sort((a, b) => a - b);
     S.N = S.zs.reduce((n, z) => n + S.mix[z], 0);
     const masses = []; for (const z of S.zs) for (let i = 0; i < S.mix[z]; i++) masses.push(P.ELEMENTS[z - 1].mass);
@@ -6518,11 +6516,7 @@ function create(env) {
   }
 
   const PREVIEW_H = 1.2;
-  function previewOn() {
-    if (settings.sortPreview === false || (S.M || 1) > 1) return false;
-    if (S.tutorial) return true;
-    return settings.sortDifficulty !== 'custom' && (S.diff.id === 'apprentice' || S.diff.id === 'demon');
-  }
+  function previewOn() { return settings.sortPreview !== false && settings.sortDifficulty !== 'custom' && (S.diff.id === 'apprentice' || S.diff.id === 'demon') && (S.M || 1) <= 1; }
   function lockPreviewHot() {
     let ke0 = 0, n0 = 0, ke1 = 0, n1 = 0;
     for (const a of S.atoms) {
@@ -6768,7 +6762,7 @@ function create(env) {
     draw(chamber(0), cx(faces[0]), yBody, 12, '500', faces[0], 'center');
     draw('CHAMBER B', cx(faces[2]), yTitle, 13, '500', faces[2], 'center');
     draw(chamber(1), cx(faces[2]), yBody, 12, '500', faces[2], 'center');
-    draw(S.tutorial ? `LEVEL 0 · ${fmtTime(S.left)}` : `NET SCORE · ${fmtTime(S.left)} LEFT`, cx(faces[1]), yTitle, 12, '500', faces[1], 'center');
+    draw(`NET SCORE · ${fmtTime(S.left)} LEFT`, cx(faces[1]), yTitle, 12, '500', faces[1], 'center');
     draw(net, cx(faces[1]), yBody - 6, 18, '700', faces[1], 'center');
     draw(`${S.diff.walls === 'thermal' ? 'GAS + WALLS' : 'GAS'} ΔS ${E.formatKB(S.gas)}`, cx(faces[1]), yBody + 22, 11, '500', faces[1], 'center');
   }
@@ -6966,7 +6960,7 @@ root.MDSorting = Object.freeze({ create, magCap, magLimits, magColdest, RECORD_T
 <script data-src="src/tutorial.js">
 (function (root) {
   'use strict';
-  function create() { return { active: false, opened: false, closed: false, passed: false, complete: false }; }
+  function create() { return { active: false, moved: false, heated: false, slipped: false, complete: false }; }
   function writesRecords(tutorial) { return !(tutorial && tutorial.active); }
   function arm() { const s = create(); s.active = true; return s; }
   function begin(tutorial, store) {
@@ -6983,36 +6977,43 @@ root.MDSorting = Object.freeze({ create, magCap, magLimits, magColdest, RECORD_T
   function finish(tutorial, store) { return { action: 'done', state: create(), store: withSeen(store), record: false }; }
   function observe(tutorial, sample) {
     if (!tutorial || !tutorial.active) return tutorial || create();
-    const s = { active: true, opened: !!tutorial.opened, closed: !!tutorial.closed, passed: !!tutorial.passed, complete: false };
-    const opens = sample && +sample.opens || 0;
-    const door = sample && +sample.door || 0;
-    const cmd = sample && sample.cmd ? 1 : 0;
-    if (opens > 0) s.opened = true;
-    if (s.opened && !cmd && door < 0.08) s.closed = true;
-    if (sample && (sample.helpfulCross || (sample.crossed && sample.netRaised))) s.passed = true;
-    s.complete = !!(s.opened && s.closed && s.passed);
+    const s = { active: true, moved: !!tutorial.moved, heated: !!tutorial.heated, slipped: !!tutorial.slipped, complete: false, y0: tutorial.y0 };
+    if (sample && sample.moved) s.moved = true;
+    if (sample && sample.heated && s.moved) s.heated = true;
+    if (sample && sample.slipped) s.slipped = true;
+    if (sample && sample.finish && s.moved && s.heated) s.complete = true;
     return s;
   }
-  function line(tutorial, opts) {
-    opts = opts || {};
+  function line(tutorial) {
     if (!tutorial || !tutorial.active) return '';
-    const toggle = opts.door === 'toggle';
-    const preview = opts.preview !== false;
-    const open = toggle ? 'Tap anywhere, or Space, to open. Tap again to shut.' : 'Hold anywhere, or Space, to open. Release shuts.';
-    if (!tutorial.opened) {
-      const aim = preview ? 'Pass a marked atom through the trapdoor, then shut it.' : 'Pass an atom that raises the score, then shut the trapdoor.';
-      return `Level 0. ${aim} ${open}`;
-    }
-    if (opts.doorOpen || !tutorial.closed) {
-      if (!preview) return 'A fast atom into the colder chamber, or a slow one into the hotter, raises the score. Then shut the door.';
-      return opts.theme === 'bw'
-        ? 'Solid +: this atom raises the score. Let it through, then shut the door.'
-        : 'Green ring: this atom raises the score. Let it through, then shut the door.';
-    }
-    return 'Centre dial: the score. Entropy removed, minus k_B ln 2 each opening. Side dials: temperature.';
+    if (!tutorial.moved) return 'Level 0 · hydrogen. Drag anywhere, or W/S, arrows, or the mouse, to move the paddle. Space pauses.';
+    if (!tutorial.heated) return tutorial.slipped
+      ? 'It slipped past. Guard the open right side. Score is temperature: hotter is higher.'
+      : 'Guard the open right side. An atom that gets past is lost. Score is temperature: hotter is higher.';
+    return 'The big number is that temperature. Best is the hottest you hold.';
   }
-  function setup() { return { mix: { 1: 8 }, difficulty: 'apprentice', gravity: 'micro', time: 90 }; }
-  root.MDTutorial = { create, begin, replay, skip, finish, observe, line, setup, writesRecords };
+  function headerLayout(bw) {
+    const inset = bw ? 10 : 24, gap = 4, weights = [1, 1.55, 1];
+    const plaques = [
+      { id: 'score', x: 16, y: 6, w: 312, h: 108 },
+      { id: 'gas', x: 344, y: 6, w: 312, h: 108 },
+      { id: 'purse', x: 672, y: 6, w: 312, h: 108 },
+    ];
+    const sum = weights.reduce((a, b) => a + b, 0);
+    return plaques.map((p) => {
+      const inner = p.h - 2 * inset - gap * (weights.length - 1);
+      let y = p.y + inset;
+      const slots = weights.map((w) => {
+        const h = inner * w / sum;
+        const slot = { x: p.x + inset, y, w: p.w - 2 * inset, h };
+        y += h + gap;
+        return slot;
+      });
+      return { ...p, inset, slots };
+    });
+  }
+  function setup() { return { mode: 'single', mix: { 1: 1 }, shape: 'rect', gravity: 'micro' }; }
+  root.MDTutorial = { create, begin, replay, skip, finish, observe, line, headerLayout, setup, writesRecords };
 })(typeof self !== 'undefined' ? self : this);
 </script>
 <script data-src="src/game.js">
@@ -7087,10 +7088,7 @@ const settings = store.settings;
 const persist = () => S.save(store);
 const E = window.MDEntropy;
 const TUT = window.MDTutorial;
-const SORT = window.MDSorting.create({ P, E, R, settings, W, H, scaleText: () => MDS.describe(), onTimeUp: () => {
-  if (state.tutorial && state.tutorial.active) { state.tutorialTimeUp = true; return; }
-  if (state.screen === 'preview') startPreviewSort(); else endGame('Time is up');
-} });
+const SORT = window.MDSorting.create({ P, E, R, settings, W, H, scaleText: () => MDS.describe(), onTimeUp: () => (state.screen === 'preview' ? startPreviewSort() : endGame('Time is up')) });
 const sortMix = () => rescaleMix(settings.mix, settings.sortN);
 const sortCustom = () => ({ spread: settings.sortSpread, mean: settings.sortMean, walls: settings.sortWalls });
 const sortCfg = () => window.MDSorting.resolve(settings.sortDifficulty, sortCustom());
@@ -7219,12 +7217,12 @@ function scheduleInstrumentLayout() {
 function instrumentReadings(force = false) {
   const dock = $('instrument-dock'), message = $('instrument-message'), reading = $('sorting-readout');
   const active = document.body.classList.contains('playing'), sorting = state.mode === 'sort';
-  const coach = active && sorting ? tutorialCoach() : '';
+  const lesson = !!(state.tutorial && state.tutorial.active);
+  const coach = active && lesson ? tutorialCoach() : '';
   const text = coach || (active && sorting && state.toast ? state.toast : '');
   if (message.textContent !== text) { message.textContent = text; scheduleInstrumentLayout(); }
   message.hidden = !text;
   if (!state.watch) $('watch-bar').hidden = true;
-  const lesson = !!(state.tutorial && state.tutorial.active);
   reading.hidden = !active || lesson; dock.hidden = !active;
   if (!active) return;
   if (force || state.clock - instrumentReadingAt > 0.25 || state.clock < instrumentReadingAt) {
@@ -7293,67 +7291,66 @@ function layoutInstruments() {
 const instrumentObserver = new ResizeObserver(scheduleInstrumentLayout);
 for (const id of ['controls', 'instrument-message', 'sorting-readout', 'watch-bar', 'trial-badge']) instrumentObserver.observe($(id));
 
+function restoreTutorialGravity() {
+  if (!state.tutorialGravity) return;
+  settings.gravity = state.tutorialGravity; state.tutorialGravity = '';
+}
 function leaveTutorial() {
-  state.tutorial = null; state.tutorialTimeUp = false;
-  document.body.classList.remove('tutorial');
+  restoreTutorialGravity();
+  state.tutorial = null; state.tutorialHold = 0; state.level0Plaques = null;
+  document.body.classList.remove('tutorial', 'sorting');
   const skip = $('b-skip-level0'); if (skip) skip.hidden = true;
   const ps = $('b-pause-skip'); if (ps) ps.hidden = true;
 }
 function tutorialCoach() {
   if (!(state.tutorial && state.tutorial.active)) return '';
-  return TUT.line(state.tutorial, {
-    door: settings.sortDoorControl, theme: settings.theme, preview: settings.sortPreview !== false,
-    doorOpen: SORT.S.door > 0.04 || !!SORT.S.cmd,
-  });
+  return TUT.line(state.tutorial);
 }
-function tutorialSnapshot() {
-  const sides = new Map(), help = new Set();
-  for (const a of SORT.S.atoms) sides.set(a.id, a.x < SORT.PX ? 0 : 1);
-  if (SORT.previewMarks) for (const m of SORT.previewMarks()) if (m.help) help.add(m.a.id);
-  return { sides, help, net: SORT.S.net };
-}
-function tutorialAdvance(before) {
-  if (!(state.tutorial && state.tutorial.active)) return;
-  const Srt = SORT.S;
-  let helpfulCross = false, crossed = false;
-  for (const a of Srt.atoms) {
-    const side = a.x < SORT.PX ? 0 : 1;
-    if (before.sides.get(a.id) !== side) { crossed = true; if (before.help.has(a.id)) helpfulCross = true; }
+function tutorialAdvance(dt) {
+  if (!(state.tutorial && state.tutorial.active) || state.mode !== 'single' || state.screen !== 'playing') return;
+  const p = state.paddles[0];
+  const wasMoved = !!state.tutorial.moved;
+  const moved = wasMoved || !!(p && (Math.abs(p.y - state.tutorial.y0) > 12 || keys.has('KeyW') || keys.has('KeyS') || keys.has('ArrowUp') || keys.has('ArrowDown')));
+  if (moved && !wasMoved) {
+    state.tutorialMovedAt = state.clock;
+    state.tutorialMarkT = state.atoms.reduce((m, a) => Math.max(m, a.T), state.runStartT || 0);
+    state.tutorialHitsMark = state.hits;
   }
-  state.tutorial = TUT.observe(state.tutorial, {
-    opens: Srt.opens, cmd: Srt.cmd, door: Srt.door, helpfulCross, crossed, netRaised: crossed && Srt.net > before.net,
-  });
+  const heated = wasMoved && state.clock - state.tutorialMovedAt > 0.7 && (state.hits > (state.tutorialHitsMark || 0) || state.atoms.some((a) => a.T > (state.tutorialMarkT || 0) * 1.02));
+  if (moved && heated) state.tutorialHold = (state.tutorialHold || 0) + dt; else state.tutorialHold = 0;
+  state.tutorial = TUT.observe(state.tutorial, { moved, heated, slipped: !!state.tutorialSlipped, finish: state.tutorialHold > 1.35 });
   if (state.tutorial.complete) finishTutorial();
-  else if (state.tutorialTimeUp) { state.tutorialTimeUp = false; skipTutorial(); }
 }
 function startTutorial() {
   const spec = TUT.setup();
+  restoreTutorialGravity();
+  SORT.stop(); document.body.classList.remove('sorting');
   state.tutorial = TUT.replay(null, store).state;
-  state.tutorialTimeUp = false;
-  state.overKind = '';
-  state.watch = null; $('watch-bar').hidden = true;
+  state.tutorialHold = 0; state.tutorialSlipped = false; state.level0Plaques = null;
+  state.overKind = ''; state.watch = null; $('watch-bar').hidden = true;
   state.runFull = false; state.runTrial = false; state.trialOverShown = false;
-  state.mode = 'sort'; state.screen = 'playing'; state.shape = 'rect';
+  state.mode = spec.mode; state.screen = 'playing'; state.shape = spec.shape;
+  state.mix = { ...spec.mix }; state.nAtoms = 1; state.pure = 1; state.contacts = new Map();
   state.atoms = []; state.paddles = []; state.respawns = []; state.flashes = []; state.unlocked = [];
-  state.toast = null; state.toastT = 0; state.coinsEarned = 0; state.bonus = 0; state.simTime = 0;
-  state.ach2Seen = false; state.hold = false; hideAch2Note();
+  state.toast = null; state.toastT = 0; state.coinsEarned = 0; state.bonus = 0; state.spent = 0; state.bought = 0;
+  state.hits = 0; state.points = [0, 0]; state.lost = 0; state.simTime = 0; state.best = 0; state.maxT = 0; state.score = 0;
+  state.hist.fill(0); state.ach2Seen = false; state.hold = false; hideAch2Note();
   if (typeof doorPointers !== 'undefined') doorPointers.clear();
   touches.clear();
-  freezeRun(SORT.SB.w);
-  P.setMagnification(1);
-  const grav = settings.gravity;
-  settings.gravity = spec.gravity;
-  try {
-    SORT.start({ mix: spec.mix, difficulty: spec.difficulty, pace: state.runPace, warmup: 0.35, tutorial: true, time: spec.time });
-  } finally { settings.gravity = grav; }
-  document.body.classList.add('sorting', 'tutorial');
+  if (settings.gravity !== spec.gravity) { state.tutorialGravity = settings.gravity; settings.gravity = spec.gravity; }
+  freezeRun(CH.w); P.setMagnification(1);
+  const mid = CH.y + CH.h / 2 - PAD.len / 2;
+  state.paddles = [{ side: 'R', x: CH.x + CH.w - PAD.gap - PAD.w, face: CH.x + CH.w - PAD.gap - PAD.w, nx: -1, y: mid, len: PAD.len }];
+  spawn(1, 'single'); noteRunStart();
+  state.tutorial.y0 = state.paddles[0].y;
+  document.body.classList.add('tutorial');
   $('b-skip-level0').hidden = false;
   $('b-again').textContent = 'Play again ▸';
   stat('mode_start', { mode: 'level0', tutorial: true, gravity: spec.gravity, scale: scaleBucket() });
   showPanel(null);
 }
 function skipTutorial() {
-  state.tutorialTimeUp = false;
+  restoreTutorialGravity();
   if (state.tutorial && state.tutorial.active) {
     const result = TUT.skip(state.tutorial, store);
     store = result.store; state.tutorial = result.state; persist();
@@ -7373,7 +7370,7 @@ function skipTutorial() {
 }
 function finishTutorial() {
   if (!(state.tutorial && state.tutorial.active)) return;
-  state.tutorialTimeUp = false;
+  restoreTutorialGravity();
   const result = TUT.finish(state.tutorial, store);
   store = result.store; state.tutorial = result.state; persist();
   document.body.classList.remove('tutorial');
@@ -7386,9 +7383,9 @@ function finishTutorial() {
   $('b-again').textContent = 'Choose a mode ▸';
   $('over-title').textContent = 'Level 0 complete';
   const rows = [
-    ['Trapdoor', 'Open it for a marked atom, then shut it'],
-    ['Score', 'Entropy removed, minus k_B ln 2 per opening'],
-    ['Temperature', 'Side dials. Faster atoms are hotter'],
+    ['Paddle', 'Drag, or W/S, arrows, or the mouse. Space pauses'],
+    ['Objective', 'Guard the open right side. An atom that gets past is lost'],
+    ['Score', 'Temperature. Hotter is higher'],
     ['Record', 'Not kept'],
   ];
   $('over-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
@@ -7584,7 +7581,10 @@ function nextUnlockText() {
 function adsorb(a, nx, ny, paddle) {
   a.vx = 0; a.vy = 0;
   a.stuck = { nx, ny, left: P.sampleResidenceTime(settings.residenceMean), paddle: paddle || null, dy: paddle ? a.y - (paddle.y + paddle.len / 2) : 0 };
-  if (paddle && state.screen === 'playing') { state.hits++; state.coinsEarned++; store.coins++; persist(); }
+  if (paddle && state.screen === 'playing') {
+    state.hits++;
+    if (!(state.tutorial && state.tutorial.active)) { state.coinsEarned++; store.coins++; persist(); }
+  }
 }
 function desorb(a) {
   const s = a.stuck;
@@ -7693,7 +7693,10 @@ function step(dt) {
   state.simTime += dt;
   if (state.screen === 'playing') {
     updateScore();
-    if (state.mode === 'single' && state.atoms.length === 0) endGame();
+    if (state.mode === 'single' && state.atoms.length === 0) {
+      if (state.tutorial && state.tutorial.active) { state.tutorialSlipped = true; spawn(1, 'single'); }
+      else endGame();
+    }
   }
 }
 function collideAll() {
@@ -7772,7 +7775,7 @@ function updateScore() {
   for (const a of at) { const p = per[a.z] || (per[a.z] = { n: 0, sum: 0, max: 0 }); p.n++; p.sum += a.T; p.max = Math.max(p.max, a.T); }
   for (const z in per) per[z].mean = per[z].sum / per[z].n;
   state.per = per;
-  while (store.unlockedZ < capZ() && per[store.unlockedZ] && per[store.unlockedZ].mean >= el(store.unlockedZ + 1).unlockT * (state.runFactor > 0 ? state.runFactor : 1)) {
+  while (!(state.tutorial && state.tutorial.active) && store.unlockedZ < capZ() && per[store.unlockedZ] && per[store.unlockedZ].mean >= el(store.unlockedZ + 1).unlockT * (state.runFactor > 0 ? state.runFactor : 1)) {
     store.unlockedZ++; state.unlocked.push(store.unlockedZ); persist(); stat('unlock', { z: store.unlockedZ, route: 'temperature' });
     toast(`${el(store.unlockedZ).name} unlocked by temperature. Select it in the shop.`);
   }
@@ -7873,6 +7876,7 @@ function render() {
   }
   ctx.restore();
   if (state.toast && state.screen === 'playing') banner(state.toast, theme);
+  instrumentReadings();
 }
 function banner(text, theme, y0 = CH.y) {
   const bw = theme === 'bw', boxW = 640, maxW = 600, size = bw ? 13 : 14;
@@ -7990,7 +7994,36 @@ function engraveStack(ctx, plate, lines) {
     });
   }
 }
+function hudLevel0(theme) {
+  const bw = theme === 'bw';
+  const T = formatT(state.score), bestT = formatT(state.best);
+  state.hud = { scoreText: T, bestText: bestT, maxText: formatT(state.maxT) };
+  const layout = TUT.headerLayout(bw);
+  const copy = [
+    ['LEVEL 0', T, `best ${bestT}`],
+    ['HYDROGEN', '1 atom', 'open side, right'],
+    ['PURSE', `${store.coins} coins`, `hits ${state.hits}`],
+  ];
+  const sizes = [12, 18, 12], weights = ['500', '700', '500'];
+  state.level0Plaques = layout.map((plaque, i) => {
+    if (bw) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(plaque.x + 1, plaque.y + 1, plaque.w - 2, plaque.h - 2); }
+    else R.plaque(ctx, plaque.x, plaque.y, plaque.w, plaque.h, 3 + i * 3);
+    const lines = plaque.slots.map((slot, k) => {
+      const cut = !bw && i === 0 && k === 1 ? { highlight: 0.18, deviceRim: true } : undefined;
+      const res = R.faceText(ctx, copy[i][k], slot.x + slot.w / 2, slot.y + slot.h / 2, sizes[k], {
+        align: 'center', weight: weights[k], face: { x: slot.x, y: slot.y, w: slot.w, h: slot.h, inset: 1 },
+        engraved: !bw, font: R.font(), color: '#fff', minSize: 11, cut,
+      });
+      return { text: copy[i][k], size: res ? res.size : sizes[k], elided: !!(res && res.elided), bounds: res ? res.bounds : [], slot };
+    });
+    return { id: plaque.id, x: plaque.x, y: plaque.y, w: plaque.w, h: plaque.h, inset: plaque.inset, slots: plaque.slots, lines };
+  });
+  const sb = scaleBarSpec();
+  R.scaleBar(ctx, CH.x, H - 26, sb.px, bw ? sb.label.toUpperCase() : sb.label, theme);
+  if (!bw) R.gauge(ctx, W - 34, H - 26, 15, gasPressure().p);
+}
 function hud(theme) {
+  if (state.mode === 'single' && ((state.tutorial && state.tutorial.active) || state.overKind === 'tutorial')) { hudLevel0(theme); return; }
   const bw = theme === 'bw', single = state.mode === 'single';
   R.setFaces(ctx, bw && !single ? [{x:24,y:14,w:400,h:92},{x:424,y:14,w:152,h:96},{x:576,y:14,w:400,h:92}] : [{x:24,y:14,w:300,h:88},{x:340,y:14,w:320,h:bw?96:88},{x:676,y:14,w:300,h:88}]);
   const zsNow = Object.keys(state.per || {}).map(Number).sort((a, b) => a - b);
@@ -8123,15 +8156,11 @@ function frame(now) {
   governor(raw);
   state.clock += dt;
   if (state.mode === 'sort') {
-    if (!state.hold && state.screen === 'playing') {
-      const before = state.tutorial && state.tutorial.active && !state.watch ? tutorialSnapshot() : null;
-      if (state.watch) watchStep(dt * P.TIME_SCALE); else SORT.step(dt * P.TIME_SCALE);
-      state.simTime += dt;
-      if (before) tutorialAdvance(before);
-    }
-    if (SORT.S.a2 && !state.ach2Seen && state.screen === 'playing' && !(state.tutorial && state.tutorial.active)) onAch2();
+    if (!state.hold && state.screen === 'playing') { if (state.watch) watchStep(dt * P.TIME_SCALE); else SORT.step(dt * P.TIME_SCALE); state.simTime += dt; }
+    if (SORT.S.a2 && !state.ach2Seen && state.screen === 'playing') onAch2();
     else if (!state.hold && state.screen === 'preview') { autoDoor(); SORT.step(dt * P.TIME_SCALE); }
   } else if (!state.hold && (state.screen === 'playing' || state.screen === 'preview' || state.mode === 'attract')) step(dt * P.TIME_SCALE);
+  if (!state.hold && state.screen === 'playing' && state.tutorial && state.tutorial.active) tutorialAdvance(dt);
   if (state.screen === 'playing' && !state.hold && state.runTrial && !state.watch && ACC.addPlayTime(Math.min(raw, 0.25) * 1000)) onTrialExpired();
   trialBadge();
   state.flashes = state.flashes.filter((f) => (f.t -= dt) > 0);
@@ -8584,8 +8613,8 @@ addEventListener('keydown', (e) => {
     if (state.screen === 'playing') pause();
     else if (state.screen === 'paused' && $('p-pause').classList.contains('show')) resume();
   }
-  if (e.code === 'Enter' && $('p-title').classList.contains('show')) { e.preventDefault(); beginPlay(); }
-  if (state.mode === 'sort' && state.screen === 'playing' && !state.watch && !e.repeat && e.code === 'Enter') {
+  if (e.code === 'Enter' && !e.repeat && $('p-title').classList.contains('show')) { e.preventDefault(); beginPlay(); }
+  if (e.code === 'Enter' && state.mode === 'sort' && state.screen === 'playing' && !state.watch && !state.tutorial && !e.repeat) {
     e.preventDefault();
     if (settings.sortDoorControl === 'toggle') SORT.toggle(); else SORT.doorDown();
   }
@@ -8597,7 +8626,7 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => {
   keys.delete(e.code);
-  if (e.code === 'Enter' && state.mode === 'sort' && settings.sortDoorControl !== 'toggle' && !focusOwnsKey(e.target)) SORT.doorUp();
+  if (e.code === 'Enter' && state.mode === 'sort' && !state.tutorial && settings.sortDoorControl !== 'toggle' && !focusOwnsKey(e.target)) SORT.doorUp();
 });
 addEventListener('blur', () => { keys.clear(); pause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); else if (state.screen === 'playing') keepAwake(true); });
@@ -8735,13 +8764,17 @@ window.MDGameLive = {
   level0: () => ({
     active: !!(state.tutorial && state.tutorial.active),
     seen: !!store.tutorialSeen,
-    opened: !!(state.tutorial && state.tutorial.opened),
-    closed: !!(state.tutorial && state.tutorial.closed),
-    passed: !!(state.tutorial && state.tutorial.passed),
+    moved: !!(state.tutorial && state.tutorial.moved),
+    heated: !!(state.tutorial && state.tutorial.heated),
+    slipped: !!(state.tutorial && state.tutorial.slipped),
     coach: ($('instrument-message') && $('instrument-message').textContent) || '',
     skipHidden: $('b-skip-level0').hidden,
     overKind: state.overKind || '',
     writes: TUT.writesRecords(state.tutorial),
+    mode: state.mode,
+    plaques: state.level0Plaques || null,
+    paddleY: state.paddles[0] ? state.paddles[0].y : null,
+    y0: state.tutorial ? state.tutorial.y0 : null,
   }),
   gas: () => state.atoms.map((a) => ({ z: a.z, T: a.T, v: Math.hypot(a.vx, a.vy) * P.METERS_PER_PX })),
   sortGas: () => (SORT.S.on ? { T0: SORT.S.T0, Tc: SORT.S.Tc, Th: SORT.S.Th, Tstd: SORT.S.Tstd, M: SORT.S.M, pace: SORT.S.pace, spread: SORT.S.diff.spread, mean: SORT.S.diff.mean, w: SORT.SB.w, h: SORT.SB.h } : null),
