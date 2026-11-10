@@ -733,7 +733,7 @@
   #b-replay-level0 span { display: block; font-weight: normal; font-size: 13px; }
   @media (max-width: 520px) {
     #level0-plaque, #level0-plaque .vls-plaque__label { font-size: 13px; }
-    #level0-hud { top: auto; bottom: calc(var(--sab) + 168px); max-width: none; }
+    #level0-hud { top: var(--vm-hud-bottom, 128px); bottom: auto; left: 8px; right: 8px; max-width: none; }
   }
   #hint-plaque.vls-plaque:not(.show) { display: none !important; }
   #hint-plaque.show { display: inline-flex !important; align-items: center; justify-content: center; }
@@ -7806,8 +7806,8 @@ function tutorialLine() {
   if (!t || !t.steered) return desk
     ? 'Level 0. Drag, or the arrow keys, to tip the tube. Space pauses.'
     : 'Level 0. Tip the phone, or drag, to steer the atom along the tube.';
-  if (!t.aimed) return 'The open end is a rotary pump. Steer the atom into it. The clock is time on this screen.';
-  return 'Stars use that screen time against par. Record pace is the same crossing on every screen. This run writes nothing.';
+  if (!t.aimed) return 'The open end is a rotary pump. Steer the atom into it. Stars use record pace, not the screen clock.';
+  return 'Par is at record pace: screen time times the width over 215. This run writes nothing.';
 }
 function tutorialTick() {
   const t = state.tutorial;
@@ -7849,7 +7849,7 @@ function skipTutorial() {
 function onTutorialWin() {
   const w = state.world, L = state.level, t = w.stats.time, body = bodyFor(L);
   const pace = w.opts.pace > 0 ? w.opts.pace : 1, tRef = w.stats.refTime > 0 ? w.stats.refTime : t * pace;
-  const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(t, par);
+  const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(tRef, par);
   store.tutorialSeen = true;
   persist();
   state.tutorial = null;
@@ -7864,10 +7864,10 @@ function showTutorialWin() {
   ensureWinPump();
   $('win-title').textContent = 'Level 0 complete';
   $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
-  const rows = [['Screen time', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par', `${r.par} s, screen time`],
-    ['Stars', 'screen time'], ['Pump', pumpName(r.exit.pump)], ['Saved', 'Nothing']];
+  const rows = [['Screen time', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par', `${r.par} s at record pace`],
+    ['Stars', 'on record pace'], ['Pump', pumpName(r.exit.pump)], ['Saved', 'Nothing']];
   $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
-  $('win-note').textContent = `Stars use screen time against par. Record pace is the same crossing on every screen (${b.name}). This run wrote nothing.`;
+  $('win-note').textContent = `Stars follow record pace against par. Screen time is the other clock. Record pace is the same crossing on every screen (${b.name}). This run wrote nothing.`;
   $('b-next').style.display = ''; $('b-next').textContent = 'Level 1 ▸';
   showPanel('win');
 }
@@ -7933,10 +7933,21 @@ function showWin() {
 }
 
 // ------------------------------------------------------------------ camera: follows the atom, GPS-style look-ahead
+function playInset() {
+  const lesson = state.level && state.level.tutorial && state.screen === 'playing' && vw <= 520 && vh > vw;
+  if (!lesson) return { top: 0, bottom: 0, bias: 0 };
+  const el = document.getElementById('level0-hud');
+  const top = el && el.classList.contains('show') ? Math.ceil(el.getBoundingClientRect().bottom) + 8 : 0;
+  return { top, bottom: 150, bias: 22 };
+}
 function camera(dt) {
   if (!state.world) return;
-  const a = state.world.atom, short = Math.min(vw, vh), k = E.viewZoom(vw, vh);   // phones: tube fills the short side; big screens see more maze
-  const halfW = vw / k / 2, halfH = vh / k / 2;
+  const a = state.world.atom, short = Math.min(vw, vh), inset = playInset();
+  const viewH = Math.max(80, vh - inset.top - inset.bottom);
+  const base = E.viewZoom(vw, vh);
+  const fit = inset.top ? (viewH - 8) / (2 * H + 2 * WALL_T + 96) : base;
+  const k = Math.min(base, fit);   // phones: tube fills the short side; Level 0 portrait keeps the tube under the hint
+  const halfW = vw / k / 2, halfH = viewH / k / 2;
   const v = state.world.won ? { x: 0, y: 0 } : { x: a.vx, y: a.vy };
   let lx = v.x * 0.35 + state.tilt.x * 90, ly = v.y * 0.35 + state.tilt.y * 90;
   lx = Math.max(-halfW * 0.45, Math.min(halfW * 0.45, lx)); ly = Math.max(-halfH * 0.45, Math.min(halfH * 0.45, ly));
@@ -7973,8 +7984,9 @@ function render() {
   if (!state.world) return;
   const c = state.cam, L = state.level;
   ctx.save();
-  ctx.translate(vw / 2, vh / 2); ctx.scale(c.k, c.k); ctx.translate(-c.x, -c.y);
-  const x0 = c.x - vw / 2 / c.k, x1 = c.x + vw / 2 / c.k, y0 = c.y - vh / 2 / c.k, y1 = c.y + vh / 2 / c.k;
+  const inset = playInset(), viewH = Math.max(80, vh - inset.top - inset.bottom);
+  ctx.translate(vw / 2, inset.top + viewH / 2 + (inset.bias || 0)); ctx.scale(c.k, c.k); ctx.translate(-c.x, -c.y);
+  const x0 = c.x - vw / 2 / c.k, x1 = c.x + vw / 2 / c.k, y0 = c.y - viewH / 2 / c.k, y1 = c.y + viewH / 2 / c.k;
   const i0 = Math.max(0, Math.floor(x0 / C) - 1), i1 = Math.min(L.cols - 1, Math.floor(x1 / C) + 1), j0 = Math.max(0, Math.floor(y0 / C) - 1), j1 = Math.min(L.rows - 1, Math.floor(y1 / C) + 1);
   const vis = []; for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) vis.push(L.cells[j * L.cols + i]);
   for (const e of L.exits) drawPump(L, e, bw);
@@ -8215,9 +8227,17 @@ function drawPiston(x, y, r, ax, ay, bw, g = ctx, plate = true) {
 }
 function drawStart(L, bw) {
   const cell = L.cells[L.start.j * L.cols + L.start.i];
-  ctx.save(); ctx.font = bw ? `10px ${face(true)}` : `italic 700 11px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : PAL.paperEdge;   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  clampedText(bw ? 'SOURCE' : 'atom source', cell.cx, cell.cy - H - 8); ctx.restore();
   ctx.save(); ctx.strokeStyle = bw ? '#fff' : 'rgba(217,169,67,0.35)'; ctx.setLineDash([3, 5]); ctx.beginPath(); ctx.arc(cell.cx, cell.cy, 26, 0, 7); ctx.stroke(); ctx.restore();
+  const c = state.cam, inset = playInset(), viewH = Math.max(80, vh - inset.top - inset.bottom);
+  const sx = (cell.cx - c.x) * c.k + vw / 2;
+  const steelTop = (cell.cy - H - WALL_T - c.y) * c.k + inset.top + viewH / 2 + (inset.bias || 0);
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.font = bw ? `10px ${face(true)}` : `italic 700 11px ${TK.font.italic}`;
+  ctx.fillStyle = bw ? '#fff' : PAL.paperEdge;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText(bw ? 'SOURCE' : 'atom source', sx, Math.max(inset.top + 18, steelTop - 18));
+  ctx.restore();
 }
 
 // world-space labels stay inside the visible screen (6 px margin inside the safe area), so none is cut off at the edge, and
@@ -8257,14 +8277,12 @@ function deadEndLabel(part, x, y, ax, ay, h, bw) {
 function hud(theme) {
   const bw = theme === 'bw', w = state.world, L = state.level, a = w.atom, body = bodyFor(L), g = gFor(body);
   const t = w.stats.time, tRef = w.stats.refTime > 0 ? w.stats.refTime : t * (w.opts.pace > 0 ? w.opts.pace : 1);
-  // Level 0 prints screen time next to par, so its stars use that same clock. Levels 1–30 keep record pace.
-  const judged = L.tutorial ? t : tRef;
-  const par = ECO.parFor(L.pathCells, body, g), stars = ECO.starsFor(judged, par);
+  const par = ECO.parFor(L.pathCells, body, g), stars = ECO.starsFor(tRef, par);
   const Tk = w.won && w.extraction ? w.extraction.temperature : a.stuck ? a.T : E.kinT(a, w.scale);
   // Controls sit in a 52 px gutter; plate uses the rest so phone HUD labels (esp. TEMPERATURE) keep the full word.
   // Each line is its own slot inside the screw inset, clear of the corner rules.
   const left = safe.l + 8, top = safe.t + 8, right = vw - safe.r - 8 - 52, width = Math.min(580, Math.max(280, right - left));
-  const inset = bw ? 12 : 18, h = inset * 2 + 78;
+  const inset = bw ? 12 : 18, block = 92, h = inset * 2 + block;
   const best = !L.tutorial && store.best[S.bestKey(L.id, body)], bname = body === 'arcade' ? `Arcade ${g.toFixed(2)} m/s²` : E.BODIES[body].name;
   if (!bw) AP.plaque(ctx, left, top, width, h, 3);
   else { ctx.fillStyle = '#000'; ctx.fillRect(left, top, width, h); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(left, top, width, h); }
@@ -8275,14 +8293,14 @@ function hud(theme) {
     { face: { x, y, w, h: hh, inset: 0 }, engraved: !bw, font: bw ? face(true) : FONTS.engraved, weight, minSize: 7 });
   const title = L.tutorial ? `LEVEL 0 · ${L.cf}` : `${L.custom ? '' : L.id + '. '}${L.name.toUpperCase()} · ${L.cf}`;
   const y0 = top + inset;
-  field(title, x0, y0, inner, 16, 11, '700');
+  field(title, x0, y0, inner, 18, 11, '700');
   for (const [i,label,value,size] of [[0,'TIME',`${t.toFixed(1)} s`,18],[1,'CONTACTS',String(w.stats.contacts),18],[2,'TEMPERATURE',formatT(Tk),16]]) {
-    field(label, colX[i], y0 + 18, colW[i], 12, 9);
-    field(value, colX[i], y0 + 32, colW[i], 22, size, '700');
+    field(label, colX[i], y0 + 30, colW[i], 13, 9);
+    field(value, colX[i], y0 + 47, colW[i], 22, size, '700');
   }
   const marks = `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`;
-  const parLine = L.tutorial ? `${marks} par ${par} s on this screen` : `${marks} par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
-  field(parLine, x0, y0 + 56, inner, 16, 9);
+  const parLine = L.tutorial ? `${marks} par ${par} s at record pace` : `${marks} par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
+  field(parLine, x0, y0 + 74, inner, 16, 9);
   document.documentElement.style.setProperty('--vm-hud-bottom', `${top + h + 10}px`);
   // spirit level: in-plane gravity g·sin θ
   const gm = Math.hypot(state.tilt.x, state.tilt.y), ang = T.angleOf(state.tilt);

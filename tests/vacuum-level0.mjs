@@ -126,6 +126,18 @@ try {
   console.log('done', JSON.stringify(won));
   if (!won.win || won.winTitle !== 'Level 0 complete') fail('Level 0 did not complete ' + JSON.stringify(won));
   if (!/wrote nothing/.test(won.winNote)) fail('completion note does not say nothing was written ' + won.winNote);
+  const scored = await ev(`(() => {
+    const stats = document.getElementById('win-stats').innerText.replace(/\\s+/g, ' ');
+    const num = (label) => { const m = stats.match(new RegExp(label + '\\\\s+([0-9.]+)')); return m ? +m[1] : null; };
+    const starsFor = (t, par) => (t <= par ? 3 : t <= 2 * par ? 2 : 1);
+    const t = num('Screen time'), tRef = num('Record pace'), par = num('Par');
+    const shown = (document.getElementById('win-stars').textContent.match(/★/g) || []).length;
+    return { t, tRef, par, recordStars: starsFor(tRef, par), screenStars: starsFor(t, par), shown, stats };
+  })()`);
+  console.log('score', JSON.stringify(scored));
+  if (scored.shown !== scored.recordStars) fail('Level 0 stars did not follow record pace ' + JSON.stringify(scored));
+  if (!/at record pace/.test(scored.stats) || !/Screen time/.test(scored.stats) || !/Record pace/.test(scored.stats)) fail('win panel does not name both clocks ' + scored.stats);
+  if (scored.recordStars !== scored.screenStars && scored.shown === scored.screenStars) fail('stars matched screen time instead of record pace ' + JSON.stringify(scored));
   if (won.coins || won.best.length || won.cleared.length || won.notebook.length || won.pumps.length) fail('completion wrote coins, records, or unlocks ' + JSON.stringify(won));
   if (!won.seen) fail('completion did not mark Level 0 seen');
 } catch (err) {
