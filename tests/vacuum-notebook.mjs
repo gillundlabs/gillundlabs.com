@@ -32,6 +32,22 @@ if ((site.match(/vls-simplification/g) || []).length < 16) fail('site simplifica
 if (!play.includes('function renderNotebook') || !play.includes('scrollIntoView')) fail('scrollable book navigation missing');
 if (!play.includes('id="nb-body" class="vls-notebook scrollable"')) fail('notebook scroller missing');
 if (/tea tray|tennis player swatting|revolving door with sliding panels|lumpy, slightly soft wall/.test(play + site)) fail('analogy sentence still published');
+if (!play.includes('coffee: 0') || play.includes('coffee: 1')) fail('paperTexture still stains every page');
+if (play.includes('84% 12%') || play.includes('circle at 10px calc(100% - 12px)')) fail('the coffee ring is still painted on every page');
+if (!play.includes("kind: 'coffee-drops'") || !site.includes("kind: 'coffee-drops'")) fail('Vacuum Maze mark is not coffee-drops');
+{
+  const crypto = await import('node:crypto');
+  const nb = readFileSync(new URL('../assets/notebook.js', import.meta.url));
+  const css = readFileSync(new URL('../assets/tokens.css', import.meta.url));
+  const nbHash = crypto.createHash('sha256').update(nb).digest('hex');
+  const cssHash = crypto.createHash('sha256').update(css).digest('hex');
+  if (nbHash !== '5479b6df3d76865098e3f38555a74ba9485b1b8f9e927cf9cac45aff328153d0') fail('notebook.js hash ' + nbHash);
+  if (cssHash !== '336e0da3c5a689c0098b576f2c0ce495fec6bb8746139f8615622a8af1711a30') fail('tokens.css hash ' + cssHash);
+  const start = play.indexOf('/* Victorian Lab Style: laboratory-notebook helpers.');
+  const end = play.indexOf("})(typeof self !== 'undefined' ? self : this);", start);
+  const inlined = play.slice(start, end + "})(typeof self !== 'undefined' ? self : this);".length);
+  if (crypto.createHash('sha256').update(inlined + '\n').digest('hex') !== nbHash && crypto.createHash('sha256').update(inlined).digest('hex') !== nbHash) fail('inlined notebook.js is not the kit file');
+}
 if (/SK\['scale'\]/.test(play) || /SK\['part-blank'\]/.test(play)) fail('a flange sketch is still overridden');
 if (play.includes('hatchPoly') || /\.hatch\(/.test(play)) fail('notebook still has hatch drawing');
 {
@@ -133,6 +149,37 @@ try {
   if (!opened.scrollable || !opened.taller) fail('book does not scroll');
   if (!opened.closeInView) fail('close control not on screen');
   if (opened.best !== 42.5) fail('best rewritten on open');
+
+  const marks = await ev(`(() => {
+    const pages = [...document.querySelectorAll('#nb-body .vls-page')];
+    const found = [];
+    pages.forEach((p, i) => {
+      const c = p.querySelector('canvas.vm-page-mark');
+      if (!c) return;
+      const px = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let ink = 0;
+      for (let k = 3; k < px.length; k += 4) if (px[k] > 8) ink++;
+      found.push({ i, id: p.id, kind: c.dataset.kind, fade: c.dataset.fade, seed: c.dataset.seed, x: c.dataset.x, y: c.dataset.y, size: c.dataset.size, gap: c.dataset.gap, ink });
+    });
+    const sample = getComputedStyle(pages[0]).backgroundImage;
+    return { found, ring: /122,\\s*74,\\s*30/.test(sample), pages: pages.map((p) => p.id) };
+  })()`);
+  console.log('marks', JSON.stringify(marks.found), 'ring', marks.ring);
+  if (marks.ring) fail('victorian page CSS still draws a coffee ring');
+  if (marks.found.length !== 3) fail('expected exactly three marked pages, got ' + marks.found.length);
+  const fades = marks.found.map((m) => m.fade).join(',');
+  if (fades !== '0,1,2') fail('mark fades ' + fades);
+  if (marks.found[1].i !== marks.found[0].i + 1 || marks.found[2].i !== marks.found[1].i + 1) fail('marked pages are not consecutive');
+  const spot = marks.found[0];
+  if (marks.found.some((m) => m.x !== spot.x || m.y !== spot.y || m.size !== spot.size || m.seed !== spot.seed)) fail('the three pages do not share a spot ' + JSON.stringify(marks.found));
+  for (const m of marks.found) {
+    if (m.kind !== 'coffee-drops' || m.seed !== '78') fail('mark spot changed ' + JSON.stringify(m));
+    const expect = Number(m.gap) / 18.61;
+    if (Math.abs(Number(m.size) - expect) > 0.01) fail('drop size is not one ruled line ' + JSON.stringify(m));
+    if (m.ink < 10) fail('fade ' + m.fade + ' drew nothing');
+  }
+  const markedIds = new Set(marks.found.map((m) => m.id));
+  if ([...markedIds].join(',') !== 'note-accommodation,note-walltemp,note-flight') fail('marked the wrong pages ' + [...markedIds].join(','));
 
   async function flangeSvg() {
     return ev(`(async () => {
@@ -387,7 +434,17 @@ try {
   })()`);
   console.log('bw', JSON.stringify(bw));
   if (bw.theme !== 'bw' || bw.analogies || bw.pages < 8) fail('black-and-white notebook broken ' + JSON.stringify(bw));
+  const bwMarks = await ev(`(() => {
+    const canvases = document.querySelectorAll('#nb-body canvas.vm-page-mark').length;
+    const silent = window.VLS.notebook.pageMark(document.createElement('canvas').getContext('2d'), 'coffee-drops', 150, 180, { seed: 78, theme: 'bw', fade: 0, size: 1.61 });
+    const sample = getComputedStyle(document.querySelector('#nb-body .vls-page')).backgroundImage;
+    return { canvases, silent, ring: /122,\\s*74,\\s*30/.test(sample) };
+  })()`);
+  console.log('bw marks', JSON.stringify(bwMarks));
+  if (bwMarks.canvases || bwMarks.silent || bwMarks.ring) fail('B&W notebook still has a mark ' + JSON.stringify(bwMarks));
 
+  await send('Network.enable');
+  await send('Network.setCacheDisabled', { cacheDisabled: true });
   await send('Page.navigate', { url: BASE + '/notebook/vacuum-maze/' });
   for (let i = 0; i < 30; i++) { if (await ev('!!document.getElementById("book")')) break; await sleep(150); }
   const siteView = await ev(`(() => ({ analogies: document.querySelectorAll('.vls-analogy').length, simplifications: document.querySelectorAll('.vls-simplification').length, links: document.querySelectorAll('.notes-toc a').length, missing: [...document.querySelectorAll('.notes-toc a')].filter((a) => !document.querySelector(a.getAttribute('href'))).map((a) => a.getAttribute('href')) }))()`);
@@ -395,6 +452,26 @@ try {
   if (siteView.analogies) fail('public notebook page still has analogy Post-its');
   if (siteView.simplifications < 16) fail('public notebook page lost lab notes');
   if (siteView.missing.length) fail('public notebook orphan links ' + siteView.missing.join(','));
+  const siteMarks = await ev(`(() => {
+    const pages = [...document.querySelectorAll('#book .vls-page')];
+    const found = [];
+    pages.forEach((p, i) => {
+      const c = p.querySelector('canvas.vm-page-mark');
+      if (!c) return;
+      found.push({ i, id: p.id, kind: c.dataset.kind, fade: c.dataset.fade, seed: c.dataset.seed, x: c.dataset.x, y: c.dataset.y, size: c.dataset.size, gap: c.dataset.gap });
+    });
+    const sample = getComputedStyle(pages[0]).backgroundImage;
+    return { found, ring: /122,\\s*74,\\s*30/.test(sample) };
+  })()`);
+  console.log('site marks', JSON.stringify(siteMarks.found));
+  if (siteMarks.ring) fail('public pages still have the coffee ring');
+  if (siteMarks.found.length !== 3) fail('public notebook marks ' + siteMarks.found.length);
+  if (siteMarks.found.map((m) => m.id + ':' + m.fade).join(',') !== 'p4:0,p5:1,p6:2') fail('public mark pages ' + JSON.stringify(siteMarks.found));
+  if (siteMarks.found[1].i !== siteMarks.found[0].i + 1 || siteMarks.found[2].i !== siteMarks.found[1].i + 1) fail('public marks are not consecutive');
+  for (const m of siteMarks.found) {
+    if (m.kind !== 'coffee-drops' || m.seed !== '78') fail('public mark spot ' + JSON.stringify(m));
+    if (Math.abs(Number(m.size) - Number(m.gap) / 18.61) > 0.01) fail('public drop size ' + JSON.stringify(m));
+  }
 } finally {
   try { ws && ws.close(); } catch {}
   chrome.kill('SIGKILL');
