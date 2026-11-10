@@ -5756,9 +5756,10 @@ root.MDRender = { ivorySurface, ivoryPanel, invalidateIvory, plaqueFaceInset, da
   // Kit radius is 48*size, so size = lineGap/12 makes the nominal diameter
   // 8 ruled lines. The outer ink sits about 4*size past that. Centre x at
   // half that outer radius leaves a 120° cap off the left edge, so two thirds
-  // of the ring stays on the page. Same seed and spot on pages 1–3.
+  // of the ring stays on the page. Same seed and spot on the middle pages
+  // (14–16 of 28), so the opening pages stay clean.
   const MUG = { kind: 'mug-ring', seed: 1867 };
-  const MUG_FADE = { demon: 0, temperature: 1, surfaces: 2 };
+  const MUG_FADE = { speeds: 0, waves: 1, lasercool: 2 };
   function mugPlace(section) {
     const lineGap = parseFloat(getComputedStyle(section).getPropertyValue('--vls-line')) || 30;
     const size = lineGap / 12;

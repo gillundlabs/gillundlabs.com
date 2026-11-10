@@ -97,6 +97,22 @@ const banned = /cheat|bose|condens|analogy|coffee/i;
 check(!banned.test(lines.join('\n')) && !banned.test(script('src/tutorial.js')), 'the lesson does not use banned framing');
 check(!html.includes('seore') && html.includes('your score'), 'the title says score');
 
+{
+  const pageIds = [...html.matchAll(/id: '([a-z0-9]+)', title:/g)].map((m) => m[1]);
+  const N = Math.floor(pageIds.length / 2);
+  const want = [pageIds[N - 1], pageIds[N], pageIds[N + 1]];
+  check(pageIds.length === 28 && N + 2 <= pageIds.length, `numbered notebook pages: ${pageIds.length}`);
+  check(want.join() === 'speeds,waves,lasercool', `middle pages are ${want.join(', ')}`);
+  const fade = html.match(/const MUG_FADE = \{([^}]+)\}/);
+  check(fade && fade[1].replace(/\s/g, '') === 'speeds:0,waves:1,lasercool:2', `in-game mug pages: ${fade && fade[1]}`);
+  check(html.includes('seed: 1867') && html.includes('lineGap / 12') && html.includes('x: outer / 2') && html.includes('6.25 * lineGap'), 'mug seed, size and centre stay as reviewed');
+  const pub = readFileSync(new URL('../notebook/maxwells-demon/index.html', import.meta.url), 'utf8');
+  const pubIds = [...pub.matchAll(/id="note-([a-z0-9]+)"/g)].map((m) => m[1]).filter((id) => id !== 'contents');
+  check(pubIds.join() === pageIds.join(), 'the public notebook lists the same numbered pages');
+  const pubFade = pub.match(/var FADE = \{([^}]+)\}/);
+  check(pubFade && pubFade[1].replace(/\s/g, '') === 'speeds:0,waves:1,lasercool:2', `public mug pages: ${pubFade && pubFade[1]}`);
+}
+
 function overlaps(a, b) {
   return a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5;
 }

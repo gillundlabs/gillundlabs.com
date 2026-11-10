@@ -123,7 +123,7 @@ html:not([data-theme="bw"]) body:not([data-theme="bw"]) #book.vls-notebook .vls-
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var MUG = { kind: 'mug-ring', seed: 1867 };
-  var FADE = { demon: 0, temperature: 1, surfaces: 2 };
+  var FADE = { speeds: 0, waves: 1, lasercool: 2 };
   function mugPlace(section) {
     var lineGap = parseFloat(getComputedStyle(section).getPropertyValue('--vls-line')) || 30;
     var size = lineGap / 12, R = 48 * size, outer = R + 4 * size;
