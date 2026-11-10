@@ -564,6 +564,15 @@
   #notes-book.md-larger-writing .vls-page { font-size: 24px; line-height: 34px; --vls-line: 34px; }
   #notes-book.md-larger-writing .vls-note { font-size: 22px; line-height: 30px; }
   #notes-book.md-larger-writing .vls-cf { font-size: 20px; line-height: 27px; }
+  /* The entropy slip is much taller than the other notes. A 0.6° tilt swings its
+     corner past the page: about 1.5px at 320px in regular writing, and further
+     in larger writing. Keep that one slip level so the ink stays on the page. */
+  @media (max-width: 360px) {
+    #notes-book #note-entropy .vls-simplification { transform: none; }
+  }
+  @media (max-width: 440px) {
+    #notes-book.md-larger-writing #note-entropy .vls-simplification { transform: none; }
+  }
   body[data-theme] button {
     --md-face-bevel: 4px; box-sizing: border-box; max-width: 100%; min-width: 44px;
     white-space: normal; overflow-wrap: anywhere; word-break: normal; line-height: 1.3;
