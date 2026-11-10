@@ -125,7 +125,8 @@ else {
   check(m.boltR > m.recessR, 'bolt circle is inside the recess');
   check(m.knifeR > m.gasketIn && m.knifeR < m.gasketOut, 'knife radius is outside the copper');
   check(Math.abs(m.gasketT - 2) < 1e-9 && Math.abs(m.flangeT - 12.7) < 1e-9, 'DN40 thicknesses');
-  check(Math.abs(s.odOverId - 70 / 38) < 1e-12, 'in-game OD/ID is ' + s.odOverId);
+  check(Math.abs(m.odR - 34.95) < 1e-12 && Math.abs(2 * m.odR - 69.9) < 1e-12, 'flange OD is ' + (2 * m.odR) + ' mm');
+  check(Math.abs(s.odOverId - 69.9 / 38) < 1e-12, 'in-game OD/ID is ' + s.odOverId);
   check(Math.abs(s.thick - 12.7 * s.pxPerMm) < 1e-9, 'thickness does not follow the bore scale');
   check(Math.abs(s.boltR - 29.4 * s.pxPerMm) < 1e-9, 'bolt circle does not follow the bore scale');
   check(s.boltR > 80 + 12, 'bolt circle is inside the 12 px tube wall');
