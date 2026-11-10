@@ -23,7 +23,9 @@
   var MARK = { kind: 'coffee-drops', seed: 78 };
   var DROP_PX = 18.61;
   var BOX = { l: -22.75, t: -16.15, r: 18.59, b: 8.72 };
-  var ids = ['p4', 'p5', 'p6'];
+  var pages = [].slice.call(document.querySelectorAll('#book .vls-page'));
+  var start = Math.round(pages.length / 2) - 1;
+  var ids = [pages[start], pages[start + 1], pages[start + 2]].map(function (p) { return p.id; });
   var theme = document.body.getAttribute('data-theme') === 'bw' ? 'bw' : 'victorian';
   ids.forEach(function (id, fade) {
     var page = document.getElementById(id);

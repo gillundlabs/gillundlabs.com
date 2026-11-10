@@ -94,7 +94,7 @@ try {
 
   const save = {
     settings: { theme: 'victorian', plainNotebook: false },
-    notebook: { tilt: true, cosine: true, accommodation: true, walltemp: true, flight: true, clausing: true, scale: true, mfp: true, 'pump-rotary': true, 'pump-turbo': true },
+    notebook: { tilt: true, cosine: true, accommodation: true, walltemp: true, flight: true, clausing: true, scale: true, mfp: true, elements: true, 'pump-rotary': true, 'pump-scroll': true, 'pump-turbo': true },
     notebookNew: { cosine: true },
     best: { '1|earth': { time: 42.5, stars: 2 } },
     coins: 3, paidCoins: 0, owned: [1], cleared: {}, parts: {}, pumpsSeen: { rotary: true },
@@ -178,8 +178,11 @@ try {
     if (Math.abs(Number(m.size) - expect) > 0.01) fail('drop size is not one ruled line ' + JSON.stringify(m));
     if (m.ink < 10) fail('fade ' + m.fade + ' drew nothing');
   }
-  const markedIds = new Set(marks.found.map((m) => m.id));
-  if ([...markedIds].join(',') !== 'note-accommodation,note-walltemp,note-flight') fail('marked the wrong pages ' + [...markedIds].join(','));
+  const markedIds = marks.found.map((m) => m.id).join(',');
+  if (markedIds !== 'note-elements,note-pump-rotary,note-pump-scroll') fail('marked the wrong pages ' + markedIds);
+  const early = marks.pages.slice(0, marks.found[0].i);
+  if (early.some((id) => id === 'note-tilt' || id === 'note-accommodation' || id === 'note-walltemp' || id === 'note-flight') === false) fail('early pages missing from the book ' + early.join(','));
+  if (marks.found[0].i < 6) fail('the stain is still near the start of the book, index ' + marks.found[0].i);
 
   async function flangeSvg() {
     return ev(`(async () => {
@@ -466,8 +469,12 @@ try {
   console.log('site marks', JSON.stringify(siteMarks.found));
   if (siteMarks.ring) fail('public pages still have the coffee ring');
   if (siteMarks.found.length !== 3) fail('public notebook marks ' + siteMarks.found.length);
-  if (siteMarks.found.map((m) => m.id + ':' + m.fade).join(',') !== 'p4:0,p5:1,p6:2') fail('public mark pages ' + JSON.stringify(siteMarks.found));
-  if (siteMarks.found[1].i !== siteMarks.found[0].i + 1 || siteMarks.found[2].i !== siteMarks.found[1].i + 1) fail('public marks are not consecutive');
+  const sitePages = await ev(`document.querySelectorAll('#book .vls-page').length`);
+  const mid = Math.round(sitePages / 2) - 1;
+  if (siteMarks.found.map((m) => m.i).join(',') !== [mid, mid + 1, mid + 2].join(',')) fail('public marks are not the middle three ' + JSON.stringify(siteMarks.found) + ' of ' + sitePages);
+  if (siteMarks.found.map((m) => m.id + ':' + m.fade).join(',') !== 'p13:0,p14:1,p15:2') fail('public mark pages ' + JSON.stringify(siteMarks.found));
+  const earlyPublic = await ev(`['contents','p1','p2','p3','p4','p5','p6'].filter((id) => document.getElementById(id).querySelector('canvas.vm-page-mark'))`);
+  if (earlyPublic.length) fail('early public pages still carry a mark ' + earlyPublic.join(','));
   for (const m of siteMarks.found) {
     if (m.kind !== 'coffee-drops' || m.seed !== '78') fail('public mark spot ' + JSON.stringify(m));
     if (Math.abs(Number(m.size) - Number(m.gap) / 18.61) > 0.01) fail('public drop size ' + JSON.stringify(m));
