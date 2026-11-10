@@ -712,6 +712,42 @@
     padding: calc(8px + var(--vls-plaque-screw, 10px)) calc(14px + var(--vls-plaque-screw, 10px));
     overflow: visible;
   }
+  #level0-hud {
+    position: fixed; z-index: 7; display: none; flex-direction: column; gap: 8px; align-items: stretch;
+    left: 12px; right: calc(var(--sar) + 76px); top: calc(var(--sat) + 8px);
+    max-width: 520px; pointer-events: none;
+  }
+  #level0-hud.show { display: flex; }
+  #level0-plaque {
+    position: relative; box-sizing: border-box; width: 100%;
+    font: 500 14px var(--vls-font-ivory); color: var(--vls-engraving); text-align: center;
+    background-color: #f1ecdf; background-image: none;
+    border: 2px solid var(--vls-brass-dark); border-radius: var(--vls-plaque-screw, 10px);
+    box-shadow:
+      0 0 0 2px var(--vls-wood),
+      0 0 0 3px var(--vls-wood-deep),
+      var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color);
+    padding: calc(8px + var(--vls-plaque-screw, 10px)) calc(12px + var(--vls-plaque-screw, 10px));
+    overflow: visible;
+  }
+  #level0-plaque .vls-plaque__label {
+    white-space: normal; overflow: visible; text-overflow: clip; pointer-events: none;
+    font: 500 14px var(--vls-font-ivory); color: inherit; letter-spacing: .02em; line-height: 1.3;
+  }
+  #b-skip-level0 { pointer-events: auto; align-self: flex-start; }
+  #b-pause-skip[hidden], #title-level0[hidden] { display: none !important; }
+  body[data-theme="bw"] #level0-plaque {
+    background: #000 !important; color: #fff !important; border: 2px solid #fff !important;
+    box-shadow: none !important; outline: 1.5px solid #fff;
+  }
+  body[data-theme="bw"] #level0-plaque .vls-plaque__label {
+    font: 500 14px var(--vls-font-sans) !important; font-style: normal !important; color: #fff;
+  }
+  #b-replay-level0 { display: block; width: 100%; text-align: left; margin: 0 0 8px; }
+  #b-replay-level0 span { display: block; font-weight: normal; font-size: 13px; }
+  @media (max-width: 520px) {
+    #level0-plaque, #level0-plaque .vls-plaque__label { font-size: 13px; }
+  }
   #hint-plaque.vls-plaque:not(.show) { display: none !important; }
   #hint-plaque.show { display: inline-flex !important; align-items: center; justify-content: center; }
   #hint-plaque .vls-plaque__label {
@@ -1031,6 +1067,10 @@
 <div id="rotate-hint">Turn the phone upright to tip the apparatus.</div>
 <div id="ledger-scrim" aria-hidden="true"></div>
 <div id="hint-plaque" class="vls-plaque vls-plaque--ivory" data-vls-ivory="vm/hint-plaque" role="status" aria-live="polite"><span class="vls-plaque__label"></span></div>
+<div id="level0-hud">
+  <div id="level0-plaque" class="vls-plaque vls-plaque--ivory" data-vls-ivory="vm/level0-plaque" role="status" aria-live="polite"><span class="vls-plaque__label"></span></div>
+  <button id="b-skip-level0" type="button">Skip Level 0</button>
+</div>
 <div id="panels">
 
   <div class="panel scrollable" id="p-title" data-vls-ivory="vm/panel/title">
@@ -1038,6 +1078,7 @@
     <p class="sub">An apparatus for the extraction of single atoms from laboratory tubing, after Knudsen (1909)</p>
     <p>One cold atom is loose in a maze of stainless-steel vacuum pipe. Tip the apparatus (your phone) and real gravity pulls it along. It doesn't bounce like a marble: it sticks to the steel for a moment, then leaves at a random angle (Knudsen's cosine law) with the wall's temperature. Steer it into a vacuum pump.</p>
     <div class="row"><button id="b-begin">Begin ▸</button><button id="b-notebook">Lab notebook</button><button id="b-shop">Shop</button><button id="b-editor">Level editor</button><button id="b-settings">Settings</button></div>
+    <p class="sub" id="title-level0">Begin opens Level 0, a short run to the pump. Skip any time. Nothing is recorded.</p>
     <p class="sub" id="tilt-note"></p>
   </div>
 
@@ -1145,7 +1186,7 @@
 
   <div class="panel scrollable" id="p-pause" data-vls-ivory="vm/panel/pause">
     <h2>Paused</h2>
-    <div class="row"><button id="b-resume">Resume ▸</button><button id="b-restart">Restart</button><button id="b-pause-settings">Settings</button><button id="b-pause-notebook">Notebook</button><button id="b-pause-levels">Levels</button></div>
+    <div class="row"><button id="b-resume">Resume ▸</button><button id="b-restart">Restart</button><button id="b-pause-skip" type="button" hidden>Skip Level 0</button><button id="b-pause-settings">Settings</button><button id="b-pause-notebook">Notebook</button><button id="b-pause-levels">Levels</button></div>
     <p class="sub">Tap Resume, or press P or Esc. On a computer, Space does the same.</p>
   </div>
 
@@ -5807,7 +5848,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   const RANGES = { arcadeG: [0.1, 9.81], accommodation: [0, 1], residenceMean: [0, 1.5], smoothing: [0, 0.3] };
   const BODY_IDS = ['earth', 'mars', 'moon', 'arcade'];
   const clamp = (v, [a, b], d) => (Number.isFinite(+v) ? Math.min(b, Math.max(a, +v)) : d);
-  function blank() { return { settings: { ...DEFAULTS }, best: {}, cleared: {}, coins: 0, paidCoins: 0, owned: [1], parts: {}, pumpsSeen: {}, notebook: {}, notebookNew: {} }; }
+  function blank() { return { settings: { ...DEFAULTS }, best: {}, cleared: {}, coins: 0, paidCoins: 0, owned: [1], parts: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, tutorialSeen: false }; }
   function load(storage) {
     const ls = storage || root.localStorage; let s = blank();
     try {
@@ -5828,6 +5869,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     s.coins = Math.max(0, Math.floor(+s.coins || 0));
     s.paidCoins = Math.min(s.coins, Math.max(0, Math.floor(+s.paidCoins || 0)));   // the unspent part of the purse that came from coin packs
     if (!s.parts || typeof s.parts !== 'object' || Array.isArray(s.parts)) s.parts = {};   // level-editor parts bought with coins
+    s.tutorialSeen = !!s.tutorialSeen;   // Level 0: a fresh player has not seen it; erasing progress shows it again
     return s;
   }
   function save(s, storage) { try { (storage || root.localStorage).setItem(KEY, JSON.stringify(s)); } catch (e) { /* ignore */ } }
@@ -7545,7 +7587,10 @@ function startCustom(level, ctx = {}) {
   state.custom = { level, from: ctx.from || 'editor' };
   beginRun(level, false);
 }
-const restart = () => (state.custom ? startCustom(state.custom.level, { from: state.custom.from }) : startLevel(state.levelIdx));
+const restart = () => {
+  if (state.level && state.level.tutorial) { startTutorial(); return; }
+  return state.custom ? startCustom(state.custom.level, { from: state.custom.from }) : startLevel(state.levelIdx);
+};
 const pumpName = (t) => (HW.PUMP_INFO[t] || CFG.byId[t] || { name: t }).name;
 function beginRun(level, demo) {
   state.level = level; state.demo = demo;
@@ -7564,11 +7609,18 @@ function beginRun(level, demo) {
   if (!demo) {
     state.started = true; state.screen = 'playing'; showPanel(null); lockOrientation();
     const L = state.level, b = bodyFor(L);
-    unlock('start'); unlock('body:' + b);
-    if (L.lasers.length) { unlock('laser'); for (const bm of L.lasers) unlock('laser:' + bm.line); }
+    if (L.tutorial) {
+      state.tilt = { x: 0, y: 0 };
+      state.tutorial = { active: true, steered: false, aimed: false };
+      syncLevel0();
+    }
+    else {
+      state.tutorial = null; syncLevel0(); unlock('start'); unlock('body:' + b);
+      if (L.lasers && L.lasers.length) { unlock('laser'); for (const bm of L.lasers) unlock('laser:' + bm.line); }
+    }
     const pumps = [...new Set(L.exits.map((e) => pumpName(e.pump).toLowerCase()))].join(' or ');
-    toast(L.body ? `This apparatus stands on ${E.BODIES[L.body].name}: g = ${E.BODIES[L.body].g} m/s²` : `Steer the atom into the ${pumps}`);
-    if (inputMode === 'manual') showHint();
+    if (!L.tutorial) toast(L.body ? `This apparatus stands on ${E.BODIES[L.body].name}: g = ${E.BODIES[L.body].g} m/s²` : `Steer the atom into the ${pumps}`);
+    if (inputMode === 'manual' && !L.tutorial) showHint();
   }
 }
 function toast(t) { state.toast = t; state.toastT = 3.5; }
@@ -7590,7 +7642,7 @@ function unlock(ev) {
 let lastHaptic = 0;
 function onContact(a, hit) {
   if (state.demo) return;
-  if (!state.contacted) { state.contacted = true; unlock('contact'); }
+  if (!state.contacted) { state.contacted = true; if (!(state.level && state.level.tutorial)) unlock('contact'); }
   if (!settings.haptics) return;
   const now = performance.now(); if (now - lastHaptic < 70) return; lastHaptic = now;
   const w = state.world, vbar = Math.sqrt((8 * E.K_B * w.opts.wallT) / (Math.PI * a.m)), rel = (a.vin || 0) / (vbar || 1);
@@ -7608,7 +7660,8 @@ const kst = { ax: 0, ay: 0 };          // manual tilt angles (degrees) from keys
 let inputMode = 'unknown', inputReason = '', hintT = 0;
 const dragR = () => Math.max(160, Math.min(vw, vh) * 0.4);   // px of drag for 90°
 function setManual(reason) {
-  inputMode = 'manual'; inputReason = reason; showHint();
+  inputMode = 'manual'; inputReason = reason;
+  if (!(state.level && state.level.tutorial)) showHint();
   $('tilt-note').textContent = tiltNote();
 }
 function mountHintPlaque() {
@@ -7689,7 +7742,8 @@ function frame(now) {
     if (!state.world.won) { if (!(devHooks.on && state.freeze)) { E.step(state.world, dt); watchCells(); } if (state.world.won) onWin(); }
     else { if (!(devHooks.on && state.freeze)) { E.step(state.world, dt); state.winT += dt; } if (state.demo && state.winT > E.EXTRACTION_DURATION + 0.25) startLevel(state.levelIdx, true); }
   }
-  purchase.trial.tick(dt * 1000, state.screen === 'playing' && !state.demo && !document.hidden, performance.now() - state.lastInput);
+  purchase.trial.tick(dt * 1000, state.screen === 'playing' && !state.demo && !(state.level && state.level.tutorial) && !document.hidden, performance.now() - state.lastInput);
+  if (state.screen === 'playing') tutorialTick();
   if (state.toastT > 0 && (state.toastT -= dt) <= 0) state.toast = null;
   if (hintT > 0 && (hintT -= dt) <= 0) $('hint-plaque').classList.remove('show');
   if (state.unlockFlash > 0) state.unlockFlash -= dt;
@@ -7701,15 +7755,98 @@ function frame(now) {
 }
 // encounters: entering a cell with a gate, aperture, thermal section or a dead-end instrument
 function watchCells() {
-  if (state.demo) return;
+  if (state.demo || (state.level && state.level.tutorial)) return;
   const a = state.world.atom, c = M.cellAt(state.level, a.x, a.y); if (!c) return;
   const k = c.j * state.level.cols + c.i; if (state.seenCells.has(k)) return; state.seenCells.add(k);
   if (c.gate) unlock('kind:gate'); if (c.plate) unlock('kind:aperture');
   if (c.kind === 'cold' || c.kind === 'hot') unlock('kind:' + c.kind);
   if (c.part) unlock('part:' + c.part);
 }
+let tutorialLevel = null;
+function makeTutorialLevel() {
+  if (tutorialLevel) return tutorialLevel;
+  const L = M.generate({
+    id: 0, name: 'Level 0', caption: 'A short practice run into the first pump. Nothing is recorded.',
+    chapter: 1, setup: 'Practice', cf: 'DN40CF', boreMM: 35,
+    cols: 2, rows: 1, seed: 7, loops: 0, exits: ['rotary'],
+    deadEnds: [], cold: 0, hot: 0, lasers: [], kappa: 1,
+  });
+  L.tutorial = true; L.id = 0; L.name = 'Level 0';
+  return (tutorialLevel = L);
+}
+function tutorialLine() {
+  const t = state.tutorial, desk = !('ontouchstart' in window);
+  if (!t || !t.steered) return desk
+    ? 'Level 0. Drag, or the arrow keys, to tip the tube. Space pauses.'
+    : 'Level 0. Tip the phone, or drag, to steer the atom along the tube.';
+  if (!t.aimed) return 'The open end is a rotary pump. Steer the atom into it. The clock is your time.';
+  return 'Stars compare that time with par. Record pace is the same crossing on every screen. This run writes nothing.';
+}
+function tutorialTick() {
+  const t = state.tutorial;
+  if (!t || !t.active || !state.world) return;
+  const tilt = Math.hypot(state.tilt.x || 0, state.tilt.y || 0);
+  if (tilt > 0.04 || drag || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((k) => keys.has(k))) t.steered = true;
+  const cell = M.cellAt(state.level, state.world.atom.x, state.world.atom.y);
+  const exit = state.level.exits && state.level.exits[0];
+  if (cell && exit && cell.i === exit.i && cell.j === exit.j) t.aimed = true;
+  const label = $('level0-plaque') && $('level0-plaque').querySelector('.vls-plaque__label');
+  if (label) label.textContent = tutorialLine();
+}
+function syncLevel0() {
+  const lesson = !!(state.level && state.level.tutorial);
+  const hud = $('level0-hud');
+  if (hud) hud.classList.toggle('show', lesson && state.screen === 'playing');
+  const pauseSkip = $('b-pause-skip');
+  if (pauseSkip) pauseSkip.hidden = !(lesson && state.screen === 'paused');
+  const note = $('title-level0');
+  if (note) note.hidden = !!store.tutorialSeen;
+  if (lesson && state.screen === 'playing') tutorialTick();
+}
+function startTutorial() {
+  state.custom = null; state.levelIdx = -1;
+  beginRun(makeTutorialLevel(), false);
+}
+function skipTutorial() {
+  const coins = store.coins, best = store.best, cleared = store.cleared, pumps = store.pumpsSeen, notebook = store.notebook, owned = store.owned;
+  store.tutorialSeen = true;
+  store.coins = coins; store.best = best; store.cleared = cleared; store.pumpsSeen = pumps; store.notebook = notebook; store.owned = owned;
+  persist();
+  state.tutorial = null;
+  state.level = state.level && state.level.tutorial ? null : state.level;
+  syncLevel0();
+  state.screen = 'title';
+  startLevel(0, true);
+  showPanel('levels');
+}
+function onTutorialWin() {
+  const w = state.world, L = state.level, t = w.stats.time, body = bodyFor(L);
+  const pace = w.opts.pace > 0 ? w.opts.pace : 1, tRef = w.stats.refTime > 0 ? w.stats.refTime : t * pace;
+  const par = ECO.parFor(L.pathCells, body, gFor(body)), stars = ECO.starsFor(tRef, par);
+  store.tutorialSeen = true;
+  persist();
+  state.tutorial = null;
+  state.screen = 'won';
+  syncLevel0();
+  state.lastResult = { t, tRef, pace, stars, par, tutorial: true, contacts: w.stats.contacts, exit: w.wonExit || L.exits[0], body, coins: 0 };
+  clearTimeout(winTimer);
+  winTimer = setTimeout(() => { if (state.world === w && state.screen === 'won') showTutorialWin(); }, 900);
+}
+function showTutorialWin() {
+  const r = state.lastResult, b = E.BODIES[r.body];
+  ensureWinPump();
+  $('win-title').textContent = 'Level 0 complete';
+  $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
+  const rows = [['Time on this screen', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par (★★★)', `${r.par} s`],
+    ['Stars', 'within par, twice par, or any escape'], ['Pump', pumpName(r.exit.pump)], ['Recorded', 'Nothing: no coins, unlocks, or best time']];
+  $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
+  $('win-note').textContent = `Record pace keeps the same crossing on every screen (${b.name}). This practice run wrote nothing.`;
+  $('b-next').style.display = ''; $('b-next').textContent = 'Level 1 ▸';
+  showPanel('win');
+}
 function onWin() {
   if (state.demo) return;
+  if (state.level.tutorial) return onTutorialWin();
   if (state.level.custom) return onCustomWin();
   const w = state.world, L = state.level, t = w.stats.time, body = bodyFor(L);
   const pace = w.opts.pace > 0 ? w.opts.pace : 1, tRef = w.stats.refTime > 0 ? w.stats.refTime : t * pace;
@@ -8209,7 +8346,7 @@ function showPanel(name) {
   const scrim = $('ledger-scrim');
   if (scrim) scrim.classList.toggle('show', name === 'ledger');
   if (name === 'levels') buildLevels();
-  if (name === 'title') $('tilt-note').textContent = tiltNote();
+  if (name === 'title') { $('tilt-note').textContent = tiltNote(); syncLevel0(); }
 }
 const curPanel = () => PANELS.find((p) => $('p-' + p).classList.contains('show')) || null;
 function tiltNote() {
@@ -8233,7 +8370,7 @@ function buildLevels() {
   buildBodies();
   $('lv-coins').textContent = `Purse: ${store.coins} coins`;
   const body = settings.body, chapters = DATA.chapters && DATA.chapters.length ? DATA.chapters : [{ n: 1, title: 'Apparatus' }];
-  let html = '';
+  let html = `<button type="button" id="b-replay-level0"><b>Level 0</b><span>Practice run to the pump. Skip any time. Nothing is recorded.</span></button>`;
   for (const ch of chapters) {
     const lv = M.LEVELS.map((s, i) => [s, i]).filter(([s]) => (s.chapter || 1) === ch.n);
     const released = lv.filter(([, i]) => i < RELEASED);
@@ -8252,7 +8389,10 @@ function buildLevels() {
   }
   $('level-list').innerHTML = VLS.expHtml(html.replace(/10[\u2013\u2014\u2212-](\d+)/g, (_, d) => '10' + VLS.MINUS + d).replace(/10\^([+\-\u2212]?\d+)/g, (_, e) => VLS.pow10(e)));   // powers of ten → kit <sup> with U+2212 minus
 }
-$('level-list').onclick = (e) => { const b = e.target.closest('button[data-lv]'); if (!b || b.disabled) return; const i = +b.dataset.lv; if (!isLevelUnlocked(i)) openLedger(i); else startLevel(i); };
+$('level-list').onclick = (e) => {
+  if (e.target.closest('#b-replay-level0')) { startTutorial(); return; }
+  const b = e.target.closest('button[data-lv]'); if (!b || b.disabled) return; const i = +b.dataset.lv; if (!isLevelUnlocked(i)) openLedger(i); else startLevel(i);
+};
 $('body-sel').onclick = (e) => { const b = e.target.closest('button[data-body]'); if (!b) return; settings.body = b.dataset.body; persist(); unlock('body:' + settings.body); buildLevels(); };
 $('arcade-g').addEventListener('input', () => { settings.arcadeG = +(0.1 * Math.pow(98.1, +$('arcade-g').value)).toFixed(3); persist(); buildBodies(); });
 // ---- the ledger (paywall)
@@ -8472,10 +8612,16 @@ $('b-nb-back').onclick = () => showPanel(nbReturn);
 function goTitle() { state.screen = 'title'; purchase.trial.endRun(); startLevel(0, true); showPanel('title'); }
 // leaving an editor-made maze: back to the editor (test-play) or to My mazes
 function leaveCustom() { const from = state.custom ? state.custom.from : 'editor'; state.screen = 'title'; purchase.trial.endRun(); startLevel(0, true); if (from === 'mymazes') editor.openMine('title'); else editor.reopen(); }
-function pause() { if (state.screen !== 'playing') return; state.screen = 'paused'; drag = null; showPanel('pause'); }
-function resume() { if (state.screen !== 'paused') return; state.screen = 'playing'; last = performance.now(); showPanel(null); }
-const toLevels = () => { if (state.custom) { leaveCustom(); return; } state.screen = 'title'; purchase.trial.endRun(); startLevel(Math.min(state.levelIdx, RELEASED - 1), true); showPanel('levels'); };
-$('b-begin').onclick = async () => { showPanel('levels'); detectSensor(); };   // user gesture → iOS motion permission
+function pause() { if (state.screen !== 'playing') return; state.screen = 'paused'; drag = null; showPanel('pause'); syncLevel0(); }
+function resume() { if (state.screen !== 'paused') return; state.screen = 'playing'; last = performance.now(); showPanel(null); syncLevel0(); }
+const toLevels = () => {
+  if (state.level && state.level.tutorial) { skipTutorial(); return; }
+  if (state.custom) { leaveCustom(); return; }
+  state.screen = 'title'; purchase.trial.endRun();
+  startLevel(state.levelIdx >= 0 ? Math.min(state.levelIdx, RELEASED - 1) : 0, true);
+  showPanel('levels');
+};
+$('b-begin').onclick = async () => { detectSensor(); if (!store.tutorialSeen) startTutorial(); else showPanel('levels'); };   // a new player meets Level 0; later Begins open the list
 $('b-settings').onclick = () => openSettings('title');
 $('b-notebook').onclick = () => openNotebook('title'); $('b-shop').onclick = () => openShop('title');
 $('b-editor').onclick = () => editor.openMine('title'); $('b-levels-mine').onclick = () => editor.openMine('levels');
@@ -8485,7 +8631,13 @@ $('b-restart').onclick = () => restart();
 $('b-pause-settings').onclick = () => openSettings('pause');
 $('b-pause-notebook').onclick = () => openNotebook('pause');
 $('b-pause-levels').onclick = toLevels;
-$('b-next').onclick = () => { if (state.custom) { leaveCustom(); return; } const n = Math.min(RELEASED - 1, state.levelIdx + 1); if (!isLevelUnlocked(n)) openLedger(n); else startLevel(n); };
+$('b-next').onclick = () => {
+  if (state.lastResult && state.lastResult.tutorial) { startLevel(0); return; }
+  if (state.custom) { leaveCustom(); return; }
+  const n = Math.min(RELEASED - 1, state.levelIdx + 1); if (!isLevelUnlocked(n)) openLedger(n); else startLevel(n);
+};
+$('b-skip-level0').onclick = () => skipTutorial();
+$('b-pause-skip').onclick = () => skipTutorial();
 $('b-retry').onclick = () => restart();
 $('b-win-levels').onclick = toLevels;
 $('b-pausebtn').addEventListener('click', () => pause());
