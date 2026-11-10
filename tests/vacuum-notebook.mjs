@@ -173,7 +173,7 @@ try {
   const spot = marks.found[0];
   if (marks.found.some((m) => m.x !== spot.x || m.y !== spot.y || m.size !== spot.size || m.seed !== spot.seed)) fail('the three pages do not share a spot ' + JSON.stringify(marks.found));
   for (const m of marks.found) {
-    if (m.kind !== 'coffee-drops' || m.seed !== '78') fail('mark spot changed ' + JSON.stringify(m));
+    if (m.kind !== 'coffee-drops' || m.seed !== '67') fail('mark spot changed ' + JSON.stringify(m));
     const expect = Number(m.gap) / 18.61;
     if (Math.abs(Number(m.size) - expect) > 0.01) fail('drop size is not one ruled line ' + JSON.stringify(m));
     if (m.ink < 10) fail('fade ' + m.fade + ' drew nothing');
@@ -448,6 +448,56 @@ try {
   console.log('bw marks', JSON.stringify(bwMarks));
   if (bwMarks.canvases || bwMarks.silent || bwMarks.ring) fail('B&W notebook still has a mark ' + JSON.stringify(bwMarks));
 
+  const readMarks = `(root) => {
+    const pages = [...document.querySelectorAll(root + ' .vls-page')];
+    const found = [];
+    for (const p of pages) {
+      const c = p.querySelector('canvas.vm-page-mark');
+      if (!c) continue;
+      const img = getComputedStyle(p).backgroundImage;
+      const m = img.match(/rgba\\(201,\\s*106,\\s*90[^)]*\\)\\s*([\\d.]+)px/);
+      const rule = m ? parseFloat(m[1]) : null;
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let minX = c.width, minY = c.height, maxX = -1, maxY = -1, n = 0;
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+        if (d[(y * c.width + x) * 4 + 3] > 0) {
+          n++;
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+      found.push({ id: p.id, fade: c.dataset.fade, seed: c.dataset.seed, rule, minX, maxX, minY, maxY, n, cw: c.width, ch: c.height });
+    }
+    return found;
+  }`;
+  function assertInMargin(where, found, ids) {
+    const got = found.map((m) => m.id + ':' + m.fade).join(',');
+    if (got !== ids) fail(where + ' marked pages ' + got);
+    for (const m of found) {
+      if (m.rule == null) fail(where + ' has no margin rule ' + m.id);
+      if (m.n < 10) fail(where + ' drop is empty ' + m.id);
+      if (m.minX < 1 || m.minY < 1 || m.maxX > m.cw - 2 || m.maxY > m.ch - 2) fail(where + ' drop is not fully on the page ' + JSON.stringify(m));
+      if (m.maxX + 1 > m.rule - 2) fail(where + ' drop crosses the margin rule ' + JSON.stringify(m));
+    }
+  }
+  save.settings.theme = 'victorian';
+  for (const w of [320, 390, 768, 1280]) {
+    await boot(w, w >= 800 ? 800 : w === 390 ? 844 : 700);
+    const playMarks = await ev(`(${readMarks})('#nb-body')`);
+    console.log('margin play', w, JSON.stringify(playMarks));
+    assertInMargin('play ' + w, playMarks, 'note-cosine:0,note-accommodation:1,note-walltemp:2');
+    await send('Network.enable');
+    await send('Network.setCacheDisabled', { cacheDisabled: true });
+    await send('Page.navigate', { url: BASE + '/notebook/vacuum-maze/' });
+    for (let i = 0; i < 30; i++) { if (await ev('!!document.getElementById("p5")')) break; await sleep(150); }
+    await sleep(200);
+    const siteAt = await ev(`(${readMarks})('#book')`);
+    console.log('margin site', w, JSON.stringify(siteAt));
+    assertInMargin('public ' + w, siteAt, 'p3:0,p4:1,p5:2');
+  }
+
   await send('Network.enable');
   await send('Network.setCacheDisabled', { cacheDisabled: true });
   await send('Page.navigate', { url: BASE + '/notebook/vacuum-maze/' });
@@ -475,7 +525,7 @@ try {
   const cleanPublic = await ev(`['contents','p1','p2','p6','p13','p14','p15'].filter((id) => document.getElementById(id).querySelector('canvas.vm-page-mark'))`);
   if (cleanPublic.length) fail('pages that should be clean still carry a mark ' + cleanPublic.join(','));
   for (const m of siteMarks.found) {
-    if (m.kind !== 'coffee-drops' || m.seed !== '78') fail('public mark spot ' + JSON.stringify(m));
+    if (m.kind !== 'coffee-drops' || m.seed !== '67') fail('public mark spot ' + JSON.stringify(m));
     if (Math.abs(Number(m.size) - Number(m.gap) / 18.61) > 0.01) fail('public drop size ' + JSON.stringify(m));
   }
 } finally {

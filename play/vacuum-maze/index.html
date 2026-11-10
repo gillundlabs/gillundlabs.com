@@ -8608,10 +8608,13 @@ function scrollNotebook(id, behavior) {
 const ACC_NAMES = { 'lasers-li': 'Lithium laser data', citations: 'Sources', levels: 'Level captions', 'levels-later': 'Level captions (later chapters)' };
 
 // Vacuum Maze's one notebook mark: two coffee drops on page 3 (not counting contents), then the same spot on the next two pages.
-// size stays lineGap / 18.61 (1.612 at a 30 px rule). Seed 78 is two drops, a larger one and a smaller one, with paper between them.
-const PAGE_MARK = { kind: 'coffee-drops', seed: 78 };
+// size stays lineGap / 18.61 (1.612 at a 30 px rule).
+// Seed 78 is two drops about 60 px wide. The red margin rule is at 47 px, so that cluster cannot
+// stay left of the rule at this size. Seed 67 is the nearest seed that still reads as two drops:
+// the smaller one sits under the larger, and the pair fits in the margin. Size is not reduced.
+const PAGE_MARK = { kind: 'coffee-drops', seed: 67 };
 const PAGE_MARK_DROP_PX = 18.61;
-const PAGE_MARK_BOX = { l: -22.75, t: -16.15, r: 18.59, b: 8.72 };
+const PAGE_MARK_CLEAR = 2;
 // Public numbering, contents not counted: page 3 Knudsen, page 4 walls, page 5 wall temperature.
 const PAGE_MARK_FADE = { cosine: 0, accommodation: 1, walltemp: 2 };
 function pageLineGap(page) {
@@ -8621,20 +8624,41 @@ function pageLineGap(page) {
   const lh = parseFloat(cs.lineHeight);
   return lh > 0 ? lh : 30;
 }
+function marginRuleX(page) {
+  const img = getComputedStyle(page).backgroundImage;
+  const m = img.match(/rgba\(201,\s*106,\s*90[^)]*\)\s*([\d.]+)px/);
+  return m ? parseFloat(m[1]) : 47;
+}
+function dropInkBox(size) {
+  const pad = Math.ceil(90 * size);
+  const c = document.createElement('canvas');
+  c.width = pad * 2; c.height = pad * 2;
+  VLS.notebook.pageMark(c.getContext('2d'), PAGE_MARK.kind, pad, pad, { seed: PAGE_MARK.seed, theme: 'victorian', fade: 0, size });
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let minX = c.width, minY = c.height, maxX = -1, maxY = -1;
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < c.width; x++) {
+      if (d[(y * c.width + x) * 4 + 3] > 0) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  return { l: minX - pad, t: minY - pad, r: maxX + 1 - pad, b: maxY + 1 - pad };
+}
 function stampPageMark(page, fade) {
   const theme = document.body.dataset.theme === 'bw' ? 'bw' : 'victorian';
   const gap = pageLineGap(page);
   const size = gap / PAGE_MARK_DROP_PX;
   const w = page.clientWidth, h = page.clientHeight;
-  // Left margin, lower than the first try so the smaller drop clears the temperature scale on page 5.
-  let x = 0.65 * gap, y = 9 * gap;
-  const sl = PAGE_MARK_BOX.l * size, sr = PAGE_MARK_BOX.r * size, st = PAGE_MARK_BOX.t * size, sb = PAGE_MARK_BOX.b * size;
-  const spanX = sr - sl, spanY = sb - st;
-  if (x + sl < -spanX / 3) x = -spanX / 3 - sl;
-  if (x + sr > w) x = Math.max(-spanX / 3 - sl, w - sr);
-  if (y + st < 0) y = -st;
-  if (y + sb > h) y = Math.max(-st, h - sb);
-  if (y + st < -spanY / 3) y = -spanY / 3 - st;
+  const box = dropInkBox(size);
+  // Every ink pixel stays left of the page's red margin rule, with a couple of pixels of clearance, and on the page.
+  let x = (marginRuleX(page) - PAGE_MARK_CLEAR) - box.r;
+  let y = 4 * gap - box.t;
+  if (y + box.b > h) y = Math.max(-box.t, h - box.b);
+  if (y + box.t < 0) y = -box.t;
   const c = document.createElement('canvas');
   c.className = 'vm-page-mark';
   c.width = Math.max(1, w); c.height = Math.max(1, h);
