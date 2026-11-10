@@ -61,7 +61,6 @@
   position: relative; box-sizing: border-box; padding: 18px 22px 22px 64px; margin: 0 auto 26px; max-width: 760px;
   background-color: var(--vls-paper); color: var(--vls-ink);
   background-image:
-    radial-gradient(circle at 84% 12%, transparent 33px, rgba(122,74,30,0.16) 35px, rgba(122,74,30,0.05) 39px, transparent 41px),
     radial-gradient(circle at 12% 78%, rgba(168,116,58,0.22) 0, rgba(168,116,58,0) 6px),
     radial-gradient(circle at 63% 41%, rgba(168,116,58,0.16) 0, rgba(168,116,58,0) 4px),
     radial-gradient(circle at 91% 66%, rgba(168,116,58,0.18) 0, rgba(168,116,58,0) 7px),
@@ -69,7 +68,7 @@
     radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(120,80,30,0.28) 100%),
     linear-gradient(90deg, transparent 47px, rgba(201,106,90,0.55) 47px, rgba(201,106,90,0.55) 48.5px, transparent 48.5px),
     repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--vls-line) - 1px), rgba(159,179,200,0.5) calc(var(--vls-line) - 1px), rgba(159,179,200,0.5) var(--vls-line));
-  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 14px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 14px;
   box-shadow: 0 2px 0 var(--vls-paper-shade), 0 4px 0 var(--vls-paper-edge), 0 10px 24px rgba(0,0,0,0.45);
   border-radius: 2px 6px 6px 2px; line-height: var(--vls-line); font-size: 21px;
 }
@@ -628,6 +627,8 @@
   body[data-theme="bw"] .store-links .store-link { background: #e8e8e8; color: #000;
     border: 1px solid #000; border-radius: 0; box-shadow: none; text-shadow: none; }
   body[data-theme="bw"] .store-link::before { display: none; }
+  /* The one notebook fingerprint (src/notes.js): hidden in plain-text mode; B&W never draws it. */
+  .vls-plain .fa-mark { display: none; }
   body[data-theme="bw"] :is(.fa-ui-plaque, .fa-toast-plaque, #drawer-plaque)::before,
   body[data-theme="bw"] :is(.fa-ui-plaque, .fa-toast-plaque, #drawer-plaque)::after { display: none; }
   @media (max-width: 700px) {
@@ -2329,7 +2330,7 @@
   // ---------- aged, ruled paper as a canvas (cached). opts: seed, theme, ruled, lineGap, marginX, foxing, coffee ----------
   const paperCache = new Map();
   function paperTexture(w, h, opts = {}) {
-    const o = Object.assign({ seed: 3, theme: 'victorian', ruled: true, lineGap: 28, marginX: 56, foxing: 18, coffee: 1 }, opts);
+    const o = Object.assign({ seed: 3, theme: 'victorian', ruled: true, lineGap: 28, marginX: 56, foxing: 18, coffee: 0 }, opts);   // coffee defaults to 0: pages are unmarked unless a game asks (owner, 2026-11-09)
     const key = JSON.stringify([w, h, o]); if (paperCache.has(key)) return paperCache.get(key);
     const bw = o.theme === 'bw', dpr = Math.min(3, Math.max(1, root.devicePixelRatio || 1)), r = mulberry(o.seed);
     const c = document.createElement('canvas'); c.width = w * dpr; c.height = h * dpr; const g = c.getContext('2d'); g.scale(dpr, dpr);
@@ -2346,7 +2347,7 @@
         f.addColorStop(0, `rgba(150,95,40,${0.18 + r() * 0.2})`); f.addColorStop(1, 'rgba(150,95,40,0)');
         g.fillStyle = f; g.beginPath(); g.arc(x, y, s * 2.5, 0, 7); g.fill();
       }
-      for (let i = 0; i < o.coffee; i++) {               // faint coffee ring (an incomplete, uneven circle)
+      for (let i = 0; i < o.coffee; i++) {               // legacy opt-in faint ring; prefer pageMark() for the one notebook mark
         const x = w * (0.55 + r() * 0.35), y = h * (0.1 + r() * 0.75), R0 = 30 + r() * 26, a0 = r() * 6.28;
         for (let k = 0; k < 3; k++) { g.beginPath(); g.ellipse(x, y, R0 + k * 1.2, R0 * 0.96 + k, r(), a0, a0 + 4.6 + r() * 1.3);
           g.strokeStyle = `rgba(122,74,30,${0.13 - k * 0.035})`; g.lineWidth = 2.2 - k * 0.5; g.stroke(); }
@@ -2408,6 +2409,46 @@
     return api;
   }
 
+  // ---------- the notebook's one mark (owner, 2026-11-09: ~90% of pages unmarked; one mark that soaks through
+  // to the next two pages in the identical spot). kind: 'mug-ring' (Maxwell), 'coffee-drops' (Vacuum Maze),
+  // 'fingerprint' (Fantastic Apparatus). fade: 0 = the page it happened on, 1 = next page, 2 = the page after.
+  // Same seed + kind + (x, y, size) gives the same shape on every page, so the soak-through lines up.
+  // Draws nothing in 'bw' (B&W pages stay pure). Returns true if anything was drawn.
+  const MARK_ALPHA = [1, 0.42, 0.17];
+  function pageMark(ctx, kind, x, y, opts = {}) {
+    const o = Object.assign({ seed: 5, theme: 'victorian', fade: 0, size: 1 }, opts);
+    if (o.theme === 'bw' || !(o.fade >= 0 && o.fade <= 2)) return false;
+    const r = mulberry(o.seed), A = MARK_ALPHA[o.fade | 0], s = o.size;
+    ctx.save(); ctx.translate(x, y);
+    if (kind === 'mug-ring') {                  // a coffee-mug base ring, ~8.5 cm across at size 1 (≈ 48 px radius)
+      const R = 48 * s, a0 = r() * 6.28, gap = 0.5 + r() * 0.7, sq = 0.95 + r() * 0.04, rot = r();
+      for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.ellipse(0, 0, R + k * 1.1 * s, (R + k * 1.1 * s) * sq, rot, a0, a0 + 6.28 - gap * (1 - k * 0.15));
+        ctx.strokeStyle = `rgba(110,64,24,${(0.2 - k * 0.04) * A})`; ctx.lineWidth = (2.6 - k * 0.5) * s; ctx.stroke(); }
+      const f = ctx.createRadialGradient(0, 0, R * 0.2, 0, 0, R);   // faint tide inside the ring
+      f.addColorStop(0, 'rgba(122,74,30,0)'); f.addColorStop(1, `rgba(122,74,30,${0.05 * A})`);
+      ctx.fillStyle = f; ctx.beginPath(); ctx.ellipse(0, 0, R, R * sq, rot, 0, 6.29); ctx.fill();
+    } else if (kind === 'coffee-drops') {       // two or three small splashed drops with darker rims
+      const n = 2 + (r() < 0.5 ? 1 : 0);
+      for (let i = 0; i < n; i++) {
+        const dx = (i ? (r() - 0.5) * 46 : 0) * s, dy = (i ? (r() - 0.3) * 34 : 0) * s, rr = (i ? 4 + r() * 4 : 9 + r() * 4) * s;
+        const g = ctx.createRadialGradient(dx, dy, 0, dx, dy, rr);
+        g.addColorStop(0, `rgba(122,74,30,${0.16 * A})`); g.addColorStop(0.72, `rgba(122,74,30,${0.22 * A})`); g.addColorStop(0.92, `rgba(96,54,18,${0.4 * A})`); g.addColorStop(1, 'rgba(96,54,18,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(dx, dy, rr, rr * (0.85 + r() * 0.15), r() * 3, 0, 6.29); ctx.fill();
+      }
+    } else if (kind === 'fingerprint') {        // an oily thumbprint: concentric whorl ridges, greasy translucent smudge
+      const W = 21 * s, H = 27 * s, rot = (r() - 0.5) * 0.9; ctx.rotate(rot);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, H);
+      g.addColorStop(0, `rgba(95,72,38,${0.16 * A})`); g.addColorStop(0.7, `rgba(95,72,38,${0.1 * A})`); g.addColorStop(1, 'rgba(95,72,38,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, W * 1.1, H * 1.1, 0, 0, 6.29); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, W, H, 0, 0, 6.29); ctx.clip();
+      ctx.lineCap = 'round';
+      for (let k = 1; k <= 14; k++) { const f = k / 14, cx = (r() - 0.5) * 0.8 * s, cy = -H * 0.18 * (1 - f);
+        ctx.beginPath(); ctx.ellipse(cx, cy, W * f * 1.05, H * f, 0, 0.15 + r() * 0.4, 6.1 - r() * 0.5);
+        ctx.strokeStyle = `rgba(70,52,30,${(0.2 - f * 0.1) * A})`; ctx.lineWidth = (1.3 + r() * 0.5) * s; ctx.stroke(); }
+    } else { ctx.restore(); return false; }
+    ctx.restore(); return true;
+  }
+
   // ---------- DOM: margin notes / pasted slips and the 'cf.' footnote ----------
   // kind: 'analogy' | 'simplification'. label overrides the default text (e.g. 'In the game').
   function note(kind, html, opts = {}) {
@@ -2422,7 +2463,7 @@
   // switch a container between handwriting and plain (accessible) type
   function setPlain(container, on) { container.classList.toggle('vls-plain', !!on); }
 
-  VLS.notebook = { paperTexture, pen, note, cf, setPlain, mulberry };
+  VLS.notebook = { paperTexture, pen, pageMark, note, cf, setPlain, mulberry };
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
@@ -4126,14 +4167,48 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     const box=(color)=>{ctx.fillStyle=bw?'#000':color;ctx.fillRect(x,y,w,h);ctx.strokeStyle=bw?'#fff':'#bba16b';ctx.lineWidth=1;ctx.strokeRect(x,y,w,h);};
     const metal=()=>ap.brassGrad(ctx,x,y,w/2,h/2);
     ctx.save();
-    if(['lens-cell','slide-cassette','survey-weight','sextant-head'].includes(g.kind)){
-      box(['lens-cell','survey-weight','sextant-head'].includes(g.kind)?metal():'#51351e');ctx.fillStyle=bw?'#000':'#172422';ctx.fillRect(x+w*.09,y+h*.12,w*.82,h*.76);
-      for(const xx of [x+w*.05,x+w*.95])for(const yy of [y+h*.08,y+h*.92]){ctx.fillStyle=bw?'#fff':'#dbbc74';ctx.fillRect(xx-1,yy-1,2,2);}
-    }
-    if(g.kind==='lens-cell'){
-      circle(w*.37,metal());circle(w*.29,'#4e837f');circle(w*.25,'#264c50');line(-w*.16,-h*.14,w*.04,-h*.26,'#bde8dc',2);line(-w*.22,-h*.03,w*.11,-h*.2,'#7cb0ad',1);
+    // Real objects, side-lit from the upper left; nothing is a filled square with a dark window.
+    const rr=(x0,y0,ww,hh,r,fill,stroke,lw=1)=>{ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x0,y0,ww,hh,Math.min(r,ww/2,hh/2));else ctx.rect(x0,y0,ww,hh);if(fill){ctx.fillStyle=bw?'#000':fill;ctx.fill();}if(stroke!==false){ctx.strokeStyle=bw?'#fff':(stroke||'#d8bd79');ctx.lineWidth=lw;ctx.stroke();}};
+    const knurl=(x0,y0,ww,hh,n)=>{for(let i=1;i<n;i++){const u=x0+ww*i/n;line(u,y0+1,u,y0+hh-1,bw?'#fff':'#5b4420',.7);}};
+    const glint=(ax,ay,bx,by)=>{if(!bw)line(ax,ay,bx,by,'rgba(255,246,214,.75)',1.2);};
+    if(g.kind==='lens-cell'&&/EYEPIECE/i.test(g.tag||'')){
+      // Huygenian eyepiece in profile: knurled eye-cup, field-lens barrel, push-fit draw tube, glass at both ends.
+      const cupW=w*.86,barW=w*.62,tubeW=w*.48;
+      rr(-cupW/2,y,cupW,h*.3,3,metal(),'#e0c47e',1.2);knurl(-cupW/2,y+h*.04,cupW,h*.22,9);
+      ctx.fillStyle=bw?'#fff':'rgba(160,214,206,.85)';ctx.fillRect(-cupW*.34,y+h*.005,cupW*.68,Math.max(1,h*.035));
+      rr(-barW/2,y+h*.3,barW,h*.4,2,metal(),'#cfae66');line(-barW/2,y+h*.4,barW/2,y+h*.4,'#7a5c2a',1);line(-barW/2,y+h*.6,barW/2,y+h*.6,'#7a5c2a',1);
+      rr(-tubeW/2,y+h*.7,tubeW,h*.3,1,metal(),'#c19f5d');ctx.fillStyle=bw?'#fff':'rgba(96,160,156,.9)';ctx.fillRect(-tubeW*.38,y+h*.965,tubeW*.76,Math.max(1,h*.035));
+      glint(-barW*.36,y+h*.34,-barW*.36,y+h*.66);glint(-cupW*.4,y+h*.06,-cupW*.4,y+h*.26);
+    }else if(g.kind==='lens-cell'){
+      // Achromatic objective in its brass cell, seen face-on: knurled rim, retaining ring, crown-and-flint glass.
+      circle(w*.48,metal());for(let i=0;i<28;i++){const t=i*Math.PI/14;line(Math.cos(t)*w*.43,Math.sin(t)*h*.43,Math.cos(t)*w*.48,Math.sin(t)*h*.48,'#5b4420',.8);}
+      circle(w*.39,metal());circle(w*.33,'#4e837f');circle(w*.27,'#264c50');
+      for(let i=0;i<3;i++){const t=i*2*Math.PI/3+.5;ctx.fillStyle=bw?'#fff':'#f0d999';ctx.beginPath();ctx.arc(Math.cos(t)*w*.36,Math.sin(t)*h*.36,Math.max(.8,w*.018),0,7);ctx.fill();}
+      line(-w*.16,-h*.14,w*.04,-h*.26,'#bde8dc',2);line(-w*.22,-h*.03,w*.11,-h*.2,'#7cb0ad',1);
     }else if(g.kind==='slide-cassette'){
-      for(let i=0;i<7;i++){ctx.fillStyle=bw?'#000':'rgba(174,207,185,.75)';ctx.fillRect(x+w*(.13+i*.105),y+h*.18,w*.075,h*.65);line(x+w*(.13+i*.105),y+h*.38,x+w*(.205+i*.105),y+h*.38,'#e0d7b0',1);}
+      // Oak slide box with a brass lid hinge and catch; seven glass slides standing in its slots.
+      rr(x,y,w,h,2,'#5a3a1f','#3a2410',1.2);rr(x+w*.04,y+h*.12,w*.92,h*.76,1,'#3b2512','#2a190b');
+      if(!bw){ctx.fillStyle='rgba(255,226,170,.18)';ctx.fillRect(x+1,y+1,w-2,h*.08);}
+      line(x+w*.02,y+h*.06,x+w*.98,y+h*.06,'#d4b56d',1.4);
+      for(let i=0;i<7;i++){const sx=x+w*(.1+i*.118);ctx.fillStyle=bw?'#000':'rgba(174,207,185,.75)';ctx.fillRect(sx,y+h*.16,w*.08,h*.68);ctx.strokeStyle=bw?'#fff':'#d7ead9';ctx.lineWidth=.7;ctx.strokeRect(sx,y+h*.16,w*.08,h*.68);
+        ctx.fillStyle=bw?'#fff':'#efe4c0';ctx.fillRect(sx+w*.01,y+h*.2,w*.06,h*.14);if(!bw){ctx.fillStyle='rgba(176,60,72,.65)';ctx.beginPath();ctx.arc(sx+w*.04,y+h*.55,Math.max(.8,w*.014),0,7);ctx.fill();}}
+      rr(-w*.06,y+h*.86,w*.12,h*.12,1,metal(),'#e0c47e');
+    }else if(g.kind==='survey-weight'){
+      // Turned brass calibration weight: lifting knob, bevelled shoulder, stamped band and base flange.
+      rr(-w*.11,y,w*.22,h*.14,3,metal(),'#e0c47e');rr(-w*.06,y+h*.13,w*.12,h*.08,1,metal(),'#b8964f');
+      ctx.beginPath();ctx.moveTo(-w*.24,y+h*.21);ctx.lineTo(w*.24,y+h*.21);ctx.lineTo(w*.38,y+h*.34);ctx.lineTo(-w*.38,y+h*.34);ctx.closePath();ctx.fillStyle=bw?'#000':metal();ctx.fill();ctx.strokeStyle=bw?'#fff':'#d8bd79';ctx.lineWidth=1;ctx.stroke();
+      rr(-w*.38,y+h*.34,w*.76,h*.5,2,metal(),'#cfae66',1.2);line(-w*.38,y+h*.5,w*.38,y+h*.5,'#6d5126',1);line(-w*.38,y+h*.68,w*.38,y+h*.68,'#6d5126',1);
+      for(let i=0;i<3;i++)line(-w*.12+i*w*.12,y+h*.555,-w*.12+i*w*.12,y+h*.625,'#4a3716',1.4);
+      rr(-w*.46,y+h*.84,w*.92,h*.16,2,metal(),'#e0c47e',1.2);glint(-w*.3,y+h*.38,-w*.3,y+h*.8);
+    }else if(g.kind==='sextant-head'){
+      // Sextant optical head on its brass mounting plate: telescope with draw tube, index mirror, horizon glass and shades.
+      rr(x+w*.02,y+h*.78,w*.96,h*.2,2,metal(),'#e0c47e',1.2);for(const u of [.1,.9]){ctx.fillStyle=bw?'#fff':'#f3dc9d';ctx.beginPath();ctx.arc(x+w*u,y+h*.88,Math.max(1,w*.02),0,7);ctx.fill();}
+      rr(x+w*.06,y+h*.3,w*.62,h*.2,3,metal(),'#d8bd79',1.2);rr(x+w*.68,y+h*.33,w*.16,h*.14,2,metal(),'#c19f5d');knurl(x+w*.1,y+h*.3,w*.12,h*.2,4);
+      ctx.fillStyle=bw?'#fff':'rgba(140,200,196,.85)';ctx.fillRect(x+w*.03,y+h*.32,Math.max(1,w*.03),h*.16);
+      line(x+w*.3,y+h*.5,x+w*.3,y+h*.78,'#b8964f',2.4);line(x+w*.55,y+h*.5,x+w*.55,y+h*.78,'#b8964f',2.4);
+      rr(x+w*.84,y+h*.04,w*.12,h*.74,1,'#2f4c4f','#e0c47e',1.2);if(!bw){ctx.fillStyle='rgba(200,236,230,.35)';ctx.fillRect(x+w*.86,y+h*.08,w*.04,h*.66);}
+      for(const [u,c] of [[.08,'#7a2c2c'],[.2,'#2c4a2c']]){ctx.fillStyle=bw?'#000':c;ctx.fillRect(x+w*(.7+u*.5),y+h*.02,w*.07,h*.22);ctx.strokeStyle=bw?'#fff':'#d8bd79';ctx.lineWidth=.8;ctx.strokeRect(x+w*(.7+u*.5),y+h*.02,w*.07,h*.22);}
+      glint(x+w*.12,y+h*.34,x+w*.6,y+h*.34);
     }else if(g.kind==='celestial-globe'){
       circle(w*.49,'#36535f');ctx.strokeStyle=bw?'#fff':'#c7bd85';ctx.lineWidth=.7;
       for(const rx of [.18,.36]){ctx.beginPath();ctx.ellipse(0,0,w*rx,h*.48,-.22,0,7);ctx.stroke();}
@@ -4144,14 +4219,15 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       circle(w*.49,metal());circle(w*.34,'#6b5a32');circle(w*.13,metal());
       for(let i=0;i<16;i++){const a=i*Math.PI/8;line(Math.cos(a)*w*.38,Math.sin(a)*h*.38,Math.cos(a)*w*.48,Math.sin(a)*h*.48,'#21180d',2);}
       for(let i=0;i<6;i++){const a=i*Math.PI/3;line(Math.cos(a)*w*.15,Math.sin(a)*h*.15,Math.cos(a)*w*.31,Math.sin(a)*h*.31,'#cfaf64',2);}
-    }else if(g.kind==='survey-weight'){
-      box(metal());line(-w*.4,-h*.28,w*.4,-h*.28,'#46361c',2);line(-w*.4,h*.3,w*.4,h*.3,'#46361c',2);circle(w*.17,'#342c20');circle(w*.08,metal());
-    }else if(g.kind==='sextant-head'){
-      box(metal());line(-w*.35,0,w*.35,0,'#314945',h*.2);circle(w*.18,'#304d50');line(-w*.4,h*.35,w*.4,h*.35,'#211b17',2);
     }else if(g.kind==='galvanic-cell'){
-      box(bw?'#000':'rgba(141,188,171,.65)');ctx.fillStyle=bw?'#000':'rgba(132,151,104,.52)';ctx.fillRect(x+1,y+h*.38,w-2,h*.6);
-      line(-w*.22,-h*.33,-w*.22,h*.34,'#8a6b42',w*.13);line(w*.2,-h*.33,w*.2,h*.34,'#6c7f82',w*.13);
-      line(x,y,x+w,y,'#d9c389',2);line(x+w*.1,y+h*.85,x+w*.1,y+h*.18,'#d3e9d0',1.5);
+      // Daniell cell: glass jar with a rolled lip and acid line, porous pot, zinc and copper plates, brass binding posts.
+      rr(x+w*.08,y+h*.2,w*.84,h*.8,w*.08,'rgba(141,188,171,.5)','#d3e9d0',1.2);
+      ctx.fillStyle=bw?'#000':'rgba(132,151,104,.5)';ctx.fillRect(x+w*.1,y+h*.42,w*.8,h*.54);line(x+w*.1,y+h*.42,x+w*.9,y+h*.42,'#bcd8b0',.8);
+      rr(x+w*.04,y+h*.16,w*.92,h*.07,2,metal(),'#e0c47e');
+      rr(-w*.15,y+h*.23,w*.3,h*.7,3,'rgba(176,132,92,.55)','#c89b6a',.8);
+      line(-w*.3,y+h*.1,-w*.3,y+h*.86,'#8a8f93',w*.08);line(w*.3,y+h*.1,w*.3,y+h*.86,'#b4683a',w*.08);
+      for(const u of [-.3,.3]){rr(x+w*(.5+u)-w*.07,y,w*.14,h*.12,2,metal(),'#e0c47e');}
+      if(!bw)line(x+w*.16,y+h*.84,x+w*.16,y+h*.3,'rgba(230,248,230,.7)',1.4);
     }else if(g.kind==='crookes-tube'){
       ctx.beginPath();[[-.5,0],[-.32,-.5],[.32,-.5],[.5,0],[.32,.5],[-.32,.5]].forEach(([u,v],i)=>i?ctx.lineTo(u*w,v*h):ctx.moveTo(u*w,v*h));ctx.closePath();ctx.fillStyle=bw?'#000':'rgba(142,200,184,.45)';ctx.fill();ctx.strokeStyle=bw?'#fff':'#d4e3c8';ctx.lineWidth=1;ctx.stroke();
       line(x,0,x+w,0,'#a2ce98',1.3);line(-w*.23,-h*.17,-w*.23,h*.17,'#c4ab7d',3);line(w*.2,-h*.22,w*.2,h*.22,'#c4ab7d',2);line(-w*.19,-h*.3,w*.2,-h*.3,'#e3f1dc',1);
@@ -4161,7 +4237,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
 
   // Rear-plane receiving mechanisms are visibly incomplete. Their dashed bays are activation
   // volumes, not collision walls. Actual floor/rail/contact geometry remains in level.statics.
-  function drawAssembly(ctx,L,V,theme,kit,ap){
+  function drawAssembly(ctx,L,V,theme,kit,ap,seatArt){
     const A=L.goalArea,[x,y,w,h]=V.R(A.x,A.y,A.w,A.h),bw=theme==='bw';
     const p=(u,v)=>[x+u*w,y+(1-v)*h];
     ctx.save();ctx.strokeStyle=bw?'#fff':'#bf9e61';ctx.lineWidth=2;
@@ -4183,9 +4259,18 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       case 'retort':rect(.04,.55,.18,.18);line([.13,.55],[.13,.85],3);line([.13,.85],[.5,.85],3);line([.5,.85],[.5,.65],3);line([.22,.66],[.36,.8],5);line([.35,.2825],[.65,.2825],4);line([.32,.2825],[.32,.45]);line([.68,.2825],[.68,.45]);break;
     }
     ctx.globalAlpha=1;
-    // A full-size silhouette socket makes the missing physical component legible before delivery.
+    // The socket shows the real missing component, engraved faint into the rear-plane jig under a weak glow,
+    // held between two solid brass mounting clamps: an object to be completed, not an editor placeholder box.
     L.assembly.seats.forEach((s,i)=>{const g=L.goals[i],q=V.P(s.x,s.y),ww=(g.r?g.r*2:g.w)*V.s,hh=(g.r?g.r*2:g.h)*V.s;
-      ctx.fillStyle=bw?'#000':'rgba(9,16,12,.9)';ctx.strokeStyle=bw?'#fff':'#b2ce91';ctx.lineWidth=1.2;ctx.setLineDash([3,3]);ctx.fillRect(q[0]-ww/2-2,q[1]-hh/2-2,ww+4,hh+4);ctx.strokeRect(q[0]-ww/2-2,q[1]-hh/2-2,ww+4,hh+4);ctx.setLineDash([]);
+      if(seatArt)seatArt(ctx,g,V.s,theme,q[0],q[1],s.a||0);
+      ctx.save();ctx.setLineDash([]);ctx.globalAlpha=.9;
+      const jaw=Math.max(3,Math.min(8,ww*.09)),jh=Math.max(6,hh*.42);
+      for(const sx of [-1,1]){const jx=q[0]+sx*(ww/2+4)-(sx<0?jaw:0),jy=q[1]-jh/2;
+        ctx.fillStyle=bw?'#3a3a3a':ap.brassGrad(ctx,jx,jy,jx+jaw,jy+jh);ctx.fillRect(jx,jy,jaw,jh);
+        ctx.strokeStyle=bw?'#bdbdbd':'#5a431f';ctx.lineWidth=1;ctx.strokeRect(jx+.5,jy+.5,jaw-1,jh-1);
+        ctx.fillStyle=bw?'#e6e6e6':'#f0d999';ctx.beginPath();ctx.arc(jx+jaw/2,q[1],Math.max(1,jaw*.22),0,7);ctx.fill();
+        ctx.strokeStyle=bw?'#202020':'#3d2c12';ctx.beginPath();ctx.moveTo(jx+jaw*.3,q[1]);ctx.lineTo(jx+jaw*.7,q[1]);ctx.stroke();}
+      ctx.restore();
     });
     ctx.strokeStyle=bw?'#fff':'rgba(215,196,145,.65)';ctx.setLineDash([5,5]);ctx.lineWidth=1;ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
     ctx.fillStyle=bw?'#fff':'#dec88f';ctx.textAlign='center';ctx.font=`600 10px ${face('engraved', theme)}`;ctx.fillText(A.label,x+w/2,y-7,w*1.25);ctx.restore();
@@ -5731,7 +5816,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     if (!level.assembly && A.kind !== 'beaker') K().specimenTray(g, ...ar, A.label || 'SPECIMEN TRAY', theme);
     let assemblyDrawn=false;
     for (const item of [...level.statics].sort((a,b)=>Number(!!b.decor)-Number(!!a.decor))) {
-      if (!item.decor && level.assembly && !assemblyDrawn) {VC.landscape.drawAssembly(g,level,V,theme,K(),AP());assemblyDrawn=true;}
+      if (!item.decor && level.assembly && !assemblyDrawn) {VC.landscape.drawAssembly(g,level,V,theme,K(),AP(),drawSeatArt);assemblyDrawn=true;}
       // A sliver of the rear glass tube reads as a broken diamond beside RUN on a phone.
       // Omit that display-only instrument when horizontally cropped; overview/manual pan can
       // reveal it whole. Never move the world, hide contact apparatus, or alter the camera fit.
@@ -5741,7 +5826,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       }
       if (!item.dynamic && !isAnimated(item)) { g.save(); drawItem(g, item, V.R, V.P, theme, 0); g.restore(); }
     }
-    if (level.assembly && !assemblyDrawn) VC.landscape.drawAssembly(g,level,V,theme,K(),AP());
+    if (level.assembly && !assemblyDrawn) VC.landscape.drawAssembly(g,level,V,theme,K(),AP(),drawSeatArt);
     if (A.kind === 'beaker') drawGoalOutline(g, ar, theme, 'INTO THE BEAKER');
     layer = c; layerKey = key; return c;
   }
@@ -5770,21 +5855,23 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
   }
 
   // ---------- specimens ----------
-  function drawGoal(ctx, V, g, theme, pos, angle) {
-    const s = V.s, [sx, sy] = V.P(pos.x, pos.y), k = K();
-    ctx.save(); ctx.translate(sx, sy); ctx.rotate(-angle);
-    // Owner t76u: a quiet fluorescent cue belongs to every required payload, never rear scenery.
-    // Physical/ratio bounds stay unchanged; this 3 px aura is identification, not collision geometry.
+  // Owner t76u: a quiet fluorescent cue belongs to every required payload, never rear scenery.
+  // Physical/ratio bounds stay unchanged; this 3 px aura is identification, not collision geometry.
+  // Victorian: soft green glow. B&W: the same soft glow in pure grey (solid, never a dashed placeholder).
+  function goalAura(ctx, g, s, theme, strength = 1) {
     const hw=(g.r || g.w/2)*s, hh=(g.r || g.h/2)*s, bw=theme==='bw';
-    ctx.save(); ctx.lineWidth=bw?1:1.2;
-    ctx.strokeStyle=bw?'#fff':'rgba(130,240,164,.44)';
-    if(bw)ctx.setLineDash([2,3]);
-    else {ctx.shadowColor='rgba(113,235,149,.8)';ctx.shadowBlur=10;ctx.fillStyle='rgba(112,229,145,.075)';}
+    ctx.save(); ctx.lineWidth=bw?1:1.2; ctx.setLineDash([]);
+    if(bw){ctx.strokeStyle=`rgba(255,255,255,${.5*strength})`;ctx.shadowColor=`rgba(255,255,255,${.6*strength})`;ctx.shadowBlur=8;ctx.fillStyle=`rgba(255,255,255,${.05*strength})`;}
+    else {ctx.strokeStyle=`rgba(130,240,164,${.44*strength})`;ctx.shadowColor=`rgba(113,235,149,${.8*strength})`;ctx.shadowBlur=10;ctx.fillStyle=`rgba(112,229,145,${.075*strength})`;}
     ctx.beginPath();
     if(g.shape==='circle')ctx.arc(0,0,Math.max(.5,hw+3),0,Math.PI*2);
     else if(ctx.roundRect)ctx.roundRect(-hw-3,-hh-3,hw*2+6,hh*2+6,5);
     else ctx.rect(-hw-3,-hh-3,hw*2+6,hh*2+6);
-    if(!bw)ctx.fill();ctx.stroke();ctx.restore();
+    ctx.fill();ctx.stroke();ctx.restore();
+  }
+  // The missing part itself, drawn as the real object at the origin (no aura).
+  function drawGoalArt(ctx, g, s, theme) {
+    const k = K();
     if (VC.landscape.PAYLOADS.has(g.kind)) VC.landscape.drawPayload(ctx,g,s,theme,k,AP());
     else if (g.kind === 'vial') { VC.landscape.draw(ctx,{ kind:'wet-jar', specimen:g.specimen || 'botanical',label:g.tag || 'SP.', x:-g.w/2,y:-g.h/2,w:g.w,h:g.h },(x,y,w,h)=>[x*s,-(y+h)*s,w*s,h*s],(x,y)=>[x*s,-y*s],theme,k,AP()); }
     else if (g.kind === 'sample-box') { k.crate(ctx,-g.w*s/2,-g.h*s/2,g.w*s,g.h*s,g.tag || 'OPTICAL SAMPLE',theme); }
@@ -5792,6 +5879,20 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     else if (g.shape === 'flask') k.glass(ctx, 'flask', -g.w * s / 2, -g.h * s / 2, g.w * s, g.h * s, theme, { tint: 'green', fill: 0.35, liquid: 'rgba(80,170,110,0.55)' });
     else if (g.kind === 'brick') k.brick(ctx, -g.w * s / 2, -g.h * s / 2, g.w * s, g.h * s, theme);
     else k.brassWeight(ctx, -g.w * s / 2, -g.h * s / 2, g.w * s, g.h * s, `${g.mass} kg`, theme);
+  }
+  function drawGoal(ctx, V, g, theme, pos, angle) {
+    const s = V.s, [sx, sy] = V.P(pos.x, pos.y);
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(-angle);
+    goalAura(ctx, g, s, theme);
+    drawGoalArt(ctx, g, s, theme);
+    ctx.restore();
+  }
+  // Rear-plane socket: where the missing part will seat, the apparatus shows that same real object,
+  // faint and engraved into the jig, under a weak glow. Drawn inside drawAssembly's layer.
+  function drawSeatArt(ctx, g, s, theme, cx, cy, angle = 0) {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(-angle);
+    goalAura(ctx, g, s, theme, 1);
+    ctx.globalAlpha = theme === 'bw' ? .42 : .38; drawGoalArt(ctx, g, s, theme);
     ctx.restore();
   }
 
@@ -6041,7 +6142,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     drawMeter(ctx, x2, y, r, 'TIME', meters.time || 0, sc.time || 30, 's', theme);
   }
 
-  VC.render = { invalidate() { layerKey=''; }, engraveDrawing, drawBackdrop, WALL, isAnimated, makeView, drawItem, bodyFrame, staticLayer, drawBuildZone, drawGoal, drawPartStatic, drawNodes, drawSim, drawGoalOutline, drawPiston, drawFailure, drawStress, FAIL_ANIM, drawMeters, dialFrac, drawMeter };
+  VC.render = { invalidate() { layerKey=''; }, engraveDrawing, drawBackdrop, WALL, isAnimated, makeView, drawItem, bodyFrame, staticLayer, drawBuildZone, drawGoal, drawGoalArt, drawSeatArt, goalAura, drawPartStatic, drawNodes, drawSim, drawGoalOutline, drawPiston, drawFailure, drawStress, FAIL_ANIM, drawMeters, dialFrac, drawMeter };
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
@@ -6374,15 +6475,32 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
   const seedOf = (id) => id.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   function sketchSVG(e) { const p = svgPen(seedOf(e.id)); e.sketch(p); return p.svg(e.title + ' (sketch)'); }
   // HTML of one page, with the kit's notebook classes (same markup as VLS.notebook.note / cf)
-  function pageHTML(e, no) {
+  // The same fingerprint for JS-free pages (static notes and FA's public notebook page on gillundlabs.com): the kit-drawn PNG
+  // baked by tools/notebook-mark-assets.cjs (A = require('./notebook-mark-assets.js')), placed exactly where the game draws it.
+  // It carries its own B&W rule, so it needs no shared site stylesheet and no coffee ring from anywhere.
+  function markHTML(no, A) {
+    const fade = A && A.pages.indexOf(no); if (!A || fade < 0) return '';
+    return `<style>.fa-mark{position:absolute;left:0;top:0;pointer-events:none}html[data-theme="bw"] .fa-mark,body[data-theme="bw"] .fa-mark,.vls-plain .fa-mark{display:none}</style>`
+      + `<img class="fa-mark" src="${A.png[fade]}" width="${A.W}" height="${A.H}" alt="" aria-hidden="true" data-mark="${A.kind}" data-seed="${A.seed}" data-fade="${fade}" data-x="${A.x}" data-y="${A.y}" data-size="${A.size}" data-line-gap="${A.lineGap}">`;
+  }
+  function pageHTML(e, no, A) {
     const slip = (kind, text, label) => `<aside class="vls-note vls-${kind}" role="note"><span class="vls-note-label">${label}</span><p>${text}</p></aside>`;
-    return `<article class="vls-page fa-entry" id="note-${e.id}" data-entry="${e.id}">${no != null ? `<span class="vls-pageno">${no}</span>` : ''}<h2>${esc(e.title)}</h2>`
+    return `<article class="vls-page fa-entry" id="note-${e.id}" data-entry="${e.id}"${no != null ? ` data-pageno="${no}"` : ''}>${no != null ? markHTML(no, A) : ''}${no != null ? `<span class="vls-pageno">${no}</span>` : ''}<h2>${esc(e.title)}</h2>`
       + `<figure class="fa-fig">${sketchSVG(e)}</figure>${e.body.map((t) => `<p>${t}</p>`).join('')}`
       + (e.game ? slip('simplification', e.game, 'In the game') : '')
       + `<p class="vls-cf"><span class="vls-cf-mark">cf.</span> ${e.cf}</p></article>`;
   }
-  function lockedHTML(e, no) { return `<article class="vls-page fa-entry fa-locked" data-entry="${e.id}"><span class="vls-pageno">${no}</span><h2>🔒 ${esc(e.title)}</h2><p><i>${esc(e.hint)}</i></p></article>`; }
-  return { ENTRIES: E, byId: Object.fromEntries(E.map((e) => [e.id, e])), SOFTENED, svgPen, sketchSVG, pageHTML, lockedHTML, unlocksFor, unlocksOf };
+  function lockedHTML(e, no) { return `<article class="vls-page fa-entry fa-locked" data-entry="${e.id}" data-pageno="${no}"><span class="vls-pageno">${no}</span><h2>🔒 ${esc(e.title)}</h2><p><i>${esc(e.hint)}</i></p></article>`; }
+  // The notebook's one mark (owner, 9 Nov 2026; kit VLS.notebook.pageMark): an oily adult fingertip print on page 1,
+  // soaking through faintly to the same spot on pages 2 and 3. Every other page is unmarked; nothing in B&W.
+  // Sized to the rules, not to pixels (Labs Manager, 10:36 PM): Maxwell's mug ring is ~7 cm over ~8 ruled lines at
+  // size = lineGap/12, so one line is ~0.875 cm. A fingertip is ~1.6-2 cm, about 2 lines: the kit print's mean diameter is
+  // 48*size px, so size = lineGap/23 gives 48/23 = 2.09 lines (~1.8 cm): 1.83 lines wide (~1.6 cm), 2.35 lines tall (~2.1 cm).
+  // x, y: CSS px from the page's top-left corner. Centred just inside the red margin rule (47 px) so nearly all of it is on
+  // the written page, and high enough (y 76) that the whole print fits even on a short locked page (142 px); it may
+  // cross the title, as a real print would.
+  const MARK = Object.freeze({ kind: 'fingerprint', seed: 1867, x: 84, y: 76, linesPerSize: 23, pages: Object.freeze([1, 2, 3]) });
+  return { MARK, ENTRIES: E, byId: Object.fromEntries(E.map((e) => [e.id, e])), SOFTENED, svgPen, sketchSVG, pageHTML, markHTML, lockedHTML, unlocksFor, unlocksOf };
 });
 
 </script>
@@ -6400,15 +6518,31 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     const fresh = NB.unlocksFor(ev).filter((id) => !open.has(id)); if (!fresh.length) return [];
     for (const id of fresh) open.add(id); save(); const es = fresh.map((id) => NB.byId[id]); listeners.forEach((f) => f(es)); return es;
   }
-  function render(el) {
+  // The one notebook mark: drawn on its own small canvas over the page margin (pointer-transparent, hidden from AT).
+  function marks(el, theme) {
+    const M = NB.MARK, VLS = root.VLS; theme = theme || (root.document && root.document.body && root.document.body.dataset.theme) || 'victorian';
+    if (!M || theme === 'bw' || !VLS || !VLS.notebook || !VLS.notebook.pageMark) return 0;
+    let n = 0;
+    M.pages.forEach((no, fade) => { const page = el.querySelector(`article.fa-entry[data-pageno="${no}"]`); if (!page) return;
+      const lineGap = parseFloat(root.getComputedStyle(page).getPropertyValue('--vls-line')) || 30, size = +(lineGap / M.linesPerSize).toFixed(4);
+      const c = root.document.createElement('canvas'), W = Math.ceil(M.x + 64 * size), H = Math.ceil(M.y + 64 * size), dpr = Math.max(1, root.devicePixelRatio || 1);
+      c.className = 'fa-mark'; c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); c.setAttribute('aria-hidden', 'true');
+      Object.assign(c.dataset, { mark: M.kind, seed: String(M.seed), fade: String(fade), x: String(M.x), y: String(M.y), size: String(size), lineGap: String(lineGap) });
+      c.style.cssText = `position:absolute;left:0;top:0;width:${W}px;height:${H}px;pointer-events:none`;
+      const g = c.getContext('2d'); g.scale(dpr, dpr);
+      if (VLS.notebook.pageMark(g, M.kind, M.x, M.y, { seed: M.seed, theme, fade, size }) !== false) { page.insertBefore(c, page.firstChild); n++; } });
+    return n;
+  }
+  function render(el, theme) {
     const all = NB.ENTRIES, n = all.filter((e) => open.has(e.id)).length;
     let html = `<article class="vls-page fa-contents"><h2>Laboratory notes</h2><p>Pick a part from the drawer and draw it inside the scribed build area, then pull the lever. Rods, oak, string and springs run from joint to joint; wheels, motors and the counterweight drop on a tap; a piston is dragged along its push. Pulley cord: one end, then wheel hubs, then the other end. Winch cord: a wheel hub, then the other end. The footer counts an open cord. Rest on a part for its numbers: hover on a desk, or press and hold on a phone, and the card leaves when you do. A short tap still selects the part. These pages are the instructions, and they open from Help.</p><p>${n} of ${all.length} pages written. New pages are written as you meet each part and experiment.</p><ol class="fa-toc">`
       + all.map((e) => `<li>${open.has(e.id) ? `<a href="#note-${e.id}">${e.title}</a>` : `<span class="fa-toc-locked">🔒 ${e.title}</span>`}</li>`).join('') + '</ol></article>';
     all.forEach((e, i) => { html += open.has(e.id) ? NB.pageHTML(e, i + 1) : NB.lockedHTML(e, i + 1); });
     el.innerHTML = html;
+    marks(el, theme);
     for (const a of el.querySelectorAll('.fa-toc a')) a.addEventListener('click', (ev) => { ev.preventDefault(); const t = el.querySelector(a.getAttribute('href')); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   }
-  VC.notes = { render, emit, KEY, isOpen: (id) => open.has(id), unlocked: () => [...open], count: () => NB.ENTRIES.filter((e) => open.has(e.id)).length, total: () => NB.ENTRIES.length,
+  VC.notes = { render, marks, emit, KEY, isOpen: (id) => open.has(id), unlocked: () => [...open], count: () => NB.ENTRIES.filter((e) => open.has(e.id)).length, total: () => NB.ENTRIES.length,
     onUnlock(f) { listeners.add(f); return () => listeners.delete(f); },
     reset() { open = new Set(); save(); } };
 })(typeof self !== 'undefined' ? self : this);
