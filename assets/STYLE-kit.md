@@ -8,7 +8,7 @@
    - Text is **engraved** into brass in an old-style serif. Gold italic Georgia is used on wood.
    - The vacuum is near-black blue (`#0d1117` → `#030405`).
 2. **Notebook** (explanations, help, physics notes): a scientist's bound lab book.
-   - Pages: aged ruled parchment (`--vls-paper #f1e3c2`), blue-grey rules, a red margin line, foxing, at most one faint coffee ring per page, and the page number top-right.
+   - Pages: aged ruled parchment (`--vls-paper #f1e3c2`), blue-grey rules, a red margin line, foxing, and no stains on about 90% of pages. Each notebook has one mark that soaks through faintly to the same spot on the next two pages: a mug-sized coffee ring in Maxwell's Demon, a couple of coffee drops in Vacuum Maze, an oily fingerprint in Fantastic Apparatus (owner, 2026-11-09; `VLS.notebook.pageMark`), and the page number top-right.
    - Text: the date in the left margin, body text in **handwriting** (Caveat), titles in **copperplate** (Pinyon Script).
    - Illustrations are **hand-sketched** with `VLS.notebook.pen`:
      - sepia ink (`#704214`) with wobble, double-stroked lines, hatching for shading, and hand-lettered labels;

@@ -48,7 +48,6 @@
   position: relative; box-sizing: border-box; padding: 18px 22px 22px 64px; margin: 0 auto 26px; max-width: 760px;
   background-color: var(--vls-paper); color: var(--vls-ink);
   background-image:
-    radial-gradient(circle at 84% 12%, transparent 33px, rgba(122,74,30,0.16) 35px, rgba(122,74,30,0.05) 39px, transparent 41px),
     radial-gradient(circle at 12% 78%, rgba(168,116,58,0.22) 0, rgba(168,116,58,0) 6px),
     radial-gradient(circle at 63% 41%, rgba(168,116,58,0.16) 0, rgba(168,116,58,0) 4px),
     radial-gradient(circle at 91% 66%, rgba(168,116,58,0.18) 0, rgba(168,116,58,0) 7px),
@@ -56,7 +55,7 @@
     radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(120,80,30,0.28) 100%),
     linear-gradient(90deg, transparent 47px, rgba(201,106,90,0.55) 47px, rgba(201,106,90,0.55) 48.5px, transparent 48.5px),
     repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--vls-line) - 1px), rgba(159,179,200,0.5) calc(var(--vls-line) - 1px), rgba(159,179,200,0.5) var(--vls-line));
-  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 14px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 14px;
   box-shadow: 0 2px 0 var(--vls-paper-shade), 0 4px 0 var(--vls-paper-edge), 0 10px 24px rgba(0,0,0,0.45);
   border-radius: 2px 6px 6px 2px; line-height: var(--vls-line); font-size: 21px;
 }
