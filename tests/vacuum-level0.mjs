@@ -3,10 +3,67 @@
    Skip or finishing remembers that mode. Settings can show it again. Nothing is recorded.
    Run: node tests/vacuum-level0.mjs [baseUrl] */
 import { spawn } from 'node:child_process';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const BASE = process.argv[2] || 'http://127.0.0.1:8772';
+const MAIN_REV = '94de085';
+const MAIN_PORT = 8774;
 const PORT = 9378;
+const mainRoot = '/tmp/vac-main-' + MAIN_REV;
+rmSync(mainRoot, { recursive: true, force: true });
+mkdirSync(mainRoot + '/play/vacuum-maze', { recursive: true });
+const mainAnchor = "addEventListener('keyup', (e) => keys.delete(e.code));";
+const mainInject = `
+window.VMHoldWorld = (on) => { devHooks.on = !!on; state.freeze = !!on; state.holdWorld = !!on; };
+window.VMSettlePlay = function () {
+  devHooks.on = true; state.freeze = true; state.holdWorld = true;
+  const w = state.world;
+  if (!w) return false;
+  w.atom.vx = 0; w.atom.vy = 0;
+  state.tilt = { x: 0, y: 0 };
+  state.cam.x = w.atom.x; state.cam.y = w.atom.y; state.cam.lx = 0; state.cam.ly = 0;
+  state.cam.k = E.viewZoom(vw, vh) * devHooks.zoom();
+  return true;
+};
+window.VMShowHint = function () { inputMode = 'manual'; inputReason = 'none'; showHint(); };
+window.VMPlayGeometry = function () {
+  const L = state.level, w = state.world, c = state.cam;
+  if (!L || !w || !c) return null;
+  const inset = playInset();
+  const viewH = Math.max(80, vh - inset.top - inset.bottom);
+  const project = (x, y) => ({ x: (x - c.x) * c.k + vw / 2, y: (y - c.y) * c.k + inset.top + viewH / 2 + (inset.bias || 0) });
+  const boxOf = (x, y, hw, hh) => { const p = project(x, y); return { l: p.x - hw * c.k, t: p.y - hh * c.k, r: p.x + hw * c.k, b: p.y + hh * c.k }; };
+  const union = (a, b) => (a ? { l: Math.min(a.l, b.l), t: Math.min(a.t, b.t), r: Math.max(a.r, b.r), b: Math.max(a.b, b.b) } : b);
+  let tube = null;
+  for (const cell of L.cells) {
+    if (!cell || cell.shape === 'empty') continue;
+    const horiz = !!(cell.mask & (M.BIT.E | M.BIT.W));
+    const vert = !!(cell.mask & (M.BIT.N | M.BIT.S));
+    tube = union(tube, boxOf(cell.cx, cell.cy, horiz ? Math.max(HC, H + WALL_T) : H + WALL_T, vert ? Math.max(HC, H + WALL_T) : H + WALL_T));
+  }
+  let pump = null;
+  for (const e of L.exits) { const p = M.pumpLayout(M.exitPlane(L, e)); pump = union(pump, boxOf(p.x, p.y, p.r * 1.08, p.r * 1.4)); }
+  const left = safe.l + 8, top = safe.t + 8, avail = vw - safe.r - left - 64, width = Math.min(560, Math.max(148, avail));
+  const narrow = width < 340, bw = document.body.dataset.theme === 'bw';
+  const pad = bw ? (narrow ? 8 : 12) : (narrow ? 22 : 20);
+  const titleH = narrow ? 15 : 18, labH = 12, valH = narrow ? 16 : 22, parH = narrow ? 14 : 16;
+  const block = titleH + (narrow ? 6 : 10) + labH + 4 + valH + (narrow ? 6 : 8) + parH;
+  const ring = bw ? 34 : 34 * 1.18, gx = safe.l + 52, gy = vh - safe.b - 56;
+  const shown = (id) => {
+    const el = document.getElementById(id); if (!el) return null;
+    const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+    const b = el.getBoundingClientRect(); if (b.width < 2 || b.height < 2) return null;
+    return { l: b.left, t: b.top, r: b.right, b: b.bottom };
+  };
+  return { tube, atom: boxOf(w.atom.x, w.atom.y, 22, 22), pump, gauge: { l: gx - ring, t: gy - ring, r: gx + ring, b: gy + ring }, hud: { l: left, t: top, r: left + width, b: top + pad * 2 + block }, rotate: shown('rotate-hint'), hint: shown('hint-plaque'), cam: { x: c.x, y: c.y, k: c.k } };
+};
+`;
+let mainHtml = execSync('git show ' + MAIN_REV + ':play/vacuum-maze/index.html', { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+if (!mainHtml.includes(mainAnchor)) throw new Error('main geometry anchor missing');
+writeFileSync(mainRoot + '/play/vacuum-maze/index.html', mainHtml.replace(mainAnchor, mainAnchor + mainInject));
+const mainServer = spawn('python3', ['-m', 'http.server', String(MAIN_PORT), '--bind', '127.0.0.1'], { cwd: mainRoot, stdio: 'ignore' });
 const failures = [];
 function fail(msg) { failures.push(msg); console.error('FAIL', msg); }
 
@@ -47,8 +104,8 @@ try {
   await send('Runtime.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
 
-  async function boot(save) {
-    await send('Page.navigate', { url: BASE + '/play/vacuum-maze/' });
+  async function boot(save, base = BASE) {
+    await send('Page.navigate', { url: base + '/play/vacuum-maze/' });
     for (let i = 0; i < 50; i++) {
       if (await ev(`!!document.getElementById('b-begin') && document.readyState === 'complete'`)) break;
       await sleep(120);
@@ -329,7 +386,7 @@ try {
   }
 
   const sensorLine = 'No motion sensor found. Drag or use arrow keys to tip the apparatus';
-  const sensorSizes = [[320, 700, 'bw'], [320, 700, 'victorian'], [320, 568, 'bw'], [320, 568, 'victorian'], [568, 320, 'bw'], [568, 320, 'victorian'], [360, 640, 'bw'], [360, 640, 'victorian'], [360, 740, 'bw'], [360, 740, 'victorian'], [390, 844, 'bw'], [390, 844, 'victorian'], [412, 915, 'bw'], [412, 915, 'victorian'], [768, 900, 'bw'], [768, 900, 'victorian'], [1280, 800, 'bw'], [1280, 800, 'victorian']];
+  const sensorSizes = [[320, 700, 'bw'], [320, 700, 'victorian'], [320, 568, 'bw'], [320, 568, 'victorian'], [568, 320, 'bw'], [568, 320, 'victorian'], [667, 375, 'bw'], [667, 375, 'victorian'], [812, 375, 'bw'], [812, 375, 'victorian'], [360, 640, 'bw'], [360, 640, 'victorian'], [360, 740, 'bw'], [360, 740, 'victorian'], [390, 844, 'bw'], [390, 844, 'victorian'], [412, 915, 'bw'], [412, 915, 'victorian'], [768, 900, 'bw'], [768, 900, 'victorian'], [1280, 800, 'bw'], [1280, 800, 'victorian']];
   for (const [w, h, theme] of sensorSizes) {
     const phone = Math.min(w, h) < 500;
     await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: phone });
@@ -353,12 +410,33 @@ try {
       if (hint.clipped) fail(where + ' message is clipped ' + JSON.stringify(hint));
       if (hint.l < -1 || hint.t < -1 || hint.r > w + 1 || hint.b > h + 1) fail(where + ' message leaves the viewport ' + JSON.stringify(hint));
       if (hits(hint, box.gauge)) fail(where + ' message covers the gauge ' + JSON.stringify({ hint, gauge: box.gauge }));
-      for (const name of ['tube', 'atom', 'mouth', 'pump', 'plate']) {
-        if (hits(hint, box[name])) fail(where + ' message covers the ' + name + ' ' + JSON.stringify(box));
+      for (const name of ['tube', 'atom', 'mouth', 'pump', 'plate', 'pause', 'levelBtn', 'skip', 'caption', 'corner']) {
+        if (hits(hint, box[name])) fail(where + ' message covers the ' + name + ' ' + JSON.stringify({ hint, part: box[name] }));
       }
+      const fully = (w > h && h <= 420) || (h > w && w <= 390);
       for (const name of ['tube', 'atom', 'mouth', 'plate']) {
         const part = box[name];
-        if (!part || part.b < 1 || part.t > h - 1 || part.r < 1 || part.l > w - 1) fail(where + ' ' + name + ' is off the screen ' + JSON.stringify(part));
+        if (!part) fail(where + ' ' + name + ' is missing');
+        else if (fully) {
+          if (part.l < -1 || part.t < -1 || part.r > w + 1 || part.b > h + 1) fail(where + ' ' + name + ' is not fully on screen ' + JSON.stringify(part));
+        } else if (part.b < 1 || part.t > h - 1 || part.r < 1 || part.l > w - 1) fail(where + ' ' + name + ' is off the screen ' + JSON.stringify(part));
+      }
+      for (const name of ['tube', 'atom', 'mouth']) {
+        const part = box[name];
+        for (const blocker of ['gauge', 'caption', 'pause', 'levelBtn', 'skip', 'plate', 'corner']) {
+          if (hits(part, box[blocker])) fail(where + ' ' + name + ' overlaps the ' + blocker + ' ' + JSON.stringify({ part, blocker: box[blocker] }));
+        }
+        if (box.rotate && hits(part, box.rotate)) fail(where + ' ' + name + ' overlaps the rotate hint ' + JSON.stringify({ part, rotate: box.rotate }));
+      }
+      if (box.rotate) {
+        if (box.rotate.l < -1 || box.rotate.t < -1 || box.rotate.r > w + 1 || box.rotate.b > h + 1) fail(where + ' rotate hint leaves the viewport ' + JSON.stringify(box.rotate));
+        for (const name of ['gauge', 'caption', 'corner', 'tube', 'atom', 'mouth', 'pump', 'skip', 'pause', 'levelBtn', 'plate']) {
+          if (hits(box.rotate, box[name])) fail(where + ' rotate hint covers the ' + name + ' ' + JSON.stringify({ rotate: box.rotate, part: box[name] }));
+        }
+      }
+      if (fully && box.pump && (box.pump.l < -1 || box.pump.t < -1 || box.pump.r > w + 1 || box.pump.b > h + 1)) {
+        // Landscape may clip the pump housing below the mouth. Portrait must keep it on screen, clear of the rotate hint.
+        if (h > w) fail(where + ' pump housing is not fully on screen ' + JSON.stringify(box.pump));
       }
     }
     console.log('sensor', theme, w, hint && JSON.stringify({ l: Math.round(hint.l), t: Math.round(hint.t), r: Math.round(hint.r), b: Math.round(hint.b), clipped: hint.clipped }));
@@ -445,11 +523,167 @@ try {
   st = await snap();
   if (!st.lesson || !/record pace|Space pauses|tip the tube|Tip the phone/.test(st.line)) fail('the practice did not return after reload ' + st.line);
   if (!/saves nothing|record pace|Space pauses|tip the tube|Tip the phone/.test(st.line)) fail('practice copy drifted ' + st.line);
+
+  const FULL_LINES = [
+    'Tip the phone, or drag, to steer the atom.',
+    'Drag, or the arrow keys, to tip the tube. Space pauses.',
+    'The open end is a pump. Steer the atom into it.',
+    'Stars use record pace, not the screen clock. This practice saves nothing.',
+    'A maze you build keeps no best time and pays no coins. This practice saves nothing.',
+  ];
+  async function lessonLine(where) {
+    const info = await ev(`(() => {
+      const el = document.getElementById('tutorial-plaque');
+      const lab = el && el.querySelector('.vls-plaque__label');
+      const range = document.createRange(); range.selectNodeContents(lab);
+      const rr = range.getBoundingClientRect();
+      const pr = el.getBoundingClientRect();
+      return {
+        text: lab.textContent,
+        range: { l: rr.left, t: rr.top, r: rr.right, b: rr.bottom, w: rr.width, h: rr.height },
+        plate: { l: pr.left, t: pr.top, r: pr.right, b: pr.bottom },
+        scroll: el.scrollTop + lab.scrollTop,
+        overflow: getComputedStyle(el).overflowY + ' ' + getComputedStyle(lab).overflowY,
+        vw: innerWidth, vh: innerHeight,
+      };
+    })()`);
+    if (!FULL_LINES.includes(info.text)) fail(where + ' lesson text is not a full line: ' + info.text);
+    if (info.range.w < 20 || info.range.h < 8) fail(where + ' lesson text has no box ' + JSON.stringify(info.range));
+    if (info.scroll > 0) fail(where + ' lesson text is scrolled');
+    if (/\b(auto|scroll)\b/.test(info.overflow)) fail(where + ' lesson plate scrolls ' + info.overflow);
+    const inside = (a, b) => a.l >= b.l - 1 && a.t >= b.t - 1 && a.r <= b.r + 1 && a.b <= b.b + 1;
+    if (!inside(info.range, { l: 0, t: 0, r: info.vw, b: info.vh })) fail(where + ' lesson text leaves the screen ' + JSON.stringify(info));
+    if (!inside(info.range, info.plate)) fail(where + ' lesson text leaves the plate ' + JSON.stringify(info));
+    return info.text;
+  }
+  for (const [w, h, theme] of [[320, 568, 'bw'], [320, 568, 'victorian'], [568, 320, 'bw'], [568, 320, 'victorian']]) {
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: Math.min(w, h) < 500 });
+    await send('Emulation.setTouchEmulationEnabled', { enabled: Math.min(w, h) < 500, maxTouchPoints: 1 });
+    await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
+    await openFirstLevel();
+    const where = theme + ' ' + w + 'x' + h;
+    const first = await lessonLine(where + ' step 1');
+    await hold('ArrowRight', 'ArrowRight', 39, 160);
+    await sleep(200);
+    const second = await lessonLine(where + ' step 2');
+    if (!/pump/.test(second)) fail(where + ' step 2 did not name the pump ' + second);
+    let third = second;
+    for (let i = 0; i < 24 && !/saves nothing|record pace/.test(third); i++) {
+      await hold('ArrowLeft', 'ArrowLeft', 37, 140);
+      third = (await lessonLine(where + ' step 3')).toString();
+    }
+    if (!/saves nothing|record pace/.test(third)) fail(where + ' scoring line missing ' + third);
+    if (first === second || second === third) fail(where + ' lesson steps did not change ' + [first, second, third].join(' | '));
+    console.log('lines', where, 'ok');
+  }
+
+  const MAIN = 'http://127.0.0.1:' + MAIN_PORT;
+  const round = (b) => {
+    if (!b) return null;
+    const o = {};
+    for (const k of Object.keys(b)) o[k] = Math.round(b[k] * 100) / 100;
+    return o;
+  };
+  function sameGeom(branch, main, where) {
+    if (!branch || !main) { fail(where + ' geometry missing'); return; }
+    if (branch.framing) fail(where + ' lesson framing still on');
+    for (const key of ['tube', 'atom', 'pump', 'gauge', 'hud', 'rotate', 'hint']) {
+      const a = JSON.stringify(round(branch[key])), b = JSON.stringify(round(main[key]));
+      if (a !== b) fail(where + ' ' + key + ' branch ' + a + ' main ' + b);
+    }
+  }
+  async function frozenLevel(base) {
+    await ev(`window.VMHoldWorld(true); document.getElementById('b-begin').click(); true`);
+    for (let i = 0; i < 30; i++) {
+      if (await ev(`!!document.querySelector('#level-list button[data-lv="0"]')`)) break;
+      await sleep(60);
+    }
+    await ev(`window.VMHoldWorld(true); document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+    await sleep(120);
+    await ev(`window.VMSettlePlay(); window.VMShowHint(); true`);
+    await sleep(350);
+    return ev(`window.VMPlayGeometry()`);
+  }
+  const geomSizes = [[568, 320], [667, 375], [812, 375], [320, 568]];
+  const mainGeom = {};
+  for (const theme of ['victorian', 'bw']) {
+    for (const [w, h] of geomSizes) {
+      await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: Math.min(w, h) < 500 });
+      await send('Emulation.setTouchEmulationEnabled', { enabled: Math.min(w, h) < 500, maxTouchPoints: 1 });
+      const save = { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: true };
+      await boot(save, MAIN);
+      mainGeom[theme + w + 'x' + h] = await frozenLevel(MAIN);
+      console.log('main', theme, w + 'x' + h, 'cam', mainGeom[theme + w + 'x' + h] && mainGeom[theme + w + 'x' + h].cam);
+    }
+  }
+  for (const theme of ['victorian', 'bw']) {
+    for (const [w, h] of geomSizes) {
+      await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: Math.min(w, h) < 500 });
+      await send('Emulation.setTouchEmulationEnabled', { enabled: Math.min(w, h) < 500, maxTouchPoints: 1 });
+      const blank = { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } };
+      const seen = { ...blank, tutorialSeen: { levels: true, custom: true } };
+      const key = theme + w + 'x' + h;
+      await boot(seen);
+      sameGeom(await frozenLevel(BASE), mainGeom[key], theme + ' ' + w + 'x' + h + ' already seen');
+      await boot(blank);
+      await openFirstLevel();
+      await ev(`window.VMHoldWorld(true); document.getElementById('b-skip-tutorial').click(); true`);
+      await sleep(120);
+      await ev(`window.VMSettlePlay(); window.VMShowHint(); true`);
+      await sleep(350);
+      sameGeom(await ev(`window.VMPlayGeometry()`), mainGeom[key], theme + ' ' + w + 'x' + h + ' after Skip');
+      await boot(seen);
+      await openFirstLevel();
+      await ev(`document.getElementById('b-pausebtn').click(); true`);
+      await sleep(80);
+      await ev(`document.getElementById('b-pause-settings').click(); true`);
+      await sleep(120);
+      await ev(`document.getElementById('s-tutor-levels').click(); true`);
+      await sleep(80);
+      await ev(`document.getElementById('s-close').click(); true`);
+      await sleep(80);
+      await ev(`document.getElementById('b-pause-levels').click(); true`);
+      await sleep(200);
+      await ev(`window.VMHoldWorld(true); document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+      await sleep(250);
+      if (!await ev(`!!(document.getElementById('tutorial-hud') && document.getElementById('tutorial-hud').classList.contains('show'))`)) fail(theme + ' ' + w + ' replay did not show the lesson');
+      await ev(`window.VMHoldWorld(true); document.getElementById('b-skip-tutorial').click(); true`);
+      await sleep(120);
+      await ev(`window.VMSettlePlay(); window.VMShowHint(); true`);
+      await sleep(350);
+      sameGeom(await ev(`window.VMPlayGeometry()`), mainGeom[key], theme + ' ' + w + 'x' + h + ' after Settings replay then Skip');
+      console.log('geom', key, 'seen/skip/replay');
+    }
+  }
+  for (const [w, h] of [[568, 320], [320, 568]]) {
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: true });
+    await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+    await boot({ settings: { theme: 'victorian' }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
+    await openFirstLevel();
+    let won = false;
+    for (let i = 0; i < 40 && !won; i++) {
+      await hold('ArrowLeft', 'ArrowLeft', 37, 180);
+      won = await ev(`document.getElementById('p-win').classList.contains('show') || (document.getElementById('win-title') || {}).textContent === 'Practice done'`);
+    }
+    if (!won) {
+      for (let i = 0; i < 20 && !won; i++) { await sleep(100); won = await ev(`document.getElementById('p-win').classList.contains('show')`); }
+    }
+    if (!won) fail('the lesson did not finish by itself at ' + w + 'x' + h);
+    else {
+      await ev(`window.VMHoldWorld(true); document.getElementById('b-next').click(); true`);
+      await sleep(120);
+      await ev(`window.VMSettlePlay(); window.VMShowHint(); true`);
+      await sleep(350);
+      sameGeom(await ev(`window.VMPlayGeometry()`), mainGeom['victorian' + w + 'x' + h], 'victorian ' + w + 'x' + h + ' after the lesson ended');
+      console.log('geom ended', w + 'x' + h);
+    }
+  }
 } catch (err) {
   fail(err && err.stack ? err.stack.split('\n').slice(0, 4).join(' ') : String(err));
 } finally {
   if (ws) ws.close();
   chrome.kill();
+  mainServer.kill();
 }
 if (failures.length) {
   console.error(failures.length + ' failure(s)');
