@@ -1,5 +1,5 @@
-/* Level 0 is a short playable turn in the single-chamber trap. It can be
-   skipped, replayed, and it must not write coins, unlocks, or records.
+/* Each mode has a first-play tutorial. Skip and Replay mark only the seen
+   flags. A tutorial writes no coins, unlocks, or records.
    Run: node tests/maxwell-tutorial.mjs */
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -33,44 +33,54 @@ const S = context.MDSettings;
 const failures = [];
 function check(cond, msg) { if (!cond) failures.push(msg); }
 
-const seeded = { coins: 7, unlockedZ: 2, tutorialSeen: false, settings: { theme: 'victorian', wallTemp: 20e-9 }, best: { 'single:1': 50e-9, 'sort2:demon': 4 } };
+const seeded = { coins: 7, unlockedZ: 2, tutorials: { single: false, two: false, sort: false }, settings: { theme: 'victorian', wallTemp: 20e-9 }, best: { 'single:1': 50e-9, 'sort2:demon': 4 } };
 const best = seeded.best;
 
-check(T.begin(T.create(), seeded).action === 'level0', 'a new player begins on Level 0');
-let active = T.begin(T.create(), seeded).state;
-check(active.active && T.writesRecords(active) === false, 'Level 0 does not write records while it is running');
+for (const mode of ['single', 'two', 'sort']) {
+  check(T.shouldStart(mode, seeded), `${mode} runs the first time it is played`);
+  const lesson = T.arm(mode, { door: 'hold' });
+  check(lesson.active && T.writesRecords(lesson) === false, `${mode} tutorial does not write records`);
+  const lines = [0, 1, 2].map((step) => T.line({ ...lesson, step }));
+  check(lines.every((s) => s && s.length <= 170), `${mode} lines stay short: ${lines.map((s) => s.length).join(',')}`);
+  check(new Set(lines).size === lines.length, `${mode} steps are distinct`);
+  check(/Space pauses/.test(lines[0]), `${mode} says Space pauses`);
+  if (mode === 'single') {
+    check(/paddle/i.test(lines[0]) && /open right side/i.test(lines[1]) && /temperature/i.test(lines[1]) && /hotter is higher/i.test(lines[1]), 'the default mode teaches the paddle, the objective and the score');
+    check(/big number/i.test(lines[2]) && /temperature/i.test(lines[2]), 'the temperature readout is the score');
+  }
+  if (mode === 'two') {
+    check(/pong/i.test(lines[0]) && /W\/S/.test(lines[1]) && /arrows/i.test(lines[1]) && /point/i.test(lines[2]), 'two players teaches pong and both controls');
+  }
+  if (mode === 'sort') {
+    check(/trapdoor/i.test(lines[0]) && /Enter/.test(lines[0]) && /Hold the screen/.test(lines[0]), 'sorting teaches the held trapdoor');
+    check(/entropy/i.test(lines[2]) && /ln 2/.test(lines[2]), 'sorting teaches the entropy score');
+    const toggled = T.line(T.arm('sort', { door: 'toggle' }));
+    check(/Tap the screen/.test(toggled) && /Enter/.test(toggled) && /Space pauses/.test(toggled), 'sorting teaches the toggled trapdoor');
+  }
+  const banned = /cheat|bose|condens|analogy|coffee/i;
+  check(!banned.test(lines.join('\n')) && !banned.test(script('src/tutorial.js')), 'the lesson does not use banned framing');
+}
 check(T.writesRecords(null) && T.writesRecords(T.create()), 'a normal run still writes records');
+const stepped = T.advance(T.advance(T.advance(T.arm('single'))));
+check(stepped.complete, 'the default lesson finishes after its steps');
+const done = T.finish(stepped, seeded);
+check(done.record === false && done.store.tutorials.single === true && done.store.tutorials.two === false, 'finishing marks only that mode seen');
+check(done.store.coins === 7 && done.store.unlockedZ === 2 && done.store.best === best, 'finishing keeps coins, unlocks and records');
+check(seeded.tutorials.single === false, 'the saved object is copied, not rewritten in place');
+check(!T.shouldStart('single', done.store) && T.shouldStart('sort', done.store), 'a seen mode does not run again; the others still do');
 
-active = T.observe(active, { moved: true });
-check(active.moved && !active.heated && !active.complete, 'moving the paddle is not yet the whole lesson');
-active = T.observe(active, { heated: true });
-check(active.heated && !active.complete, 'a hotter atom is the score, and the lesson stays open long enough to read it');
-active = T.observe(active, { finish: true });
-check(active.complete, 'the lesson ends after the score has been shown');
-check(!T.observe(T.begin(T.create(), seeded).state, { heated: true, finish: true }).complete, 'heat before the paddle moves does not finish Level 0');
-
-const done = T.finish(active, seeded);
-check(done.action === 'done' && done.record === false, 'finishing Level 0 is not a scored round');
-check(done.store.tutorialSeen === true, 'finishing remembers that Level 0 was seen');
-check(done.store.coins === 7 && done.store.unlockedZ === 2, 'finishing keeps coins and unlocks');
-check(done.store.best === best && best['single:1'] === 50e-9 && best['sort2:demon'] === 4, 'finishing does not replace records');
-check(seeded.tutorialSeen === false, 'the saved object is copied, not rewritten in place');
-check(T.begin(T.create(), done.store).action === 'modes', 'the next Begin goes to the mode list');
-
-const again = T.replay(T.create(), done.store);
-check(again.action === 'level0' && again.state.active, 'Level 0 can be replayed');
-check(again.store.tutorialSeen === true && again.store.best === best && again.store.coins === 7, 'replay keeps the seen flag, coins, and records');
-
-const fresh = { coins: 1, unlockedZ: 1, tutorialSeen: false, best: { 'single:1': 12e-9 } };
-const skipped = T.skip(T.begin(T.create(), fresh).state, fresh);
-check(skipped.action === 'modes' && skipped.record === false && skipped.store.tutorialSeen === true, 'skip leaves Level 0 for the mode list');
-check(skipped.store.coins === 1 && skipped.store.best['single:1'] === 12e-9, 'skip does not touch a normal-run record');
-check(T.begin(T.create(), skipped.store).action === 'modes', 'after skip, Begin is not blocked on Level 0');
+const fresh = { coins: 1, unlockedZ: 1, tutorials: { single: false, two: false, sort: false }, best: { 'single:1': 12e-9 } };
+const skipped = T.skip(T.arm('two'), fresh);
+check(skipped.record === false && skipped.store.tutorials.two === true && skipped.store.tutorials.single === false, 'skip marks only the mode that was showing');
+check(skipped.store.coins === 1 && skipped.store.best['single:1'] === 12e-9 && skipped.store.unlockedZ === 1, 'skip does not touch coins, records or unlocks');
 check(T.writesRecords(skipped.state), 'after skip, a normal run may write records');
-
-const spec = T.setup();
-check(spec.mode === 'single' && spec.shape === 'rect' && spec.mix[1] === 1 && Object.keys(spec.mix).length === 1, 'Level 0 is one hydrogen atom in the open chamber');
-check(spec.gravity === 'micro', 'Level 0 uses the default microgravity');
+const cleared = T.clearAll({ ...done.store, tutorials: { single: true, two: true, sort: true } });
+check(!cleared.tutorials.single && !cleared.tutorials.two && !cleared.tutorials.sort, 'replay clears every mode');
+check(cleared.coins === 7 && cleared.best === best, 'replay does not touch coins or records');
+T.setEnabled(false);
+check(!T.shouldStart('single', fresh), 'tests can turn the tutorial off');
+T.setEnabled(true);
+check(T.shouldStart('single', fresh), 'turning it back on restores a first run');
 
 const rules = JSON.stringify(Sort.DIFFICULTIES);
 const plain = Sort.create({
@@ -78,24 +88,11 @@ const plain = Sort.create({
   W: 1000, H: 680,
 });
 plain.start({ mix: { 1: 8 }, difficulty: 'apprentice', warmup: 0, pace: 1 });
-check(JSON.stringify(Sort.DIFFICULTIES) === rules, 'Level 0 does not rewrite sorting difficulties');
+check(JSON.stringify(Sort.DIFFICULTIES) === rules, 'a tutorial does not rewrite sorting difficulties');
 check(plain.S.diff.key === 'apprentice' && plain.S.diff.time === 180, 'a normal sorting start is unchanged');
-check(!script('src/sorting.js').includes('S.tutorial'), 'sorting is not the Level 0 lesson');
-
-const lines = [
-  T.line({ active: true }),
-  T.line({ active: true, moved: true }),
-  T.line({ active: true, moved: true, slipped: true }),
-  T.line({ active: true, moved: true, heated: true }),
-];
-check(lines.every((s) => s && s.length <= 170), `lesson lines stay short: ${lines.map((s) => s.length).join(',')}`);
-check(new Set(lines).size === lines.length, 'each step has its own line');
-check(/paddle/i.test(lines[0]) && /Space pauses/.test(lines[0]) && !/trapdoor|Space, to open/i.test(lines.join('\n')), 'the lesson teaches the paddle, and Space only pauses');
-check(/open right side/i.test(lines[1]) && /temperature/i.test(lines[1]) && /hotter is higher/i.test(lines[1]), 'the lesson states the objective and the score');
-check(/big number/i.test(lines[3]) && /temperature/i.test(lines[3]), 'the temperature readout is the score');
-const banned = /cheat|bose|condens|analogy|coffee/i;
-check(!banned.test(lines.join('\n')) && !banned.test(script('src/tutorial.js')), 'the lesson does not use banned framing');
+check(!script('src/sorting.js').includes('S.tutorial'), 'sorting is not the lesson');
 check(!html.includes('seore') && html.includes('your score'), 'the title says score');
+check(!/Level 0|LEVEL 0/.test(html), 'Level 0 wording is gone from the game');
 
 {
   const pageIds = [...html.matchAll(/id: '([a-z0-9]+)', title:/g)].map((m) => m[1]);
@@ -136,50 +133,74 @@ for (const bw of [false, true]) {
 
 const game = script('src/game.js');
 const startGame = game.slice(game.indexOf('function startGame'), game.indexOf('function setupPaddleGame'));
-check(startGame.indexOf('leaveTutorial()') >= 0 && startGame.indexOf('leaveTutorial()') < startGame.indexOf('startSort'), 'a normal run clears Level 0 before play');
+check(startGame.indexOf('modeAllowed') >= 0 && startGame.indexOf('modeAllowed') < startGame.indexOf('beginModeTutorial'), 'a locked mode returns before any tutorial');
+check(startGame.indexOf('leaveTutorial()') >= 0 && startGame.indexOf('leaveTutorial()') < startGame.indexOf('startSort'), 'starting a mode clears a previous lesson first');
 const endGame = game.slice(game.indexOf('function endGame'), game.indexOf('function trialEndNote'));
-check(endGame.includes('state.tutorial') && endGame.indexOf('state.tutorial') < endGame.indexOf('store.best'), 'paddle records are not reached during Level 0');
+check(endGame.includes('state.tutorial') && endGame.indexOf('state.tutorial') < endGame.indexOf('store.best'), 'paddle records are not reached during a tutorial');
 const endSort = game.slice(game.indexOf('function endSort'), game.indexOf('function startAttract'));
-check(endSort.indexOf('state.tutorial') < endSort.indexOf('store.best'), 'sorting records are not reached during Level 0');
-check(game.includes('TUT.setup()') && game.includes("state.mode = spec.mode"), 'Level 0 starts in the default chamber');
-const starter = game.slice(game.indexOf('function startTutorial'), game.indexOf('function skipTutorial'));
-check(!starter.includes('SORT.start'), 'Level 0 does not start a sorting round');
+check(endSort.indexOf('state.tutorial') < endSort.indexOf('store.best'), 'sorting records are not reached during a tutorial');
+const chrome = game.slice(game.indexOf('function clearTutorialChrome'), game.indexOf('function leaveTutorial'));
+const dismiss = game.slice(game.indexOf('function dismissTutorial'), game.indexOf('function finishTutorial'));
+check(chrome.includes("classList.remove('tutorial')") && chrome.includes('b-skip-tutorial') && chrome.includes('hidden = true'), 'skip hides the tutorial and its button');
+check(dismiss.includes('clearTutorialChrome()') && dismiss.includes("showPanel(null)") && dismiss.includes("state.screen = 'playing'"), 'skip leaves an unpaused game with no overlay');
 const keys = game.slice(game.indexOf("addEventListener('keydown'"), game.indexOf("addEventListener('keyup'"));
 const up = game.slice(game.indexOf("addEventListener('keyup'"), game.indexOf("addEventListener('blur'"));
 check(keys.includes("e.code === 'Space'") && keys.includes('pause()'), 'Space pauses');
+check(keys.includes("e.code === 'Escape' && state.tutorial") && keys.includes('skipTutorial()'), 'Escape skips the tutorial');
 const doorAt = keys.indexOf('SORT.doorDown()');
 check(doorAt > 0 && !keys.slice(Math.max(0, doorAt - 280), doorAt).includes('Space'), 'Space does not open the trapdoor');
 check(keys.includes("e.code === 'Enter' && state.mode === 'sort'") && keys.includes('SORT.doorDown()'), 'Enter holds the trapdoor in Sorting');
+check(!keys.includes('!state.tutorial'), 'Enter still opens the trapdoor during the sorting tutorial');
 check(up.includes("e.code === 'Enter'") && up.includes('SORT.doorUp()') && !up.includes('Space'), 'releasing Enter shuts a held door, and Space does not');
 check(keys.includes('focusOwnsKey'), 'Space and Enter are left with fields and focused controls');
-check(keys.includes('!state.tutorial'), 'Enter does not open the Sorting door during Level 0');
 const adsorb = game.slice(game.indexOf('function adsorb'), game.indexOf('function desorb'));
-check(adsorb.indexOf('state.tutorial') < adsorb.indexOf('store.coins++'), 'a Level 0 paddle touch does not pay a coin');
-check(html.includes('id="b-skip-level0"') && html.includes('id="b-level0"') && html.includes('id="s-level0"') && html.includes('id="b-pause-skip"'), 'skip and replay controls are in the page');
+check(adsorb.indexOf('state.tutorial') < adsorb.indexOf('store.coins++'), 'a tutorial paddle touch does not pay a coin');
+check(html.includes('id="b-skip-tutorial"') && html.includes('>Skip<') && html.includes('id="s-replay"') && html.includes('Replay tutorial'), 'skip and replay controls are in the page');
+check(!html.includes('id="b-level0"') && !html.includes('id="s-level0"'), 'the Level 0 entry points are gone');
+check(game.includes('replayTutorials') && game.includes('TUT.clearAll'), 'settings replay clears every mode and starts the current one');
 
 {
   const mem = new Map();
-  const localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, v), removeItem: (k) => mem.delete(k) };
+  const writes = [];
+  const localStorage = {
+    getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+    setItem: (k, v) => { writes.push(k); mem.set(k, v); },
+    removeItem: (k) => mem.delete(k),
+  };
   const ctx = { console, Math, Number, Object, JSON, isFinite, localStorage };
   ctx.self = ctx; ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(script('src/physics.js'), ctx);
   vm.runInContext(script('src/settings.js'), ctx);
   const Settings = ctx.MDSettings;
+  writes.length = 0;
   const first = Settings.load();
-  check(first.tutorialSeen === false, 'a fresh save has not seen Level 0');
+  check(writes.length === 0, 'loading a fresh save writes nothing');
+  check(first.tutorials.single === false && first.tutorials.two === false && first.tutorials.sort === false, 'a fresh save has seen no tutorial');
+  check(!Object.prototype.hasOwnProperty.call(first, 'tutorialSeen'), 'a fresh save has no dead Level 0 flag');
   check(first.coins === 0 && first.settings.wallHeat === 'preset', 'a fresh save is otherwise the normal new game');
-  first.tutorialSeen = true; first.coins = 3; first.best['single:1'] = 50e-9; Settings.save(first);
+  first.tutorials = { single: true, two: false, sort: true }; first.coins = 3; first.best['single:1'] = 50e-9; Settings.save(first);
   const kept = Settings.load();
-  check(kept.tutorialSeen === true && kept.coins === 3 && kept.best['single:1'] === 50e-9, 'the seen flag reloads beside coins and records');
-  check(kept.settings.wallTemp === 20e-9, 'saving the flag does not retune the wall');
+  check(kept.tutorials.single === true && kept.tutorials.sort === true && kept.tutorials.two === false, 'seen flags reload per mode');
+  check(kept.coins === 3 && kept.best['single:1'] === 50e-9, 'the flags reload beside coins and records');
+  check(kept.settings.wallTemp === 20e-9, 'saving the flags does not retune the wall');
+  mem.set(Settings.KEY, JSON.stringify({ tutorialSeen: true, settings: { tempScale2: true, wallTemp: 30e-9 }, coins: 9, unlockedZ: 4, best: { 'single:1': 80e-9 } }));
+  writes.length = 0;
+  const migrated = Settings.load();
+  check(migrated.tutorials.single === true && migrated.tutorials.two === false && migrated.tutorials.sort === false, 'an old Level 0 flag counts as the default mode only');
+  check(migrated.coins === 9 && migrated.unlockedZ === 4 && migrated.best['single:1'] === 80e-9, 'migration keeps coins, unlocks and records');
+  check(migrated.settings.wallTemp === 30e-9 && migrated.settings.wallHeat === 'absolute', 'migration does not retune an absolute wall');
+  const stored = JSON.parse(mem.get(Settings.KEY));
+  check(stored.tutorialSeen === undefined && stored.tutorials.single === true, 'migration drops the dead flag and keeps one key');
+  check(writes.length === 1 && writes[0] === Settings.KEY, 'migration writes only the game save');
   mem.set(Settings.KEY, JSON.stringify({ settings: { tempScale2: true, wallTemp: 30e-9 }, coins: 9, unlockedZ: 4, best: { 'single:1': 80e-9 } }));
-  const old = Settings.load();
-  check(old.tutorialSeen === false && old.coins === 9 && old.unlockedZ === 4 && old.best['single:1'] === 80e-9, 'an older save still loads, and Begin may offer Level 0');
-  check(old.settings.wallTemp === 30e-9 && old.settings.wallHeat === 'absolute', 'an older absolute wall temperature is unchanged');
+  const older = Settings.load();
+  check(!older.tutorials.single && older.coins === 9 && older.best['single:1'] === 80e-9, 'a save with no old flag has not seen the default tutorial');
   const wiped = Settings.reset();
-  check(wiped.tutorialSeen === false && wiped.coins === 0 && Object.keys(wiped.best).length === 0, 'erase progress is a fresh start');
-  check(T.skip(T.begin(T.create(), wiped).state, wiped).action === 'modes', 'a fresh start can skip straight to the modes');
+  check(!wiped.tutorials.single && wiped.coins === 0 && Object.keys(wiped.best).length === 0, 'erase progress is a fresh start');
+  const before = JSON.parse(JSON.stringify(wiped));
+  const after = T.skip(T.arm('single'), wiped).store;
+  check(after.tutorials.single === true && after.coins === before.coins && JSON.stringify(after.best) === JSON.stringify(before.best) && after.unlockedZ === before.unlockedZ, 'skip writes nothing except the seen flag');
 }
 
 if (failures.length) {
