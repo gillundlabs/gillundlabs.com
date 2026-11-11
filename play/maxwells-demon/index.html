@@ -7387,7 +7387,11 @@ function instrumentReadings(force = false) {
     instrumentReadingAt = state.clock;
     const pr = sorting ? SORT.pressure() : gasPressure(), st = SORT.S;
     const html = `${sorting && st.g > 0 ? 'Mean pressure' : 'Pressure'} ${VLS.fmtSci(pr.p)} Pa${sorting ? ` · Ledger ${st.opens} bit${st.opens === 1 ? '' : 's'}` : ''}`;
-    if (instrumentReadingHtml !== html) { instrumentReadingHtml = html; reading.innerHTML = html; }
+    if (instrumentReadingHtml !== html) {
+      instrumentReadingHtml = html;
+      reading.innerHTML = html;
+      if (window.VLS && VLS.plaqueChrome) VLS.plaqueChrome(reading, { force: true });
+    }
   }
 }
 function layoutInstruments() {
@@ -7396,6 +7400,7 @@ function layoutInstruments() {
   stage.style.width = '';
   stage.style.alignSelf = '';
   stage.style.marginTop = '';
+  dock.style.maxWidth = '';
   if (!document.body.classList.contains('playing')) return;
   const css = getComputedStyle(document.body), safe = (n) => parseFloat(css.getPropertyValue(n)) || 0;
   const top = safe('--sat') + 8, bottom = innerHeight - safe('--sab') - 8;
@@ -7418,6 +7423,10 @@ function layoutInstruments() {
     controls.style.top = `${top}px`; controls.style.bottom = 'auto'; controls.style.left = 'auto'; controls.style.right = `${safe('--sar') + 8}px`; controls.style.transform = 'none';
     const dockLeft = safe('--sal') + 12;
     const sideW = cr.left - 16 - dockLeft;
+    const coachUp = $('instrument-message') && !$('instrument-message').hidden;
+    const skipUp = $('b-skip-tutorial') && !$('b-skip-tutorial').hidden;
+    const trialUp = trial && !trial.hidden;
+    const needsBand = coachUp || skipUp || trialUp;
     if (sideW >= 148) {
       dock.style.left = `${dockLeft}px`;
       dock.style.width = `${Math.min(280, Math.max(168, sideW))}px`;
@@ -7440,10 +7449,10 @@ function layoutInstruments() {
         trial.style.left = `${Math.min(gutterLeft, rightLimit - trialW)}px`;
         trial.style.right = 'auto';
       }
-    } else {
+    } else if (needsBand) {
       // The stage is left-aligned and often as tall as the viewport, so a dock
-      // under the canvas falls off the screen. Pin the stage to the top and
-      // shorten it until the coach, Skip, and Trial label fit beneath it.
+      // under the canvas falls off the screen. Pin and shorten only while the
+      // coach, Skip, or Trial label is actually showing.
       const gap = 8;
       stage.style.alignSelf = 'start';
       stage.style.marginTop = `${top}px`;
@@ -7477,6 +7486,17 @@ function layoutInstruments() {
         dock.style.maxHeight = `${Math.min(room, Math.max(44, bottom - y))}px`;
         if (y + dockH <= bottom + 0.5) break;
       }
+    } else {
+      // Ordinary play keeps the stage at its normal size. The pressure plate
+      // overlays the lower edge of the board so it stays inside the viewport.
+      dock.style.left = `${Math.max(dockLeft, cr.left + 10)}px`;
+      dock.style.width = 'max-content';
+      dock.style.maxWidth = `${Math.max(140, Math.min(300, cr.width - 28))}px`;
+      dock.style.maxHeight = 'none';
+      const read = $('sorting-readout');
+      const h = Math.max(36, (read && !read.hidden ? read.offsetHeight : dock.offsetHeight) || 44);
+      dock.style.top = `${Math.max(top, Math.min(cr.bottom - h - 6, bottom - h))}px`;
+      if (read && window.VLS && VLS.plaqueChrome) VLS.plaqueChrome(read, { force: true });
     }
   }
 }
