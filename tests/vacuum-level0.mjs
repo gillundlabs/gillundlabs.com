@@ -53,6 +53,7 @@ try {
       if (await ev(`!!document.getElementById('b-begin') && document.readyState === 'complete'`)) break;
       await sleep(120);
     }
+    await ev(`localStorage.removeItem('vacuum-maze.entitlement.v1'); true`);
     if (save === null) await ev(`localStorage.removeItem('vacuum-maze.v2'); true`);
     else await ev(`localStorage.setItem('vacuum-maze.v2', ${JSON.stringify(JSON.stringify(save))}); true`);
     await send('Page.reload', { ignoreCache: true });
@@ -293,6 +294,121 @@ try {
   st = await snap();
   if (!st.lesson) fail('the maze practice did not return after Settings');
   if (st.best['1|earth'].time !== 9.5 || st.coins !== 4) fail('returning the maze practice changed a record ' + JSON.stringify(st));
+
+  const hits = (a, b) => !!(a && b && a.r > b.l + 1 && a.l < b.r - 1 && a.b > b.t + 1 && a.t < b.b - 1);
+  async function plateClear(where) {
+    const box = await ev(`window.VMTutorialLayout()`);
+    const live = await snap();
+    if (!box || !box.shown) fail(where + ' plate is not showing');
+    if (!box.plate || box.plate.b - box.plate.t < 24) fail(where + ' plate has no size ' + JSON.stringify(box && box.plate));
+    for (const name of ['tube', 'source', 'atom', 'mouth', 'readout']) {
+      if (hits(box.plate, box[name])) fail(where + ' plate covers the ' + name + ' ' + JSON.stringify(box));
+    }
+    return { box, live };
+  }
+  for (const [w, h, theme] of [[320, 700, 'victorian'], [320, 700, 'bw'], [390, 844, 'victorian'], [390, 844, 'bw'], [768, 900, 'victorian'], [768, 900, 'bw'], [1280, 800, 'victorian'], [1280, 800, 'bw']]) {
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: w < 500 });
+    await send('Emulation.setTouchEmulationEnabled', { enabled: w < 500, maxTouchPoints: 1 });
+    await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
+    await openFirstLevel();
+    await sleep(250);
+    let step = await plateClear(theme + ' ' + w + ' step 1');
+    if (theme === 'victorian' && !step.box.chrome) fail(theme + ' ' + w + ' step 1 has no kit frame');
+    if (theme === 'bw' && step.box.chrome) fail(theme + ' ' + w + ' drew screws on the plain plate');
+    await hold('ArrowRight', 'ArrowRight', 39, 120);
+    await sleep(200);
+    step = await plateClear(theme + ' ' + w + ' step 2');
+    if (!/pump/.test(step.live.line)) fail(theme + ' ' + w + ' step 2 line ' + step.live.line);
+    for (let i = 0; i < 24 && step.live.lesson && !/record pace/.test(step.live.line); i++) {
+      await hold('ArrowLeft', 'ArrowLeft', 37, 140);
+      step = { live: await snap(), box: step.box };
+    }
+    if (!step.live.lesson || !/record pace/.test(step.live.line)) fail(theme + ' ' + w + ' scoring step missing the plate ' + step.live.line + ' lesson ' + step.live.lesson);
+    await plateClear(theme + ' ' + w + ' step 3');
+    console.log('clear', theme, w);
+  }
+
+  async function tap(code, keyName, vk) {
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+    await sleep(120);
+  }
+  await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+  await send('Emulation.setTouchEmulationEnabled', { enabled: false, maxTouchPoints: 1 });
+  await boot(null);
+  await ev(`document.getElementById('b-begin').click(); true`);
+  await sleep(200);
+  const lockedIndex = await ev(`window.VMPurchase.CONFIG.FREE_LEVELS`);
+  await ev(`document.querySelector('#level-list button[data-lv="${lockedIndex}"]').click(); true`);
+  await sleep(250);
+  st = await snap();
+  console.log('locked', JSON.stringify({ levels: st.levels, lesson: st.lesson, playing: st.playing, seen: st.seenLevels, ledger: await ev(`document.getElementById('p-ledger').classList.contains('show')`) }));
+  if (st.lesson || st.playing) fail('a locked level started play ' + JSON.stringify(st));
+  if (st.seenLevels || st.seenCustom) fail('a locked level marked a practice seen');
+  if (!await ev(`document.getElementById('p-ledger').classList.contains('show')`)) fail('a locked level did not open the paywall');
+  await ev(`(document.getElementById('b-notnow-web') || document.getElementById('b-notnow')).click(); true`);
+  await sleep(150);
+  st = await snap();
+  if (st.seenLevels || st.lesson) fail('closing the paywall marked or started a practice ' + JSON.stringify(st));
+
+  const prior = await ev(`window.VM_LEVEL_DATA.levels.slice(0, window.VMPurchase.CONFIG.FREE_LEVELS).map((l) => l.id)`);
+  const cleared = {};
+  for (const id of prior) cleared[id] = true;
+  await boot({ settings: { theme: 'victorian' }, coins: 2, paidCoins: 0, owned: [1], best: { '1|earth': { time: 8, stars: 1 } }, cleared, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
+  await ev(`document.getElementById('b-begin').click(); true`);
+  await sleep(200);
+  await ev(`document.querySelector('#level-list button[data-lv="${lockedIndex}"]').click(); true`);
+  await sleep(200);
+  if (!await ev(`document.getElementById('p-ledger').classList.contains('show')`)) fail('progress-open locked level did not open the paywall');
+  await ev(`(document.getElementById('b-trial-web') || document.getElementById('b-trial')).click(); true`);
+  await sleep(400);
+  st = await snap();
+  const run = await ev(`window.VMTutorialLayout()`);
+  console.log('trial', st.line, run && run.levelIdx, run && run.tutorial);
+  if (!st.lesson || st.skip !== 'Skip') fail('trial did not open the practice with Skip ' + JSON.stringify(st));
+  if (!run.tutorial || run.levelIdx !== lockedIndex) fail('trial started the wrong level ' + JSON.stringify(run));
+  if (st.seenLevels || st.best['1|earth'].time !== 8) fail('starting the practice from the trial wrote a record ' + JSON.stringify(st));
+
+  await ev(`document.getElementById('b-pausebtn').click(); true`);
+  await sleep(80);
+  await ev(`document.getElementById('b-pause-settings').click(); true`);
+  await sleep(120);
+  await tap('Escape', 'Escape', 27);
+  st = await snap();
+  const afterSettings = await ev(`({ settings: document.getElementById('p-settings').classList.contains('show'), pause: document.getElementById('p-pause').classList.contains('show'), run: window.VMTutorialLayout() })`);
+  console.log('escape settings', JSON.stringify(afterSettings), st.seenLevels);
+  if (afterSettings.settings || !afterSettings.pause) fail('Escape did not close Settings back to pause ' + JSON.stringify(afterSettings));
+  if (!afterSettings.run.tutorial || st.seenLevels) fail('Escape from Settings skipped the practice ' + JSON.stringify(afterSettings) + st.seenLevels);
+  await tap('Escape', 'Escape', 27);
+  st = await snap();
+  const afterPause = await ev(`window.VMTutorialLayout()`);
+  console.log('escape pause', st.lesson, st.playing, afterPause.tutorial, st.seenLevels);
+  if (!st.playing || !st.lesson || !afterPause.tutorial || st.seenLevels) fail('Escape from pause did not resume the practice ' + JSON.stringify(st));
+
+  await ev(`document.getElementById('b-pausebtn').click(); true`);
+  await sleep(80);
+  await ev(`document.getElementById('b-pause-levels').click(); true`);
+  await sleep(200);
+  st = await snap();
+  console.log('leave', st.seenLevels, st.levels);
+  if (st.seenLevels || st.lesson) fail('leaving the practice marked it seen ' + JSON.stringify(st));
+  await ev(`document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+  await sleep(300);
+  st = await snap();
+  if (!st.lesson) fail('the practice did not return after leaving without Skip');
+
+  await send('Page.reload', { ignoreCache: true });
+  for (let i = 0; i < 40; i++) {
+    if (await ev(`!!document.getElementById('b-begin') && document.readyState === 'complete'`)) break;
+    await sleep(120);
+  }
+  st = await snap();
+  console.log('reload', st.seenLevels);
+  if (st.seenLevels) fail('reloading mid-practice marked it seen');
+  await openFirstLevel();
+  st = await snap();
+  if (!st.lesson || !/record pace|Space pauses|tip the tube|Tip the phone/.test(st.line)) fail('the practice did not return after reload ' + st.line);
+  if (!/saves nothing|record pace|Space pauses|tip the tube|Tip the phone/.test(st.line)) fail('practice copy drifted ' + st.line);
 } catch (err) {
   fail(err && err.stack ? err.stack.split('\n').slice(0, 4).join(' ') : String(err));
 } finally {

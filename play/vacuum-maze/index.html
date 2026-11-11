@@ -705,21 +705,17 @@
     max-width: 420px; pointer-events: none;
   }
   #tutorial-hud.show { display: flex; }
+  /* Kit ivory plaque: framed plate, inset rule, notches and screws come from VLS.plaqueChrome.
+     Text may wrap; the kit's one-line fit is put back after the frame is drawn. */
   #tutorial-plaque {
-    position: relative; box-sizing: border-box; width: 100%;
-    font: 500 14px var(--vls-font-ivory); color: var(--vls-engraving); text-align: center;
-    background-color: #f1ecdf; background-image: none;
-    border: 2px solid var(--vls-brass-dark); border-radius: var(--vls-plaque-screw, 10px);
-    box-shadow:
-      0 0 0 2px var(--vls-wood),
-      0 0 0 3px var(--vls-wood-deep),
-      var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color);
-    padding: calc(8px + var(--vls-plaque-screw, 10px)) calc(12px + var(--vls-plaque-screw, 10px));
-    overflow: visible;
+    position: relative; box-sizing: border-box; width: 100%; display: block;
+    font: 400 15px/1.35 var(--vls-font-ivory); color: var(--vls-engraving); text-align: center;
+    border: none; overflow: visible;
   }
   #tutorial-plaque .vls-plaque__label {
-    white-space: normal; overflow: visible; text-overflow: clip; pointer-events: none;
-    font: 500 14px var(--vls-font-ivory); color: inherit; letter-spacing: .02em; line-height: 1.3;
+    white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
+    pointer-events: none; height: auto !important;
+    font: 400 15px/1.35 var(--vls-font-ivory); color: inherit; letter-spacing: .02em;
   }
   #b-skip-tutorial { pointer-events: auto; align-self: flex-start; }
   #b-pause-skip[hidden] { display: none !important; }
@@ -731,7 +727,7 @@
     font: 500 14px var(--vls-font-sans) !important; font-style: normal !important; color: #fff;
   }
   @media (max-width: 520px) {
-    #tutorial-plaque, #tutorial-plaque .vls-plaque__label { font-size: 13px; }
+    #tutorial-plaque, #tutorial-plaque .vls-plaque__label { font-size: 13px !important; }
     #tutorial-hud { top: var(--vm-hud-bottom, 128px); bottom: auto; left: 8px; right: 8px; max-width: none; }
   }
   .tutor-restart { margin: 10px 0; }
@@ -7907,7 +7903,7 @@ function frame(now) {
   updateTilt(dt);
   const running = state.screen === 'playing' || state.screen === 'won' || (state.demo && state.screen !== 'paused');
   if (running && state.world) {
-    if (!state.world.won) { if (!(devHooks.on && state.freeze)) { E.step(state.world, dt); watchCells(); } if (state.world.won) onWin(); }
+    if (!state.world.won) { if (!(devHooks.on && state.freeze) && !state.holdWorld) { E.step(state.world, dt); watchCells(); } if (state.world.won) onWin(); }
     else { if (!(devHooks.on && state.freeze)) { E.step(state.world, dt); state.winT += dt; } if (state.demo && state.winT > E.EXTRACTION_DURATION + 0.25) startLevel(state.levelIdx, true); }
   }
   purchase.trial.tick(dt * 1000, state.screen === 'playing' && !state.demo && !(state.level && state.level.tutorial) && !document.hidden, performance.now() - state.lastInput);
@@ -7962,9 +7958,41 @@ function tutorialTick() {
   if (tilt > 0.04 || drag || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((k) => keys.has(k))) t.steered = true;
   const cell = M.cellAt(state.level, state.world.atom.x, state.world.atom.y);
   const exit = state.level.exits && state.level.exits[0];
-  if (cell && exit && cell.i === exit.i && cell.j === exit.j) t.aimed = true;
+  // The scoring line appears on the way to the pump, while the plate is still on screen.
+  if (cell && exit && Math.abs(cell.i - exit.i) + Math.abs(cell.j - exit.j) <= 1) t.aimed = true;
   const label = $('tutorial-plaque') && $('tutorial-plaque').querySelector('.vls-plaque__label');
-  if (label) label.textContent = tutorialLine();
+  const line = tutorialLine();
+  const changed = !!(label && label.textContent !== line);
+  if (changed) label.textContent = line;
+  const framed = document.body.dataset.theme !== 'bw';
+  const missing = framed && label && !label.parentElement.querySelector('.vls-plaque__chrome');
+  if (changed || missing) mountTutorialPlaque();
+}
+function mountTutorialPlaque() {
+  const el = $('tutorial-plaque');
+  if (!el) return;
+  const label = el.querySelector('.vls-plaque__label');
+  const old = el.querySelector(':scope > .vls-plaque__chrome-built');
+  if (old) old.remove();
+  if (label) {
+    label.style.whiteSpace = 'normal';
+    label.style.fontSize = '';
+    label.style.overflow = 'visible';
+    label.style.lineHeight = '1.35';
+    label.style.height = 'auto';
+    label.style.textOverflow = 'clip';
+  }
+  // B&W stays the plain Inter plate. Victorian uses the kit frame.
+  if (document.body.dataset.theme === 'bw' || !VLS.plaqueChrome || !el.getClientRects().length) return;
+  VLS.plaqueChrome(el);
+  if (label) {
+    label.style.whiteSpace = 'normal';
+    label.style.fontSize = '';
+    label.style.overflow = 'visible';
+    label.style.lineHeight = '1.35';
+    label.style.height = 'auto';
+  }
+  if (VLS.ivory && VLS.ivory.apply) { try { VLS.ivory.apply(el); } catch (e) { /* cream fallback */ } }
 }
 function syncTutorial() {
   const lesson = !!(state.level && state.level.tutorial);
@@ -7973,6 +8001,11 @@ function syncTutorial() {
   const pauseSkip = $('b-pause-skip');
   if (pauseSkip) pauseSkip.hidden = !(lesson && state.screen === 'paused');
   if (lesson && state.screen === 'playing') tutorialTick();
+  else if (!lesson) {
+    const el = $('tutorial-plaque');
+    const old = el && el.querySelector(':scope > .vls-plaque__chrome-built');
+    if (old) old.remove();
+  }
 }
 function finishTutorial(next) {
   const mode = state.tutorialMode || 'levels';
@@ -8084,11 +8117,103 @@ function showWin() {
 
 // ------------------------------------------------------------------ camera: follows the atom, GPS-style look-ahead
 function playInset() {
-  const lesson = state.level && state.level.tutorial && state.screen === 'playing' && vw <= 520 && vh > vw;
+  const lesson = state.level && state.level.tutorial && state.screen === 'playing';
   if (!lesson) return { top: 0, bottom: 0, bias: 0 };
   const el = document.getElementById('tutorial-hud');
-  const top = el && el.classList.contains('show') ? Math.ceil(el.getBoundingClientRect().bottom) + 8 : 0;
-  return { top, bottom: 100, bias: 22 };
+  const plateBottom = el && el.classList.contains('show') ? Math.ceil(el.getBoundingClientRect().bottom) : 0;
+  // The whole practice plate, including Skip, stays above the tube. The source label sits just over the steel.
+  const top = plateBottom + 28;
+  const bottom = Math.min(110, Math.max(64, vh * 0.1));
+  return { top, bottom, bias: 0 };
+}
+function readoutBox() {
+  const left = safe.l + 8, top = safe.t + 8, avail = vw - safe.r - left - 64;
+  const width = Math.min(560, Math.max(148, avail)), narrow = width < 340, bw = document.body.dataset.theme === 'bw';
+  const pad = bw ? (narrow ? 8 : 12) : (narrow ? 22 : 20);
+  const titleH = narrow ? 15 : 18, labH = 12, valH = narrow ? 16 : 22, parH = narrow ? 14 : 16;
+  const block = titleH + (narrow ? 6 : 10) + labH + 4 + valH + (narrow ? 6 : 8) + parH;
+  const h = pad * 2 + block;
+  return { l: left, t: top, r: left + width, b: top + h };
+}
+function worldToScreen(x, y) {
+  const c = state.cam, inset = playInset(), viewH = Math.max(80, vh - inset.top - inset.bottom);
+  return {
+    x: (x - c.x) * c.k + vw / 2,
+    y: (y - c.y) * c.k + inset.top + viewH / 2 + (inset.bias || 0),
+  };
+}
+function screenRect(x, y, hw, hh) {
+  const p = worldToScreen(x, y), k = state.cam.k;
+  return { l: p.x - hw * k, t: p.y - hh * k, r: p.x + hw * k, b: p.y + hh * k };
+}
+function unionRect(a, b) {
+  if (!a) return b;
+  return { l: Math.min(a.l, b.l), t: Math.min(a.t, b.t), r: Math.max(a.r, b.r), b: Math.max(a.b, b.b) };
+}
+function tutorialLayout() {
+  const plateEl = document.getElementById('tutorial-plaque');
+  const hud = document.getElementById('tutorial-hud');
+  const pr = plateEl ? plateEl.getBoundingClientRect() : { left: 0, top: 0, right: 0, bottom: 0 };
+  const L = state.level, w = state.world;
+  const out = {
+    shown: !!(hud && hud.classList.contains('show')),
+    chrome: !!(plateEl && plateEl.querySelector('.vls-plaque__chrome')),
+    levelIdx: state.levelIdx,
+    levelId: state.level && state.level.id,
+    tutorial: !!(state.level && state.level.tutorial),
+    plate: { l: pr.left, t: pr.top, r: pr.right, b: pr.bottom },
+    readout: readoutBox(),
+    tube: null, source: null, atom: null, mouth: null,
+  };
+  if (!L || !w || !state.cam) return out;
+  for (const cell of L.cells) {
+    if (!cell || cell.shape === 'empty') continue;
+    const horiz = !!(cell.mask & (M.BIT.E | M.BIT.W));
+    const vert = !!(cell.mask & (M.BIT.N | M.BIT.S));
+    const hw = horiz ? Math.max(HC, H + WALL_T) : H + WALL_T;
+    const hh = vert ? Math.max(HC, H + WALL_T) : H + WALL_T;
+    out.tube = unionRect(out.tube, screenRect(cell.cx, cell.cy, hw, hh));
+  }
+  const start = L.cells[L.start.j * L.cols + L.start.i];
+  if (start) out.source = screenRect(start.cx, start.cy, 32, 32);
+  const a = w.atom;
+  out.atom = screenRect(a.x, a.y, 22, 22);
+  for (const e of L.exits) {
+    const cell = L.cells[e.j * L.cols + e.i];
+    let nx = 0, ny = 0;
+    if (e.side === M.BIT.E) nx = 1;
+    else if (e.side === M.BIT.W) nx = -1;
+    else if (e.side === M.BIT.S) ny = 1;
+    else ny = -1;
+    out.mouth = unionRect(out.mouth, screenRect(cell.cx + nx * H, cell.cy + ny * H, H * 0.7, H * 0.7));
+  }
+  return out;
+}
+window.VMTutorialLayout = tutorialLayout;
+window.VMHoldWorld = (on) => { state.holdWorld = !!on; };
+function practiceFrame() {
+  const L = state.level;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const grow = (x, y, hw, hh) => {
+    minX = Math.min(minX, x - hw); maxX = Math.max(maxX, x + hw);
+    minY = Math.min(minY, y - hh); maxY = Math.max(maxY, y + hh);
+  };
+  for (const cell of L.cells) {
+    if (!cell || cell.shape === 'empty') continue;
+    const horiz = !!(cell.mask & (M.BIT.E | M.BIT.W));
+    const vert = !!(cell.mask & (M.BIT.N | M.BIT.S));
+    grow(cell.cx, cell.cy, horiz ? Math.max(HC, H + WALL_T) : H + WALL_T, vert ? Math.max(HC, H + WALL_T) : H + WALL_T);
+  }
+  for (const e of L.exits) {
+    const cell = L.cells[e.j * L.cols + e.i];
+    let nx = 0, ny = 0;
+    if (e.side === M.BIT.E) nx = 1;
+    else if (e.side === M.BIT.W) nx = -1;
+    else if (e.side === M.BIT.S) ny = 1;
+    else ny = -1;
+    grow(cell.cx + nx * (H + 36), cell.cy + ny * (H + 36), H, H);
+  }
+  return { minX, minY, maxX, maxY };
 }
 function camera(dt) {
   if (!state.world) return;
@@ -8097,6 +8222,18 @@ function camera(dt) {
   const base = E.viewZoom(vw, vh);
   const fit = inset.top ? (viewH - 8) / (2 * H + 2 * WALL_T + 96) : base;
   const k = Math.min(base, fit);   // phones: tube fills the short side; a portrait practice keeps the tube under the hint
+  if (state.level && state.level.tutorial && !state.world.won) {
+    // Keep the whole practice tube in the clear band under the plate, at every width.
+    const frame = practiceFrame();
+    const worldW = Math.max(40, frame.maxX - frame.minX);
+    const worldH = Math.max(40, frame.maxY - frame.minY);
+    const c = state.cam;
+    c.k = Math.min((vw - 32) / worldW, (viewH - 24) / worldH) * devHooks.zoom();
+    c.x = (frame.minX + frame.maxX) / 2;
+    c.y = (frame.minY + frame.maxY) / 2;
+    c.lx = 0; c.ly = 0;
+    return;
+  }
   const halfW = vw / k / 2, halfH = viewH / k / 2;
   const v = state.world.won ? { x: 0, y: 0 } : { x: a.vx, y: a.vy };
   let lx = v.x * 0.35 + state.tilt.x * 90, ly = v.y * 0.35 + state.tilt.y * 90;
@@ -8468,7 +8605,9 @@ function hud(theme) {
     ? (narrow ? `${marks} par ${par} s · pace` : `${marks} par ${par} s at record pace`)
     : `${marks} par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
   field(parLine, x0, y, inner, parH, narrow ? 8 : 9);
-  const lessonGap = L.tutorial ? 28 : 10;
+  const trRun = purchase.getEntitlement().trial;
+  const trialBand = L.tutorial && trRun.enabled && trRun.state === 'running' && !purchase.getEntitlement().full ? 40 : 0;
+  const lessonGap = (L.tutorial ? 28 : 10) + trialBand;
   document.documentElement.style.setProperty('--vm-hud-bottom', `${top + h + lessonGap}px`);
   // spirit level: in-plane gravity g·sin θ
   const gm = Math.hypot(state.tilt.x, state.tilt.y), ang = T.angleOf(state.tilt);
@@ -8657,20 +8796,32 @@ function fillLedger() {
 const closeLedger = () => showPanel(state.ledgerReturn === 'ledger' ? 'levels' : state.ledgerReturn || 'levels');
 $('b-notnow').onclick = closeLedger; $('b-notnow-web').onclick = closeLedger;
 $('b-buy').onclick = async () => {
+  const chosen = state.pendingLevel;
   $('ledger-msg').textContent = 'Asking the store…';
   const r = await purchase.purchase();
-  if (r.ok) { $('ledger-msg').textContent = 'Unlocked. Thank you!'; afterUnlock(); }
+  if (r.ok) { $('ledger-msg').textContent = 'Unlocked. Thank you!'; afterUnlock(chosen); }
   else $('ledger-msg').textContent = r.cancelled ? 'Purchase cancelled.' : `The store said: ${r.error || 'unavailable'}.`;
 };
 $('b-restore').onclick = () => doRestore($('ledger-msg'));
 async function doRestore(msgEl) {
+  const chosen = state.pendingLevel;
   msgEl.textContent = 'Checking your purchases…';
   const r = await purchase.restore();
   msgEl.textContent = purchase.getEntitlement().full ? 'Purchase restored: the full laboratory is open.' : r.ok ? 'No earlier purchase found on this account.' : `Could not reach the store (${r.error || 'unavailable'}).`;
-  if (purchase.getEntitlement().full && curPanel() === 'ledger') afterUnlock();
+  if (purchase.getEntitlement().full && curPanel() === 'ledger') afterUnlock(chosen);
 }
-$('b-trial').onclick = $('b-trial-web').onclick = async () => { const r = await purchase.trial.start(); if (r.ok) afterUnlock(); else $('ledger-msg').textContent = 'The trial could not be started.'; };
-function afterUnlock() { const i = state.pendingLevel; state.pendingLevel = null; if (i != null && isLevelUnlocked(i) && progressOpen(i)) startLevel(i); else showPanel('levels'); }
+$('b-trial').onclick = $('b-trial-web').onclick = async () => {
+  const chosen = state.pendingLevel;
+  const r = await purchase.trial.start();
+  if (r.ok) afterUnlock(chosen);
+  else $('ledger-msg').textContent = 'The trial could not be started.';
+};
+function afterUnlock(chosen) {
+  const i = arguments.length ? chosen : state.pendingLevel;
+  state.pendingLevel = null;
+  if (i != null && isLevelUnlocked(i) && progressOpen(i)) startLevel(i);
+  else showPanel('levels');
+}
 // ---- pump card (first time each pump type is reached)
 function showPumpCard(type) {
   pumpCardType = type; const info = HW.PUMP_INFO[type], e = NB.byId['pump-' + type];
@@ -8903,7 +9054,19 @@ function goTitle() { state.screen = 'title'; purchase.trial.endRun(); startLevel
 function leaveCustom() { const from = state.custom ? state.custom.from : 'editor'; state.screen = 'title'; purchase.trial.endRun(); startLevel(0, true); if (from === 'mymazes') editor.openMine('title'); else editor.reopen(); }
 function pause() { if (state.screen !== 'playing') return; state.screen = 'paused'; drag = null; showPanel('pause'); syncTutorial(); }
 function resume() { if (state.screen !== 'paused') return; state.screen = 'playing'; last = performance.now(); showPanel(null); syncTutorial(); }
+function leavePractice() {
+  // Leaving is not Skip and not a finish: the practice shows again next time.
+  state.tutorialPending = null;
+  state.tutorial = null;
+  if (state.level && state.level.tutorial) state.level = null;
+  syncTutorial();
+  state.screen = 'title';
+  purchase.trial.endRun();
+  startLevel(0, true);
+  showPanel('levels');
+}
 const toLevels = () => {
+  if (state.level && state.level.tutorial && state.screen !== 'won') { leavePractice(); return; }
   if (state.level && state.level.tutorial) { finishTutorial('list'); return; }
   if (state.custom) { leaveCustom(); return; }
   state.screen = 'title'; purchase.trial.endRun();
@@ -9038,6 +9201,15 @@ addEventListener('keydown', (e) => {
   }
   // Space types in a field and activates a focused button. Leave it alone in both cases.
   if (e.code === 'Space' && spaceKeepsDefault(e.target)) return;
+  // Escape closes the front panel first. It never skips a practice; Skip does that.
+  if (e.code === 'Escape') {
+    const panel = curPanel();
+    if (panel === 'settings') { e.preventDefault(); $('s-close').click(); return; }
+    if (panel === 'ledger') { e.preventDefault(); closeLedger(); return; }
+    if (panel === 'pause') { e.preventDefault(); resume(); return; }
+    if (panel === 'shop') { e.preventDefault(); $('b-shop-back').click(); return; }
+    if (panel) { e.preventDefault(); return; }
+  }
   if (e.target.closest && e.target.closest('.panel') && e.target.tagName !== 'BUTTON') return;
   keys.add(e.code);
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
