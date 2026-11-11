@@ -226,10 +226,10 @@ try {
     { name: '1280x800', w: 1280, h: 800 },
   ];
   let layoutPreload = null;
-  async function layoutBoot(view, theme) {
+  async function layoutBoot(view, theme, tutorials) {
     await send('Emulation.setDeviceMetricsOverride', { width: view.w, height: view.h, deviceScaleFactor: 1, mobile: view.w < 900 });
     if (layoutPreload) { try { await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: layoutPreload }); } catch {} }
-    const saved = { settings: { theme, tempScale2: true, wallHeat: 'preset' }, coins: 0, unlockedZ: 1, best: {}, tutorials: { single: false, two: false, sort: false } };
+    const saved = { settings: { theme, tempScale2: true, wallHeat: 'preset' }, coins: 0, unlockedZ: 1, best: {}, tutorials: tutorials || { single: false, two: false, sort: false } };
     layoutPreload = (await send('Page.addScriptToEvaluateOnNewDocument', {
       source: `try{localStorage.removeItem('maxwells-demon.access');localStorage.setItem('maxwells-demon.v2', ${JSON.stringify(JSON.stringify(saved))});}catch(e){}`,
     })).identifier;
@@ -310,6 +310,155 @@ try {
         await sleep(200);
         if (mode !== 'sort') await evalJs("document.getElementById('b-over-title').click(); document.getElementById('b-begin').click(); true");
       }
+    }
+  }
+  const STAGE = `(() => {
+    const s = document.getElementById('stage').getBoundingClientRect();
+    const read = document.getElementById('sorting-readout');
+    const rr = read.getBoundingClientRect();
+    const chrome = read.querySelector(':scope > .vls-plaque__chrome-built');
+    const t = window.MDGameLive.tutorial();
+    return {
+      width: s.width, height: s.height, top: s.top,
+      inlineWidth: document.getElementById('stage').style.width || '',
+      screen: t.screen, active: !!t.active,
+      readHidden: !!read.hidden,
+      read: { x: rr.x, y: rr.y, w: rr.width, h: rr.height, right: rr.right, bottom: rr.bottom },
+      screws: chrome ? chrome.querySelectorAll('circle').length : 0,
+      plaque: read.classList.contains('vls-plaque'),
+      vw: innerWidth, vh: innerHeight,
+    };
+  })()`;
+  const fullSize = {
+    '568x320': { w: 456, h: 310.1 },
+    '667x375': { w: 551.5, h: 375 },
+  };
+  const wideSize = {
+    '812x375': { w: 392, h: 266.6 },
+    '1024x600': { w: 604, h: 410.7 },
+    '1280x800': { w: 860, h: 584.8 },
+  };
+  function near(m, exp) {
+    return Math.abs(m.width - exp.w) < 1.5 && Math.abs(m.height - exp.h) < 1.5 && !m.inlineWidth;
+  }
+  function plateProblems(m) {
+    const problems = [];
+    if (!near(m, fullSize[m.view])) problems.push(`stage ${m.width.toFixed(1)}x${m.height.toFixed(1)} top ${m.top.toFixed(1)} inline ${JSON.stringify(m.inlineWidth)}`);
+    if (m.readHidden) problems.push('pressure readout hidden');
+    else {
+      if (m.read.bottom > m.vh + 1 || m.read.top < -1 || m.read.right > m.vw + 1) problems.push(`pressure outside ${JSON.stringify(m.read)}`);
+      if (!(m.read.h > 20)) problems.push('pressure plate too small');
+      if (!m.plaque || m.screws < 4) problems.push(`pressure is not an engraved plate (plaque ${m.plaque}, screws ${m.screws})`);
+    }
+    return problems;
+  }
+  async function settlePlate() {
+    await evalJs('document.fonts && document.fonts.ready ? document.fonts.ready.then(() => true) : true');
+    for (let i = 0; i < 20; i++) {
+      const n = await evalJs(`(() => { const r = document.getElementById('sorting-readout'); if (!r || r.hidden) return 0; const c = r.querySelector(':scope > .vls-plaque__chrome-built'); return c ? c.querySelectorAll('circle').length : 0; })()`);
+      if (n >= 4) break;
+      await sleep(80);
+    }
+    await sleep(400);
+  }
+  const restoreViews = [
+    { name: '568x320', w: 568, h: 320 },
+    { name: '667x375', w: 667, h: 375 },
+  ];
+  const shotViews = [
+    ...restoreViews,
+    { name: '320x568', w: 320, h: 568 },
+    { name: '390x844', w: 390, h: 844 },
+  ];
+  for (const view of shotViews) {
+    for (const theme of ['victorian', 'bw']) {
+      await layoutBoot(view, theme);
+      await evalJs("document.getElementById('b-begin').click(); document.getElementById('b-single').click(); true");
+      await waitLayoutStep(0);
+      await evalJs('document.fonts && document.fonts.ready ? document.fonts.ready.then(() => true) : true');
+      await sleep(400);
+      const before = Object.assign({ view: view.name, theme, when: 'before-skip' }, await evalJs(STAGE));
+      layoutRows.push(before);
+      await shot(`${theme}-${view.name}-before-skip`);
+      await evalJs("document.getElementById('b-skip-tutorial').click(); true");
+      await settlePlate();
+      const after = Object.assign({ view: view.name, theme, when: 'after-skip' }, await evalJs(STAGE));
+      const afterProblems = fullSize[view.name] ? plateProblems(after) : (!after.inlineWidth ? [] : [`portrait stage still has inline width ${after.inlineWidth}`]);
+      if (afterProblems.length) fail(`${view.name} ${theme} after Skip: ${afterProblems.join('; ')}`);
+      after.problems = afterProblems;
+      layoutRows.push(after);
+      await shot(`${theme}-${view.name}-after-skip`);
+      console.log('restore', view.name, theme, 'after-skip', afterProblems.length ? 'FAIL' : 'ok', after.width.toFixed(1), after.height.toFixed(1), 'top', after.top.toFixed(1));
+
+      await layoutBoot(view, theme);
+      await evalJs("document.getElementById('b-begin').click(); document.getElementById('b-single').click(); true");
+      let finished = false;
+      for (let i = 0; i < 90; i++) {
+        const t = await evalJs('window.MDGameLive.tutorial()');
+        if (!t.active && t.screen === 'playing' && t.seen && t.seen.single) { finished = true; break; }
+        await sleep(200);
+      }
+      if (!finished) fail(`${view.name} ${theme} lesson did not finish`);
+      await settlePlate();
+      const done = Object.assign({ view: view.name, theme, when: 'after-finish' }, await evalJs(STAGE));
+      const doneProblems = fullSize[view.name] ? plateProblems(done) : (!done.inlineWidth ? [] : [`portrait stage still has inline width ${done.inlineWidth}`]);
+      if (doneProblems.length) fail(`${view.name} ${theme} after finish: ${doneProblems.join('; ')}`);
+      done.problems = doneProblems;
+      layoutRows.push(done);
+      console.log('restore', view.name, theme, 'after-finish', doneProblems.length ? 'FAIL' : 'ok', done.width.toFixed(1), done.height.toFixed(1));
+
+      await evalJs("document.getElementById('b-pausebtn').click(); true");
+      await sleep(150);
+      await evalJs("document.getElementById('b-pause-settings').click(); true");
+      await sleep(200);
+      await evalJs("document.getElementById('s-replay').click(); true");
+      await waitLayoutStep(0);
+      await evalJs("document.getElementById('b-skip-tutorial').click(); true");
+      await settlePlate();
+      const replay = Object.assign({ view: view.name, theme, when: 'replay-skip' }, await evalJs(STAGE));
+      const replayProblems = fullSize[view.name] ? plateProblems(replay) : (!replay.inlineWidth ? [] : [`portrait stage still has inline width ${replay.inlineWidth}`]);
+      if (replayProblems.length) fail(`${view.name} ${theme} after replay Skip: ${replayProblems.join('; ')}`);
+      replay.problems = replayProblems;
+      layoutRows.push(replay);
+      console.log('restore', view.name, theme, 'replay-skip', replayProblems.length ? 'FAIL' : 'ok', replay.width.toFixed(1), replay.height.toFixed(1));
+
+      await layoutBoot(view, theme, { single: true, two: true, sort: true });
+      await evalJs("document.getElementById('b-begin').click(); document.getElementById('b-single').click(); true");
+      for (let i = 0; i < 30; i++) {
+        const t = await evalJs('window.MDGameLive.tutorial()');
+        if (t.screen === 'playing' && !t.active) break;
+        await sleep(80);
+      }
+      await settlePlate();
+      const ordinary = Object.assign({ view: view.name, theme, when: 'ordinary-play' }, await evalJs(STAGE));
+      const ordinaryProblems = fullSize[view.name] ? plateProblems(ordinary) : (!ordinary.inlineWidth ? [] : [`portrait stage still has inline width ${ordinary.inlineWidth}`]);
+      if (ordinary.active) ordinaryProblems.push('ordinary play started a lesson');
+      if (ordinaryProblems.length) fail(`${view.name} ${theme} ordinary play: ${ordinaryProblems.join('; ')}`);
+      ordinary.problems = ordinaryProblems;
+      layoutRows.push(ordinary);
+      await shot(`${theme}-${view.name}-ordinary-play`);
+      console.log('restore', view.name, theme, 'ordinary', ordinaryProblems.length ? 'FAIL' : 'ok', ordinary.width.toFixed(1), ordinary.height.toFixed(1));
+    }
+  }
+  for (const [name, exp] of Object.entries(wideSize)) {
+    const [w, h] = name.split('x').map(Number);
+    for (const theme of ['victorian', 'bw']) {
+      await layoutBoot({ name, w, h }, theme, { single: true, two: true, sort: true });
+      await evalJs("document.getElementById('b-begin').click(); document.getElementById('b-single').click(); true");
+      for (let i = 0; i < 30; i++) {
+        const t = await evalJs('window.MDGameLive.tutorial()');
+        if (t.screen === 'playing' && !t.active) break;
+        await sleep(80);
+      }
+      await settlePlate();
+      const m = Object.assign({ view: name, theme, when: 'wide-ordinary' }, await evalJs(STAGE));
+      const problems = [];
+      if (m.inlineWidth) problems.push(`shortened with inline width ${m.inlineWidth}`);
+      if (Math.abs(m.width - exp.w) > 2 || Math.abs(m.height - exp.h) > 2) problems.push(`stage ${m.width.toFixed(1)}x${m.height.toFixed(1)} expected ${exp.w}x${exp.h}`);
+      if (problems.length) fail(`${name} ${theme} wide ordinary: ${problems.join('; ')}`);
+      m.problems = problems;
+      layoutRows.push(m);
+      console.log('wide', name, theme, problems.length ? 'FAIL' : 'ok', m.width.toFixed(1), m.height.toFixed(1));
     }
   }
   await writeFile(`${OUT}/layout-measurements.json`, JSON.stringify(layoutRows, null, 2));
