@@ -718,6 +718,14 @@
     pointer-events: none; height: auto !important;
     font: 400 15px/1.35 var(--vls-font-ivory); color: inherit; letter-spacing: .02em;
   }
+  #tutorial-plaque .tutor-line,
+  #tutorial-plaque .tutor-sensor {
+    display: block; white-space: normal !important; overflow: visible !important;
+    text-overflow: clip !important; height: auto !important; max-height: none !important;
+  }
+  #tutorial-plaque .tutor-sensor { margin-top: 4px; }
+  /* Short landscape with no tilt sensor: the sensor sentence lives on the lesson plate, not a third plaque. */
+  body.lesson-frame.sensor-in-plate #hint-plaque { display: none !important; }
   #b-skip-tutorial { pointer-events: auto; align-self: flex-start; }
   #b-pause-skip[hidden] { display: none !important; }
   body[data-theme="bw"] #tutorial-plaque {
@@ -731,11 +739,15 @@
     #tutorial-plaque, #tutorial-plaque .vls-plaque__label { font-size: 13px !important; }
     #tutorial-hud { top: var(--vm-hud-bottom, 128px); bottom: auto; left: 8px; right: 8px; max-width: none; }
   }
-  /* Short landscape: lesson and Skip sit under the readout and stop before the pause and level buttons. */
+  /* Short landscape: lesson and Skip sit under the readout and stop before the pause and level buttons.
+     The sensor sentence is a second line on this plate, so the padding stays tight enough for the pump. */
   @media (max-height: 420px) {
     #tutorial-hud { flex-direction: row; align-items: center; gap: 8px; left: 8px; right: 72px; max-width: none; }
     #tutorial-hud #tutorial-plaque { flex: 1 1 auto; width: auto; }
+    #b-skip-tutorial { flex: 0 0 auto; white-space: nowrap !important; }
     #tutorial-plaque, #tutorial-plaque .vls-plaque__label { font-size: 13px !important; }
+    #tutorial-plaque.vls-plaque { padding: 8px 12px !important; }
+    #tutorial-plaque .tutor-sensor { font-size: 12px; line-height: 1.25; margin-top: 2px; }
   }
   .tutor-restart { margin: 10px 0; }
   .tutor-restart > span { display: block; line-height: 1.3; }
@@ -8112,7 +8124,11 @@ function frame(now) {
   if (hintT > 0 && (hintT -= dt) <= 0) $('hint-plaque').classList.remove('show');
   if (state.unlockFlash > 0) state.unlockFlash -= dt;
   document.body.classList.toggle('lesson-frame', lessonFraming());
-  if (lessonFraming()) {
+  document.body.classList.toggle('sensor-in-plate', sensorFoldsIntoLesson());
+  if (sensorFoldsIntoLesson()) {
+    const el = $('hint-plaque');
+    if (el && el.classList.contains('show')) { el.classList.remove('show'); hintPlaced = false; }
+  } else if (lessonFraming()) {
     if ($('hint-plaque').classList.contains('show') && placeSensorHint()) requestAnimationFrame(mountHintPlaque);
   } else releaseSensorHint();
   camera(dt);
@@ -8155,6 +8171,14 @@ function tutorialLine() {
     ? 'A maze you build keeps no best time and pays no coins. This practice saves nothing.'
     : 'Stars use record pace, not the screen clock. This practice saves nothing.';
 }
+function sensorSentence() {
+  if (inputMode !== 'manual') return '';
+  const why = inputReason === 'denied' ? 'Motion access was denied. ' : inputReason === 'none' ? 'No motion sensor found. ' : '';
+  return `${why}Drag or use arrow keys to tip the apparatus`;
+}
+function sensorFoldsIntoLesson() {
+  return lessonFraming() && vh < 420 && vw > vh && inputMode === 'manual';
+}
 function tutorialTick() {
   const t = state.tutorial;
   if (!t || !t.active || !state.world || !(state.level && state.level.tutorial)) return;
@@ -8165,11 +8189,29 @@ function tutorialTick() {
   // The scoring line appears on the way to the pump, while the plate is still on screen.
   if (cell && exit && Math.abs(cell.i - exit.i) + Math.abs(cell.j - exit.j) <= 1) t.aimed = true;
   const label = $('tutorial-plaque') && $('tutorial-plaque').querySelector('.vls-plaque__label');
+  if (!label) return;
   const line = tutorialLine();
-  const changed = !!(label && label.textContent !== line);
-  if (changed) label.textContent = line;
+  const sensor = sensorFoldsIntoLesson() ? sensorSentence() : '';
+  let lineEl = label.querySelector(':scope > .tutor-line');
+  if (!lineEl) {
+    lineEl = document.createElement('span');
+    lineEl.className = 'tutor-line';
+    label.textContent = '';
+    label.appendChild(lineEl);
+  }
+  let sensorEl = label.querySelector(':scope > .tutor-sensor');
+  const changed = lineEl.textContent !== line || (sensor ? !sensorEl || sensorEl.textContent !== sensor : !!sensorEl);
+  lineEl.textContent = line;
+  if (sensor) {
+    if (!sensorEl) {
+      sensorEl = document.createElement('span');
+      sensorEl.className = 'tutor-sensor';
+      label.appendChild(sensorEl);
+    }
+    sensorEl.textContent = sensor;
+  } else if (sensorEl) sensorEl.remove();
   const framed = document.body.dataset.theme !== 'bw';
-  const missing = framed && label && !label.parentElement.querySelector('.vls-plaque__chrome');
+  const missing = framed && !label.parentElement.querySelector('.vls-plaque__chrome');
   if (changed || missing) mountTutorialPlaque();
 }
 function mountTutorialPlaque() {
@@ -8404,7 +8446,15 @@ function gaugeBox() {
   return { l: cx - ring, t: cy - ring, r: cx + ring, b: cy + ring };
 }
 function captionBox() {
-  return { l: safe.l + 96, t: vh - safe.b - 80, r: Math.min(vw - 60, safe.l + 280), b: vh - safe.b - 34 };
+  let textW = 176;
+  if (typeof ctx !== 'undefined' && ctx) {
+    const bw = document.body.dataset.theme === 'bw';
+    ctx.save();
+    ctx.font = bw ? `500 10px ${face(true)}` : `italic 12px ${TK.font.italic}`;
+    textW = Math.ceil(Math.max(ctx.measureText('tipped 0° · g∥ 0.00 m/s²').width, ctx.measureText('level (no tilt sensor)').width)) + 6;
+    ctx.restore();
+  }
+  return { l: safe.l + 96, t: vh - safe.b - 80, r: Math.min(vw - 48, safe.l + 100 + textW), b: vh - safe.b - 34 };
 }
 function cornerIconBox() {
   return { l: vw - 52, t: vh - 44, r: vw - 2, b: vh - 2 };
@@ -8580,7 +8630,9 @@ function practiceClearRects() {
   if (g.t >= b - 2) push(8, t, rightLim, b);
   else {
     push(8, t, rightLim, Math.min(b, g.t - 8));
-    push(Math.max(8, cap.r + 8), t, rightLim, Math.min(b, corner.t - 6));
+    // The corner icon is to the right of the pause column. A machine that stops before that column can use the full height beside the caption.
+    const besideBottom = rightLim <= corner.l ? b : Math.min(b, corner.t - 6);
+    push(Math.max(8, cap.r + 8), t, rightLim, besideBottom);
   }
   return out;
 }
@@ -8592,11 +8644,8 @@ function camera(dt) {
   const fit = inset.top ? (viewH - 8) / (2 * H + 2 * WALL_T + 96) : base;
   const k = Math.min(base, fit);   // phones: tube fills the short side; a portrait practice keeps the tube under the hint
   if (lessonFraming()) {
-    // Fit the tube, atom and pump mouth into a band that misses the lesson, the gauge and its caption.
-    // Portrait also keeps the pump housing above the rotate hint.
-    const rot = document.getElementById('rotate-hint');
-    const includePump = !!(rot && getComputedStyle(rot).display !== 'none');
-    const frame = practiceFrame(includePump);
+    // The whole tube and the pump body share one frame, in the largest clear band under the lesson.
+    const frame = practiceFrame(true);
     const worldW = Math.max(40, frame.maxX - frame.minX);
     const worldH = Math.max(40, frame.maxY - frame.minY);
     const midX = (frame.minX + frame.maxX) / 2;
@@ -8854,7 +8903,7 @@ function drawExitStub(L, e, bw) {
 function drawPump(L, e, bw) {
   const p = M.pumpLayout(M.exitPlane(L, e));
   if (e.pump === 'piston') { drawPiston(p.x, p.y, p.r, p.ax, p.ay, bw); return; }
-  HW.pumpCutaway(ctx, e.pump, p.x, p.y, p.r, { ax: p.ax, ay: p.ay, t: state.clock, theme: settings.theme, labels: !state.world.won });
+  HW.pumpCutaway(ctx, e.pump, p.x, p.y, p.r, { ax: p.ax, ay: p.ay, t: state.clock, theme: settings.theme, labels: !state.world.won && !lessonFraming() });
 }
 let extractionGlyph = null, extractionGlyphStamp = null;
 function drawExtractionAtom(g, pose, theme) {
@@ -8914,7 +8963,8 @@ function drawStart(L, bw) {
   ctx.font = bw ? `10px ${face(true)}` : `italic 700 11px ${TK.font.italic}`;
   ctx.fillStyle = bw ? '#fff' : PAL.paperEdge;
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  ctx.fillText(bw ? 'SOURCE' : 'atom source', sx, Math.max(inset.top + 18, steelTop - 18));
+  // During the practice the source name sits on the tube. The lesson plate already names the run.
+  if (!lessonFraming()) ctx.fillText(bw ? 'SOURCE' : 'atom source', sx, Math.max(inset.top + 18, steelTop - 18));
   ctx.restore();
 }
 
@@ -8945,6 +8995,7 @@ function clampedText(t, x, y, rot = 0, outline = null) {   // outline: stroke co
 // the kit's dead-end label, drawn here (same font, colour and reach as HW.deadEndPart) so it can be clamped to the screen
 const DE_REACH = { blank: 0.7, bellows: 2.1, viewport: 0.7, valve: 2.5, ionGauge: 2.5, pirani: 2.0, capacitance: 2.1 };
 function deadEndLabel(part, x, y, ax, ay, h, bw) {
+  if (lessonFraming()) return;
   const info = HW.DEAD_END_INFO[part]; if (!info || !DE_REACH[part]) return;
   const reach = DE_REACH[part] * h + 14;
   ctx.save(); ctx.font = bw ? `9px ${face(true)}` : `italic 700 11px ${FONTS.serif}`; ctx.fillStyle = bw ? '#fff' : PAL.paperLight;

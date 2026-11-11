@@ -404,7 +404,33 @@ try {
     const box = await ev(`window.VMTutorialLayout()`);
     const hint = box && box.hint;
     const where = theme + ' ' + w + ' sensor';
-    if (!hint || !hint.shown) fail(where + ' message is not showing in the practice');
+    const folded = w > h && h <= 420;
+    const insideView = (part) => part && part.l >= -1 && part.t >= -1 && part.r <= w + 1 && part.b <= h + 1;
+    if (folded) {
+      const foldedText = await ev(`(() => {
+        const el = document.getElementById('tutorial-plaque');
+        const node = el && el.querySelector('.tutor-sensor');
+        const plaque = document.getElementById('hint-plaque');
+        if (!node) return { text: '', shown: false, plaque: !!(plaque && plaque.classList.contains('show') && getComputedStyle(plaque).display !== 'none') };
+        const range = document.createRange(); range.selectNodeContents(node);
+        const rr = range.getBoundingClientRect();
+        const pr = el.getBoundingClientRect();
+        return {
+          text: node.textContent,
+          shown: true,
+          plaque: !!(plaque && plaque.classList.contains('show') && getComputedStyle(plaque).display !== 'none'),
+          range: { l: rr.left, t: rr.top, r: rr.right, b: rr.bottom, w: rr.width, h: rr.height },
+          plate: { l: pr.left, t: pr.top, r: pr.right, b: pr.bottom },
+          scroll: el.scrollTop + node.scrollTop,
+        };
+      })()`);
+      if (foldedText.plaque) fail(where + ' sensor plaque is still a separate plate');
+      if (foldedText.text !== sensorLine) fail(where + ' wording changed ' + foldedText.text);
+      if (!foldedText.range || foldedText.range.w < 20 || foldedText.range.h < 8) fail(where + ' sensor line has no box ' + JSON.stringify(foldedText));
+      if (foldedText.scroll > 0) fail(where + ' sensor line is scrolled');
+      const plateHolds = (a, b) => a.l >= b.l - 1 && a.t >= b.t - 1 && a.r <= b.r + 1 && a.b <= b.b + 1;
+      if (!plateHolds(foldedText.range, { l: 0, t: 0, r: w, b: h }) || !plateHolds(foldedText.range, foldedText.plate)) fail(where + ' sensor line is cut off ' + JSON.stringify(foldedText));
+    } else if (!hint || !hint.shown) fail(where + ' message is not showing in the practice');
     else {
       if (hint.text !== sensorLine) fail(where + ' wording changed ' + hint.text);
       if (hint.clipped) fail(where + ' message is clipped ' + JSON.stringify(hint));
@@ -413,20 +439,24 @@ try {
       for (const name of ['tube', 'atom', 'mouth', 'pump', 'plate', 'pause', 'levelBtn', 'skip', 'caption', 'corner']) {
         if (hits(hint, box[name])) fail(where + ' message covers the ' + name + ' ' + JSON.stringify({ hint, part: box[name] }));
       }
-      const fully = (w > h && h <= 420) || (h > w && w <= 390);
-      for (const name of ['tube', 'atom', 'mouth', 'plate']) {
+    }
+    {
+      const fully = (w > h && h <= 420) || (h > w && w <= 390) || (w === 390 && h === 844);
+      for (const name of ['tube', 'atom', 'mouth', 'pump', 'plate']) {
         const part = box[name];
         if (!part) fail(where + ' ' + name + ' is missing');
         else if (fully) {
-          if (part.l < -1 || part.t < -1 || part.r > w + 1 || part.b > h + 1) fail(where + ' ' + name + ' is not fully on screen ' + JSON.stringify(part));
+          if (!insideView(part)) fail(where + ' ' + name + ' is not fully on screen ' + JSON.stringify(part));
         } else if (part.b < 1 || part.t > h - 1 || part.r < 1 || part.l > w - 1) fail(where + ' ' + name + ' is off the screen ' + JSON.stringify(part));
       }
-      for (const name of ['tube', 'atom', 'mouth']) {
-        const part = box[name];
-        for (const blocker of ['gauge', 'caption', 'pause', 'levelBtn', 'skip', 'plate', 'corner']) {
-          if (hits(part, box[blocker])) fail(where + ' ' + name + ' overlaps the ' + blocker + ' ' + JSON.stringify({ part, blocker: box[blocker] }));
+      if (fully) {
+        for (const name of ['tube', 'atom', 'mouth', 'pump']) {
+          const part = box[name];
+          for (const blocker of ['gauge', 'caption', 'pause', 'levelBtn', 'skip', 'plate', 'corner']) {
+            if (hits(part, box[blocker])) fail(where + ' ' + name + ' overlaps the ' + blocker + ' ' + JSON.stringify({ part, blocker: box[blocker] }));
+          }
+          if (box.rotate && hits(part, box.rotate)) fail(where + ' ' + name + ' overlaps the rotate hint ' + JSON.stringify({ part, rotate: box.rotate }));
         }
-        if (box.rotate && hits(part, box.rotate)) fail(where + ' ' + name + ' overlaps the rotate hint ' + JSON.stringify({ part, rotate: box.rotate }));
       }
       if (box.rotate) {
         if (box.rotate.l < -1 || box.rotate.t < -1 || box.rotate.r > w + 1 || box.rotate.b > h + 1) fail(where + ' rotate hint leaves the viewport ' + JSON.stringify(box.rotate));
@@ -434,12 +464,8 @@ try {
           if (hits(box.rotate, box[name])) fail(where + ' rotate hint covers the ' + name + ' ' + JSON.stringify({ rotate: box.rotate, part: box[name] }));
         }
       }
-      if (fully && box.pump && (box.pump.l < -1 || box.pump.t < -1 || box.pump.r > w + 1 || box.pump.b > h + 1)) {
-        // Landscape may clip the pump housing below the mouth. Portrait must keep it on screen, clear of the rotate hint.
-        if (h > w) fail(where + ' pump housing is not fully on screen ' + JSON.stringify(box.pump));
-      }
     }
-    console.log('sensor', theme, w, hint && JSON.stringify({ l: Math.round(hint.l), t: Math.round(hint.t), r: Math.round(hint.r), b: Math.round(hint.b), clipped: hint.clipped }));
+    console.log('sensor', theme, w, folded ? 'in-plate' : (hint && JSON.stringify({ l: Math.round(hint.l), t: Math.round(hint.t), r: Math.round(hint.r), b: Math.round(hint.b), clipped: hint.clipped })), 'pump', box.pump && JSON.stringify({ l: Math.round(box.pump.l), t: Math.round(box.pump.t), r: Math.round(box.pump.r), b: Math.round(box.pump.b) }));
   }
 
   async function tap(code, keyName, vk) {
@@ -538,8 +564,13 @@ try {
       const range = document.createRange(); range.selectNodeContents(lab);
       const rr = range.getBoundingClientRect();
       const pr = el.getBoundingClientRect();
+      const line = lab.querySelector('.tutor-line');
+      const sensor = lab.querySelector('.tutor-sensor');
+      const sr = sensor ? (document.createRange(), range.selectNodeContents(sensor), range.getBoundingClientRect()) : null;
       return {
-        text: lab.textContent,
+        text: line ? line.textContent : lab.textContent,
+        sensor: sensor ? sensor.textContent : '',
+        sensorRange: sr ? { l: sr.left, t: sr.top, r: sr.right, b: sr.bottom, w: sr.width, h: sr.height } : null,
         range: { l: rr.left, t: rr.top, r: rr.right, b: rr.bottom, w: rr.width, h: rr.height },
         plate: { l: pr.left, t: pr.top, r: pr.right, b: pr.bottom },
         scroll: el.scrollTop + lab.scrollTop,
@@ -548,6 +579,10 @@ try {
       };
     })()`);
     if (!FULL_LINES.includes(info.text)) fail(where + ' lesson text is not a full line: ' + info.text);
+    if (info.vw > info.vh && info.vh <= 420) {
+      if (info.sensor !== 'No motion sensor found. Drag or use arrow keys to tip the apparatus') fail(where + ' sensor line missing from the plate ' + info.sensor);
+      if (!info.sensorRange || info.sensorRange.h < 8) fail(where + ' sensor line has no box');
+    }
     if (info.range.w < 20 || info.range.h < 8) fail(where + ' lesson text has no box ' + JSON.stringify(info.range));
     if (info.scroll > 0) fail(where + ' lesson text is scrolled');
     if (/\b(auto|scroll)\b/.test(info.overflow)) fail(where + ' lesson plate scrolls ' + info.overflow);
@@ -561,6 +596,9 @@ try {
     await send('Emulation.setTouchEmulationEnabled', { enabled: Math.min(w, h) < 500, maxTouchPoints: 1 });
     await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
     await openFirstLevel();
+    if (w > h && h <= 420) {
+      for (let i = 0; i < 25 && !await ev(`!!document.querySelector('#tutorial-plaque .tutor-sensor')`); i++) await sleep(100);
+    }
     const where = theme + ' ' + w + 'x' + h;
     const first = await lessonLine(where + ' step 1');
     await hold('ArrowRight', 'ArrowRight', 39, 160);
