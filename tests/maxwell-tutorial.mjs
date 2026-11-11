@@ -146,7 +146,16 @@ check(dismiss.includes('clearTutorialChrome()') && dismiss.includes("showPanel(n
 const keys = game.slice(game.indexOf("addEventListener('keydown'"), game.indexOf("addEventListener('keyup'"));
 const up = game.slice(game.indexOf("addEventListener('keyup'"), game.indexOf("addEventListener('blur'"));
 check(keys.includes("e.code === 'Space'") && keys.includes('pause()'), 'Space pauses');
-check(keys.includes("e.code === 'Escape' && state.tutorial") && keys.includes('skipTutorial()'), 'Escape skips the tutorial');
+const settingsEsc = keys.indexOf("$('p-settings').classList.contains('show')");
+const pauseEsc = keys.indexOf("$('p-pause').classList.contains('show')");
+const skipEsc = keys.indexOf('skipTutorial()');
+check(settingsEsc > 0 && pauseEsc > settingsEsc && skipEsc > pauseEsc, 'Escape closes Settings and pause before it can skip');
+check(keys.includes('showPanel(settingsReturn)') && keys.slice(settingsEsc, pauseEsc).includes('showPanel(settingsReturn)'), 'Escape leaves Settings for the panel that opened it');
+check(keys.slice(pauseEsc, skipEsc).includes('resume()'), 'Escape on the pause panel resumes, as the pause copy says');
+check(keys.includes("e.code === 'Escape' && state.tutorial && state.tutorial.active && state.screen === 'playing'") && keys.includes('skipTutorial()'), 'Escape skips only while the lesson is playing and no panel is open');
+const trialBtn = game.slice(game.indexOf("$('lk-trial').onclick"), game.indexOf("$('lk-shop').onclick"));
+check(trialBtn.indexOf('const m = lockedMode') >= 0 && trialBtn.indexOf('const m = lockedMode') < trialBtn.indexOf('startTrial'), 'Try it free keeps the locked mode before the trial event clears it');
+check(trialBtn.includes('startGame(m)'), 'Try it free starts that mode, and its tutorial with it');
 const doorAt = keys.indexOf('SORT.doorDown()');
 check(doorAt > 0 && !keys.slice(Math.max(0, doorAt - 280), doorAt).includes('Space'), 'Space does not open the trapdoor');
 check(keys.includes("e.code === 'Enter' && state.mode === 'sort'") && keys.includes('SORT.doorDown()'), 'Enter holds the trapdoor in Sorting');

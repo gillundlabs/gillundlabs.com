@@ -8521,7 +8521,10 @@ function openLocked(mode) {
 }
 function closeLocked() { lockedMode = null; startAttract(); state.screen = 'title'; showPanel('mode'); }
 $('lk-full').onclick = () => openFull('locked');
-$('lk-trial').onclick = () => { if (ACC.startTrial() || ACC.trialActive()) { const m = lockedMode; lockedMode = null; startGame(m); } };
+$('lk-trial').onclick = () => {
+  const m = lockedMode;
+  if (ACC.startTrial() || ACC.trialActive()) { lockedMode = null; if (m) startGame(m); }
+};
 $('lk-shop').onclick = () => { closeLocked(); openShop('mode'); };
 $('lk-back').onclick = closeLocked;
 const fullPrice = () => { const p = PUR.getProducts().find((x) => x.kind === 'full'); return (p && p.price) || C.FULL_PRICE_FALLBACK; };
@@ -8689,8 +8692,11 @@ function focusOwnsKey(el) {
   return !!(role && /^(button|link|checkbox|switch|menuitem|tab|textbox|combobox|listbox|option|slider|radio|searchbox)$/.test(role));
 }
 addEventListener('keydown', (e) => {
-  if (e.code === 'Escape' && state.tutorial && state.tutorial.active) { e.preventDefault(); skipTutorial(); return; }
   if (e.code === 'Escape' && $('p-physics').classList.contains('show')) { closePhysics(); return; }
+  if (e.code === 'Escape' && $('p-settings').classList.contains('show')) { e.preventDefault(); showPanel(settingsReturn); return; }
+  if (e.code === 'Escape' && $('p-pause').classList.contains('show')) { e.preventDefault(); resume(); return; }
+  if (e.code === 'Escape' && document.querySelector('.panel.show')) return;
+  if (e.code === 'Escape' && state.tutorial && state.tutorial.active && state.screen === 'playing') { e.preventDefault(); skipTutorial(); return; }
   if (e.target.closest && e.target.closest('.panel') && e.target.tagName !== 'BUTTON') return;
   if ((e.code === 'Space' || e.code === 'Enter') && focusOwnsKey(e.target)) return;
   keys.add(e.code);
@@ -8852,6 +8858,7 @@ window.MDGameLive = {
     mode: state.tutorial ? state.tutorial.mode : state.mode,
     step: state.tutorial ? state.tutorial.step : 0,
     seen: store.tutorials || {},
+    playMode: state.mode,
     coach: ($('instrument-message') && $('instrument-message').textContent) || '',
     skipHidden: $('b-skip-tutorial').hidden,
     screen: state.screen,
