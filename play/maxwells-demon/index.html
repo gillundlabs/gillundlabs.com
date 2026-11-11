@@ -1095,9 +1095,21 @@
   }
   body[data-theme="bw"] #sorting-readout .vls-exp,
   body[data-theme="bw"] #sorting-readout .vls-plaque__label { color: #000 !important; background: transparent !important; }
-  #instrument-dock.pressure-gutter #sorting-readout .vls-plaque__label {
+  #instrument-dock.pressure-gutter :is(#sorting-readout, #instrument-message) .vls-plaque__label {
     white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
     font-size: 12px !important; line-height: 1.25 !important; height: auto !important;
+  }
+  #instrument-dock.pressure-gutter #instrument-message,
+  #instrument-dock.pressure-gutter #instrument-message .vls-plaque__label {
+    font-size: 11px !important; line-height: 1.15 !important;
+  }
+  #instrument-dock.pressure-gutter #instrument-message { padding: 4px 6px !important; margin: 0 0 4px !important; }
+  #trial-badge.gutter-badge {
+    min-width: 0 !important; white-space: normal; padding: 6px 8px !important;
+    font-size: 12px !important; line-height: 1.2 !important;
+  }
+  #instrument-dock.pressure-gutter :is(#sorting-readout, #instrument-message) {
+    padding: 6px 8px !important; margin: 0 0 6px !important;
   }
   body[data-theme="bw"] #instrument-message .vls-plaque__label { color: #fff !important; background: transparent !important; }
   body[data-theme="bw"] #watch-bar button {
@@ -7391,7 +7403,7 @@ function instrumentReadings(force = false) {
   if (message.textContent !== text) { message.textContent = text; scheduleInstrumentLayout(); }
   message.hidden = !text;
   if (!state.watch) $('watch-bar').hidden = true;
-  reading.hidden = !active || lesson; dock.hidden = !active;
+  reading.hidden = !active; dock.hidden = !active;
   if (!active) return;
   if (force || state.clock - instrumentReadingAt > 0.25 || state.clock < instrumentReadingAt) {
     instrumentReadingAt = state.clock;
@@ -7412,11 +7424,101 @@ function layoutInstruments() {
   stage.style.marginTop = '';
   dock.style.maxWidth = '';
   dock.classList.remove('pressure-gutter');
-  if ($('sorting-readout')) $('sorting-readout').classList.remove('prose');
-  if (!document.body.classList.contains('playing')) return;
+  const read0 = $('sorting-readout');
+  if (read0) {
+    read0.classList.remove('prose');
+    read0.style.position = '';
+    read0.style.left = '';
+    read0.style.width = '';
+    read0.style.top = '';
+    read0.style.maxHeight = '';
+  }
+  const msg0 = $('instrument-message');
+  if (msg0) {
+    msg0.style.position = '';
+    msg0.style.left = '';
+    msg0.style.width = '';
+    msg0.style.top = '';
+    msg0.style.maxHeight = '';
+    msg0.style.zIndex = '';
+  }
+  if (trial) trial.classList.remove('gutter-badge');
   const css = getComputedStyle(document.body), safe = (n) => parseFloat(css.getPropertyValue(n)) || 0;
   const top = safe('--sat') + 8, bottom = innerHeight - safe('--sab') - 8;
   let cr = canvas.getBoundingClientRect();
+  const lesson = !!(state.tutorial && state.tutorial.active);
+  function sideGutter(rect) {
+    const gap = 8;
+    const left = Math.ceil(rect.right + gap);
+    const right = innerWidth - safe('--sar') - 8;
+    return { left, width: Math.max(64, right - left), gap };
+  }
+  function parkInGutter(rect, includeDock) {
+    const g = sideGutter(rect);
+    const vGap = 4;
+    let y = Math.max(top, controls.getBoundingClientRect().bottom + vGap);
+    if (trial && !trial.hidden) {
+      trial.classList.add('gutter-badge');
+      trial.style.left = `${g.left}px`;
+      trial.style.right = 'auto';
+      trial.style.bottom = 'auto';
+      trial.style.top = `${y}px`;
+      trial.style.width = `${g.width}px`;
+      trial.style.maxWidth = `${g.width}px`;
+      trial.style.minWidth = '0';
+      y += trial.getBoundingClientRect().height + vGap;
+    }
+    if (!includeDock) return;
+    dock.classList.add('pressure-gutter');
+    dock.style.left = `${g.left}px`;
+    dock.style.width = `${g.width}px`;
+    dock.style.maxWidth = `${g.width}px`;
+    dock.style.top = `${y}px`;
+    dock.style.maxHeight = `${Math.max(44, bottom - y)}px`;
+    const read = $('sorting-readout');
+    if (read && !read.hidden) {
+      read.classList.add('prose');
+      if (window.VLS && VLS.plaqueChrome) VLS.plaqueChrome(read, { force: true });
+    }
+    const msg = $('instrument-message');
+    const placed = $('sorting-readout');
+    if (includeDock && msg && !msg.hidden && placed && !placed.hidden && placed.getBoundingClientRect().bottom > bottom) {
+      const sorting = document.body.classList.contains('sorting');
+      const chamberTop = rect.top + (sorting ? 176 : 118) / 680 * rect.height;
+      const bandTop = Math.max(top, rect.top + 4);
+      msg.style.position = 'fixed';
+      msg.style.zIndex = '6';
+      msg.style.left = `${rect.left + 8}px`;
+      msg.style.width = `${Math.max(180, rect.width - 24)}px`;
+      msg.style.top = `${bandTop}px`;
+      msg.style.maxHeight = `${Math.max(36, chamberTop - bandTop - 8)}px`;
+      if (window.VLS && VLS.plaqueChrome) VLS.plaqueChrome(msg, { force: true });
+      let y2 = Math.max(top, controls.getBoundingClientRect().bottom + vGap);
+      if (trial && !trial.hidden) y2 += trial.getBoundingClientRect().height + vGap;
+      dock.style.top = `${y2}px`;
+      dock.style.maxHeight = `${Math.max(44, bottom - y2)}px`;
+    }
+  }
+  if (!document.body.classList.contains('playing')) {
+    if (trial && !trial.hidden) {
+      if (innerHeight >= innerWidth) {
+        trial.classList.add('gutter-badge');
+        trial.style.right = 'auto';
+        trial.style.bottom = 'auto';
+        trial.style.minWidth = '0';
+        trial.style.width = `${Math.max(120, Math.min(cr.width, innerWidth - 16))}px`;
+        trial.style.maxWidth = trial.style.width;
+        trial.style.left = `${Math.max(8, cr.left)}px`;
+        const h = trial.getBoundingClientRect().height;
+        const belowTop = cr.bottom + 8;
+        trial.style.top = `${belowTop + h <= bottom ? belowTop : Math.max(top, cr.top - h - 8)}px`;
+      } else {
+        const dockLeft0 = safe('--sal') + 12;
+        if (cr.left - 16 - dockLeft0 < 148) parkInGutter(cr, false);
+      }
+    }
+    return;
+  }
   if (innerHeight >= innerWidth) {
     controls.style.top = 'auto'; controls.style.bottom = `${safe('--sab') + 42}px`;
     controls.style.left = '50%'; controls.style.right = 'auto'; controls.style.transform = 'translateX(-50%)';
@@ -7435,10 +7537,9 @@ function layoutInstruments() {
     controls.style.top = `${top}px`; controls.style.bottom = 'auto'; controls.style.left = 'auto'; controls.style.right = `${safe('--sar') + 8}px`; controls.style.transform = 'none';
     const dockLeft = safe('--sal') + 12;
     const sideW = cr.left - 16 - dockLeft;
-    const coachUp = $('instrument-message') && !$('instrument-message').hidden;
-    const skipUp = $('b-skip-tutorial') && !$('b-skip-tutorial').hidden;
-    const trialUp = trial && !trial.hidden;
-    const needsBand = coachUp || skipUp || trialUp;
+    const coachUp = lesson && $('instrument-message') && !$('instrument-message').hidden;
+    const skipUp = lesson && $('b-skip-tutorial') && !$('b-skip-tutorial').hidden;
+    const needsBand = coachUp || skipUp;
     if (sideW >= 148) {
       dock.style.left = `${dockLeft}px`;
       dock.style.width = `${Math.min(280, Math.max(168, sideW))}px`;
@@ -7462,61 +7563,45 @@ function layoutInstruments() {
         trial.style.right = 'auto';
       }
     } else if (needsBand) {
-      // The stage is left-aligned and often as tall as the viewport, so a dock
-      // under the canvas falls off the screen. Pin and shorten only while the
-      // coach, Skip, or Trial label is actually showing.
+      // Pin and shorten only while the first-play coach and Skip are showing.
       const gap = 8;
+      const read = $('sorting-readout');
+      if (read && !read.hidden) read.style.position = 'fixed';
       stage.style.alignSelf = 'start';
       stage.style.marginTop = `${top}px`;
+      const dockW = Math.min(440, Math.max(220, innerWidth - dockLeft - safe('--sar') - 16));
       dock.style.left = `${dockLeft}px`;
-      dock.style.width = `${Math.min(360, Math.max(200, innerWidth - dockLeft - safe('--sar') - 16))}px`;
+      dock.style.width = `${dockW}px`;
       dock.style.maxHeight = 'none';
-      const trialShown = !trial.hidden;
       let dockH = dock.hidden ? 0 : dock.scrollHeight;
-      let trialH = trialShown ? trial.getBoundingClientRect().height : 0;
-      for (let pass = 0; pass < 3; pass++) {
-        const band = (trialShown ? trialH + gap : 0) + dockH + gap;
-        const maxH = Math.max(96, bottom - top - band);
+      for (let pass = 0; pass < 6; pass++) {
+        const maxH = Math.max(72, bottom - top - dockH - gap);
         cr = canvas.getBoundingClientRect();
-        if (cr.height > maxH + 0.5) stage.style.width = `${Math.max(140, Math.floor(maxH * 1000 / 680))}px`;
+        if (cr.height > maxH + 0.5) stage.style.width = `${Math.max(120, Math.floor(maxH * 1000 / 680))}px`;
         cr = canvas.getBoundingClientRect();
-        let y = cr.bottom + gap;
-        if (trialShown) {
-          trial.style.left = `${dockLeft}px`;
-          trial.style.right = 'auto';
-          trial.style.bottom = 'auto';
-          trial.style.top = `${y}px`;
-          trial.style.width = 'auto';
-          trial.style.minWidth = '10.5em';
-          trial.style.maxWidth = '13em';
-          trialH = trial.getBoundingClientRect().height;
-          y += trialH + gap;
-        }
+        const y = cr.bottom + gap;
         dock.style.top = `${y}px`;
         dockH = dock.hidden ? 0 : dock.scrollHeight;
-        const room = Math.max(dockH, 44);
-        dock.style.maxHeight = `${Math.min(room, Math.max(44, bottom - y))}px`;
+        dock.style.maxHeight = `${Math.max(dockH, 44)}px`;
         if (y + dockH <= bottom + 0.5) break;
       }
-    } else {
-      // Ordinary play keeps the full stage. The pressure plate sits in the
-      // side gutter beside the board, below the controls, clear of the chamber.
-      dock.classList.add('pressure-gutter');
-      const gap = 8;
-      const gutterLeft = Math.ceil(cr.right + gap);
-      const gutterRight = innerWidth - safe('--sar') - 8;
-      const gutterW = Math.max(64, gutterRight - gutterLeft);
-      const below = Math.max(top, controls.getBoundingClientRect().bottom + gap);
-      dock.style.left = `${gutterLeft}px`;
-      dock.style.width = `${gutterW}px`;
-      dock.style.maxWidth = `${gutterW}px`;
-      dock.style.top = `${below}px`;
-      dock.style.maxHeight = `${Math.max(44, bottom - below)}px`;
-      const read = $('sorting-readout');
-      if (read) {
+      const shrunk = canvas.getBoundingClientRect();
+      parkInGutter(shrunk, false);
+      if (read && !read.hidden) {
+        const g = sideGutter(shrunk);
+        let y = Math.max(top, controls.getBoundingClientRect().bottom + 4);
+        if (trial && !trial.hidden) y += trial.getBoundingClientRect().height + 4;
         read.classList.add('prose');
+        read.style.position = 'fixed';
+        read.style.left = `${g.left}px`;
+        read.style.width = `${g.width}px`;
+        read.style.top = `${y}px`;
+        read.style.maxHeight = `${Math.max(44, bottom - y)}px`;
         if (window.VLS && VLS.plaqueChrome) VLS.plaqueChrome(read, { force: true });
       }
+    } else {
+      // Full stage. Trial, door-help, and the pressure plate share the side gutter.
+      parkInGutter(cr, true);
     }
   }
 }
