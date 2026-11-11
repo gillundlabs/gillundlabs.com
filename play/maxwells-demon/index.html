@@ -1089,6 +1089,15 @@
     box-shadow: none !important; outline: none !important; filter: none !important;
   }
   body[data-theme="bw"] #instrument-message { border: 2px solid #fff !important; background-color: #000 !important; color: #fff !important; }
+  body[data-theme="bw"] #instrument-dock.pressure-gutter #sorting-readout {
+    background: #fff !important; background-color: #fff !important; background-image: none !important;
+    color: #000 !important; border: 2px solid #000 !important; box-shadow: none !important;
+  }
+  body[data-theme="bw"] #instrument-dock.pressure-gutter #sorting-readout .vls-exp { color: #000 !important; }
+  #instrument-dock.pressure-gutter #sorting-readout .vls-plaque__label {
+    white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
+    font-size: 12px !important; line-height: 1.25 !important; height: auto !important;
+  }
   body[data-theme="bw"] #instrument-message .vls-plaque__label { color: #fff !important; background: transparent !important; }
   body[data-theme="bw"] #watch-bar button {
     background: #000 !important; color: #fff !important; border: 1px solid #000 !important;
@@ -7401,6 +7410,8 @@ function layoutInstruments() {
   stage.style.alignSelf = '';
   stage.style.marginTop = '';
   dock.style.maxWidth = '';
+  dock.classList.remove('pressure-gutter');
+  if ($('sorting-readout')) $('sorting-readout').classList.remove('prose');
   if (!document.body.classList.contains('playing')) return;
   const css = getComputedStyle(document.body), safe = (n) => parseFloat(css.getPropertyValue(n)) || 0;
   const top = safe('--sat') + 8, bottom = innerHeight - safe('--sab') - 8;
@@ -7487,16 +7498,24 @@ function layoutInstruments() {
         if (y + dockH <= bottom + 0.5) break;
       }
     } else {
-      // Ordinary play keeps the stage at its normal size. The pressure plate
-      // overlays the lower edge of the board so it stays inside the viewport.
-      dock.style.left = `${Math.max(dockLeft, cr.left + 10)}px`;
-      dock.style.width = 'max-content';
-      dock.style.maxWidth = `${Math.max(140, Math.min(300, cr.width - 28))}px`;
-      dock.style.maxHeight = 'none';
+      // Ordinary play keeps the full stage. The pressure plate sits in the
+      // side gutter beside the board, below the controls, clear of the chamber.
+      dock.classList.add('pressure-gutter');
+      const gap = 8;
+      const gutterLeft = Math.ceil(cr.right + gap);
+      const gutterRight = innerWidth - safe('--sar') - 8;
+      const gutterW = Math.max(64, gutterRight - gutterLeft);
+      const below = Math.max(top, controls.getBoundingClientRect().bottom + gap);
+      dock.style.left = `${gutterLeft}px`;
+      dock.style.width = `${gutterW}px`;
+      dock.style.maxWidth = `${gutterW}px`;
+      dock.style.top = `${below}px`;
+      dock.style.maxHeight = `${Math.max(44, bottom - below)}px`;
       const read = $('sorting-readout');
-      const h = Math.max(36, (read && !read.hidden ? read.offsetHeight : dock.offsetHeight) || 44);
-      dock.style.top = `${Math.max(top, Math.min(cr.bottom - h - 6, bottom - h))}px`;
-      if (read && window.VLS && VLS.plaqueChrome) VLS.plaqueChrome(read, { force: true });
+      if (read) {
+        read.classList.add('prose');
+        if (window.VLS && VLS.plaqueChrome) VLS.plaqueChrome(read, { force: true });
+      }
     }
   }
 }
