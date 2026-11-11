@@ -328,6 +328,36 @@ try {
     console.log('clear', theme, w);
   }
 
+  const sensorLine = 'No motion sensor found. Drag or use arrow keys to tip the apparatus';
+  for (const [w, h, theme] of [[320, 700, 'bw'], [320, 700, 'victorian'], [360, 740, 'bw'], [360, 740, 'victorian'], [390, 844, 'bw'], [390, 844, 'victorian'], [768, 900, 'bw'], [768, 900, 'victorian'], [1280, 800, 'bw'], [1280, 800, 'victorian']]) {
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: w < 500 });
+    await send('Emulation.setTouchEmulationEnabled', { enabled: w < 500, maxTouchPoints: 1 });
+    await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
+    await ev(`document.getElementById('b-begin').click(); true`);
+    let appeared = false;
+    for (let i = 0; i < 30 && !appeared; i++) {
+      appeared = await ev(`document.getElementById('hint-plaque').classList.contains('show')`);
+      if (!appeared) await sleep(100);
+    }
+    if (!appeared) fail(theme + ' ' + w + ' sensor message never appeared');
+    await ev(`document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+    await sleep(450);
+    const box = await ev(`window.VMTutorialLayout()`);
+    const hint = box && box.hint;
+    const where = theme + ' ' + w + ' sensor';
+    if (!hint || !hint.shown) fail(where + ' message is not showing in the practice');
+    else {
+      if (hint.text !== sensorLine) fail(where + ' wording changed ' + hint.text);
+      if (hint.clipped) fail(where + ' message is clipped ' + JSON.stringify(hint));
+      if (hint.l < -1 || hint.t < -1 || hint.r > w + 1 || hint.b > h + 1) fail(where + ' message leaves the viewport ' + JSON.stringify(hint));
+      if (hits(hint, box.gauge)) fail(where + ' message covers the gauge ' + JSON.stringify({ hint, gauge: box.gauge }));
+      for (const name of ['tube', 'atom', 'mouth', 'pump', 'plate']) {
+        if (hits(hint, box[name])) fail(where + ' message covers the ' + name + ' ' + JSON.stringify(box));
+      }
+    }
+    console.log('sensor', theme, w, hint && JSON.stringify({ l: Math.round(hint.l), t: Math.round(hint.t), r: Math.round(hint.r), b: Math.round(hint.b), clipped: hint.clipped }));
+  }
+
   async function tap(code, keyName, vk) {
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
