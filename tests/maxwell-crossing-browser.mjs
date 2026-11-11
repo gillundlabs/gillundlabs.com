@@ -94,7 +94,7 @@ try {
       coins: 0, unlockedZ: 1, best: extra.best || {},
     };
     const added = await send('Page.addScriptToEvaluateOnNewDocument', {
-      source: `try{localStorage.setItem('maxwells-demon.v2', ${JSON.stringify(JSON.stringify(saved))});}catch(e){}`,
+      source: `window.MDTutorialEnabled=false;try{localStorage.setItem('maxwells-demon.v2', ${JSON.stringify(JSON.stringify(saved))});}catch(e){}`,
     });
     preloadId = added.identifier;
     await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/play/maxwells-demon/?t=${theme}-${view.name}` });
