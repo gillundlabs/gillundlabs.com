@@ -3,6 +3,7 @@
    Escape closes Settings, then pause, and skips only when no panel is open.
    At short and landscape sizes the stage, coach text, and Skip stay inside
    the viewport, and the Trial label stays off the chamber.
+   Outside the lesson the stage matches main at every listed viewport.
    Run: node tests/maxwell-tutorial-browser.mjs [port]
    Screenshots go to /tmp/maxwell-hold-shots, not the repo. */
 import { spawn } from 'node:child_process';
@@ -216,7 +217,9 @@ try {
   })()`;
   const layoutRows = [];
   const layoutViews = [
+    { name: '480x320', w: 480, h: 320 },
     { name: '568x320', w: 568, h: 320 },
+    { name: '640x360', w: 640, h: 360 },
     { name: '667x375', w: 667, h: 375 },
     { name: '812x375', w: 812, h: 375 },
     { name: '320x568', w: 320, h: 568 },
@@ -451,7 +454,7 @@ try {
       await layoutBoot(view, theme);
       await evalJs("document.getElementById('b-begin').click(); document.getElementById('b-single').click(); true");
       let finished = false;
-      for (let i = 0; i < 90; i++) {
+      for (let i = 0; i < 110; i++) {
         const t = await evalJs('window.MDGameLive.tutorial()');
         if (!t.active && t.screen === 'playing' && t.seen && t.seen.single) { finished = true; break; }
         await sleep(200);
@@ -522,6 +525,235 @@ try {
       m.problems = problems;
       layoutRows.push(m);
       console.log('wide', name, theme, problems.length ? 'FAIL' : 'ok', m.width.toFixed(1), m.height.toFixed(1));
+    }
+  }
+
+  const mainStage = {
+    '480x320': { w: 368, h: 250.23 },
+    '568x320': { w: 456, h: 310.08 },
+    '640x360': { w: 528, h: 359.03 },
+    '667x375': { w: 551.47, h: 374.98 },
+    '812x375': { w: 392, h: 266.55 },
+    '320x568': { w: 320, h: 217.59 },
+    '360x740': { w: 360, h: 244.8 },
+    '390x844': { w: 390, h: 265.19 },
+    '768x900': { w: 768, h: 522.23 },
+    '1024x600': { w: 604, h: 410.72 },
+    '1280x800': { w: 860, h: 584.8 },
+  };
+  const matrixViews = Object.keys(mainStage).map((name) => {
+    const [w, h] = name.split('x').map(Number);
+    return { name, w, h };
+  });
+  const MATRIX = `(() => {
+    const vw = innerWidth, vh = innerHeight;
+    const stageEl = document.getElementById('stage');
+    const s = stageEl.getBoundingClientRect();
+    const canvas = document.getElementById('game').getBoundingClientRect();
+    const sx = canvas.width / 1000, sy = canvas.height / 680;
+    const sorting = document.body.classList.contains('sorting');
+    const chamber = sorting
+      ? { left: canvas.left + 60 * sx, top: canvas.top + 176 * sy, right: canvas.left + 940 * sx, bottom: canvas.top + 616 * sy }
+      : { left: canvas.left + 60 * sx, top: canvas.top + 118 * sy, right: canvas.left + 940 * sx, bottom: canvas.top + 618 * sy };
+    const overlap = (r, b) => {
+      if (!r || r.width < 1 || r.height < 1) return 0;
+      const x = Math.max(0, Math.min(r.right, b.right) - Math.max(r.left, b.left));
+      const y = Math.max(0, Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top));
+      return Math.round(x * y);
+    };
+    const info = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return { missing: true, hidden: true };
+      const cs = getComputedStyle(el);
+      const hidden = !!(el.hidden || cs.display === 'none' || cs.visibility === 'hidden');
+      const r = el.getBoundingClientRect();
+      return {
+        hidden, x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom,
+        off: !hidden && (r.width < 1 || r.left < -1 || r.top < -1 || r.right > vw + 1 || r.bottom > vh + 1),
+        stage: hidden ? 0 : overlap(r, s),
+        chamber: hidden ? 0 : overlap(r, chamber),
+      };
+    };
+    const skip = document.getElementById('b-skip-tutorial');
+    let skipHit = false;
+    if (skip && !skip.hidden) {
+      const r = skip.getBoundingClientRect();
+      const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      skipHit = !!(el && el.closest && el.closest('#b-skip-tutorial'));
+    }
+    const read = document.getElementById('sorting-readout');
+    const label = read.querySelector('.vls-plaque__label') || read;
+    const parse = (c) => (String(c).match(/[\\d.]+/g) || []).slice(0, 4).map(Number);
+    const lum = (rgb) => rgb.slice(0, 3).map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const opaque = (c) => { const p = parse(c); return p.length >= 3 && (p.length < 4 || p[3] > 0.05); };
+    let bgNode = read;
+    while (bgNode && !opaque(getComputedStyle(bgNode).backgroundColor)) bgNode = bgNode.parentElement;
+    const plateBg = getComputedStyle(bgNode || read).backgroundColor;
+    const labelColor = getComputedStyle(label).color;
+    const fg = parse(labelColor), bgc = parse(plateBg);
+    const L1 = lum(fg), L2 = lum(bgc.length ? bgc : [0, 0, 0]);
+    const chrome = read.querySelector(':scope > .vls-plaque__chrome-built');
+    const t = window.MDGameLive.tutorial();
+    return {
+      width: s.width, height: s.height, inline: stageEl.style.width || '',
+      active: !!t.active, screen: t.screen, playMode: t.playMode,
+      paused: document.getElementById('p-pause').classList.contains('show'),
+      controls: info('controls'), trial: info('trial-badge'), msg: info('instrument-message'),
+      read: info('sorting-readout'), skip: info('b-skip-tutorial'), skipHit,
+      contrast: (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05),
+      color: labelColor, background: plateBg,
+      screws: chrome ? chrome.querySelectorAll('circle').length : 0,
+      theme: document.body.dataset.theme,
+    };
+  })()`;
+  function matrixProblems(m, kind) {
+    const problems = [];
+    const lesson = kind === 'lesson';
+    if (!lesson) {
+      const exp = mainStage[m.view];
+      if (Math.abs(m.width - exp.w) > 0.8 || Math.abs(m.height - exp.h) > 0.8) problems.push(`stage ${m.width.toFixed(2)}x${m.height.toFixed(2)} expected ${exp.w}x${exp.h}`);
+      if (m.inline) problems.push(`inline width ${m.inline}`);
+    }
+    const shown = (box, name, { stage = true, chamber = true } = {}) => {
+      if (!box || box.missing || box.hidden) problems.push(`${name} hidden`);
+      else if (box.off) problems.push(`${name} outside the viewport`);
+      else {
+        if (stage && box.stage > 0) problems.push(`${name} overlaps the stage by ${box.stage}px`);
+        if (chamber && box.chamber > 0) problems.push(`${name} overlaps the chamber by ${box.chamber}px`);
+      }
+    };
+    if (lesson) {
+      shown(m.msg, 'coach');
+      shown(m.skip, 'Skip');
+      shown(m.read, 'readout', { stage: false });
+      if (!m.skipHit) problems.push('Skip is not under elementFromPoint');
+    } else if (!m.paused) {
+      shown(m.read, 'readout');
+      if (m.read && !m.read.hidden) {
+        if (!(m.screws >= 4)) problems.push(`readout screws ${m.screws}`);
+        if (m.theme === 'bw') {
+          if (!(m.contrast >= 7)) problems.push(`B&W contrast ${Number(m.contrast).toFixed(2)}`);
+        } else if (!(/241,\s*236,\s*223/.test(m.background) && /42,\s*24,\s*3/.test(m.color))) {
+          problems.push(`Victorian plate ${m.color} on ${m.background}`);
+        }
+      }
+      if (!m.controls || m.controls.hidden || m.controls.off) problems.push('controls off screen');
+    }
+    if (m.trial && !m.trial.hidden) shown(m.trial, 'trial');
+    if (!lesson && m.msg && !m.msg.hidden) shown(m.msg, 'door help', { stage: false });
+    return problems;
+  }
+  async function startPlaying(mode) {
+    await evalJs(`(() => {
+      if (document.getElementById('p-pause').classList.contains('show')) document.getElementById('b-end').click();
+      if (document.getElementById('p-over').classList.contains('show')) document.getElementById('b-over-title').click();
+      if (document.getElementById('p-title').classList.contains('show')) document.getElementById('b-begin').click();
+      return true;
+    })()`);
+    await sleep(120);
+    const id = mode === 'single' ? 'b-single' : mode === 'two' ? 'b-two' : 'b-sort';
+    await evalJs(`document.getElementById(${JSON.stringify(id)}).click(); true`);
+    await sleep(160);
+    if (await evalJs(`document.getElementById('p-locked').classList.contains('show')`)) {
+      await evalJs(`document.getElementById('lk-trial').click(); true`);
+      await sleep(200);
+    }
+  }
+  async function endPlaying() {
+    const where = await evalJs(`(() => ({
+      playing: document.body.classList.contains('playing'),
+      pause: document.getElementById('p-pause').classList.contains('show'),
+      over: document.getElementById('p-over').classList.contains('show'),
+    }))()`);
+    if (where.over || (!where.playing && !where.pause)) return;
+    if (where.pause) await evalJs(`document.getElementById('b-end').click(); true`);
+    else await evalJs(`document.getElementById('b-pausebtn').click(); document.getElementById('b-end').click(); true`);
+    await sleep(150);
+  }
+  async function measureMatrix(view, theme, mode, kind) {
+    if (kind === 'trial-pause') await sleep(120);
+    else {
+      await settlePlate();
+      if (kind !== 'lesson' && await evalJs(`document.getElementById('p-over').classList.contains('show')`)) {
+        await startPlaying(mode);
+        await settlePlate();
+      }
+    }
+    const m = Object.assign({ view: view.name, theme, mode, kind }, await evalJs(MATRIX));
+    const problems = matrixProblems(m, kind === 'lesson' ? 'lesson' : 'play');
+    if (kind !== 'lesson' && m.active) problems.push('lesson still active');
+    if (kind === 'ordinary' && m.trial && !m.trial.hidden) problems.push('ordinary play showed a trial badge');
+    if (kind === 'trial-pause' && (!m.trial || m.trial.hidden)) problems.push('trial badge hidden while paused');
+    if (kind === 'sort-live' && (!m.msg || m.msg.hidden)) problems.push('sort door help was not showing');
+    if (m.playMode && m.playMode !== mode && kind !== 'trial-pause') problems.push(`mode ${m.playMode}`);
+    if (problems.length) fail(`${view.name} ${theme} ${mode} ${kind}: ${problems.join('; ')}`);
+    m.problems = problems;
+    layoutRows.push(m);
+    console.log('matrix', view.name, theme, mode, kind, problems.length ? 'FAIL' : 'ok', m.width.toFixed(2), m.height.toFixed(2));
+    return m;
+  }
+  const seenTutorials = { single: true, two: true, sort: true };
+  for (const view of matrixViews) {
+    for (const theme of ['victorian', 'bw']) {
+      await layoutBoot(view, theme, seenTutorials);
+      await startPlaying('single');
+      await measureMatrix(view, theme, 'single', 'ordinary');
+      await endPlaying();
+      await evalJs('MDAccess.startTrial()');
+      for (const mode of ['single', 'two', 'sort']) {
+        await startPlaying(mode);
+        await measureMatrix(view, theme, mode, mode === 'sort' ? 'sort-live' : 'trial');
+        await evalJs(`document.getElementById('b-pausebtn').click(); true`);
+        await sleep(180);
+        await measureMatrix(view, theme, mode, 'trial-pause');
+        await evalJs(`document.getElementById('b-resume').click(); true`);
+        await sleep(80);
+        await endPlaying();
+      }
+      for (const mode of ['single', 'two', 'sort']) {
+        await layoutBoot(view, theme);
+        await startPlaying(mode);
+        await measureMatrix(view, theme, mode, 'lesson');
+        await evalJs(`document.getElementById('b-skip-tutorial').click(); true`);
+        await measureMatrix(view, theme, mode, 'after-skip');
+        await evalJs(`document.getElementById('b-pausebtn').click(); true`);
+        await sleep(100);
+        await evalJs(`document.getElementById('b-pause-settings').click(); true`);
+        await sleep(150);
+        await evalJs(`document.getElementById('s-replay').click(); true`);
+        await waitLayoutStep(0);
+        await measureMatrix(view, theme, mode, 'lesson');
+        await evalJs(`document.getElementById('b-skip-tutorial').click(); true`);
+        await measureMatrix(view, theme, mode, 'replay-skip');
+      }
+      for (const mode of ['single', 'two', 'sort']) {
+        await layoutBoot(view, theme);
+        await startPlaying(mode);
+        let finished = false;
+        for (let i = 0; i < 100; i++) {
+          const t = await evalJs('window.MDGameLive.tutorial()');
+          if (!t.active && t.screen === 'playing' && t.seen && t.seen[mode]) { finished = true; break; }
+          await sleep(200);
+        }
+        if (!finished) {
+          const stalled = await evalJs(`(() => {
+            const t = window.MDGameLive.tutorial();
+            return {
+              over: document.getElementById('p-over').classList.contains('show'),
+              active: !!t.active,
+              seen: !!(t.seen && t.seen[${JSON.stringify(mode)}]),
+            };
+          })()`);
+          if (stalled.over) {
+            if (stalled.active) await evalJs(`document.getElementById('b-skip-tutorial').click(); true`);
+            await sleep(80);
+            await startPlaying(mode);
+            finished = true;
+          }
+        }
+        if (!finished) fail(`${view.name} ${theme} ${mode} lesson did not finish`);
+        await measureMatrix(view, theme, mode, 'finish');
+      }
     }
   }
   await writeFile(`${OUT}/layout-measurements.json`, JSON.stringify(layoutRows, null, 2));
