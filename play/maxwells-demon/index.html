@@ -7393,6 +7393,9 @@ function instrumentReadings(force = false) {
 function layoutInstruments() {
   const stage = $('stage'), dock = $('instrument-dock'), controls = $('controls'), trial = $('trial-badge');
   stage.style.transform = '';
+  stage.style.width = '';
+  stage.style.alignSelf = '';
+  stage.style.marginTop = '';
   if (!document.body.classList.contains('playing')) return;
   const css = getComputedStyle(document.body), safe = (n) => parseFloat(css.getPropertyValue(n)) || 0;
   const top = safe('--sat') + 8, bottom = innerHeight - safe('--sab') - 8;
@@ -7421,28 +7424,59 @@ function layoutInstruments() {
       const railTop = Math.max(top + 8, cr.top + cr.height * 0.02);
       dock.style.top = `${railTop}px`;
       dock.style.maxHeight = `${Math.max(72, Math.min(bottom, cr.bottom) - railTop)}px`;
+      const pauseBottom = controls.getBoundingClientRect().bottom;
+      trial.style.width = 'auto';
+      trial.style.minWidth = '10.5em';
+      trial.style.maxWidth = '13em';
+      trial.style.bottom = 'auto';
+      trial.style.top = `${pauseBottom + 28}px`;
+      const trialW = Math.min(13 * 16, Math.max(10.5 * 16, trial.getBoundingClientRect().width || 168));
+      const gutterLeft = cr.right + 14;
+      const rightLimit = innerWidth - safe('--sar') - 8;
+      if (gutterLeft + trialW <= rightLimit) {
+        trial.style.left = `${gutterLeft}px`;
+        trial.style.right = 'auto';
+      } else {
+        trial.style.left = `${Math.min(gutterLeft, rightLimit - trialW)}px`;
+        trial.style.right = 'auto';
+      }
     } else {
-      const underTop = cr.bottom + 10;
+      // The stage is left-aligned and often as tall as the viewport, so a dock
+      // under the canvas falls off the screen. Pin the stage to the top and
+      // shorten it until the coach, Skip, and Trial label fit beneath it.
+      const gap = 8;
+      stage.style.alignSelf = 'start';
+      stage.style.marginTop = `${top}px`;
       dock.style.left = `${dockLeft}px`;
       dock.style.width = `${Math.min(360, Math.max(200, innerWidth - dockLeft - safe('--sar') - 16))}px`;
-      dock.style.top = `${underTop}px`;
-      dock.style.maxHeight = `${Math.max(48, bottom - underTop)}px`;
-    }
-    const pauseBottom = controls.getBoundingClientRect().bottom;
-    trial.style.width = 'auto';
-    trial.style.minWidth = '10.5em';
-    trial.style.maxWidth = '13em';
-    trial.style.bottom = 'auto';
-    trial.style.top = `${pauseBottom + 28}px`;
-    const trialW = Math.min(13 * 16, Math.max(10.5 * 16, trial.getBoundingClientRect().width || 168));
-    const gutterLeft = cr.right + 14;
-    const rightLimit = innerWidth - safe('--sar') - 8;
-    if (gutterLeft + trialW <= rightLimit) {
-      trial.style.left = `${gutterLeft}px`;
-      trial.style.right = 'auto';
-    } else {
-      trial.style.left = `${Math.min(gutterLeft, rightLimit - trialW)}px`;
-      trial.style.right = 'auto';
+      dock.style.maxHeight = 'none';
+      const trialShown = !trial.hidden;
+      let dockH = dock.hidden ? 0 : dock.scrollHeight;
+      let trialH = trialShown ? trial.getBoundingClientRect().height : 0;
+      for (let pass = 0; pass < 3; pass++) {
+        const band = (trialShown ? trialH + gap : 0) + dockH + gap;
+        const maxH = Math.max(96, bottom - top - band);
+        cr = canvas.getBoundingClientRect();
+        if (cr.height > maxH + 0.5) stage.style.width = `${Math.max(140, Math.floor(maxH * 1000 / 680))}px`;
+        cr = canvas.getBoundingClientRect();
+        let y = cr.bottom + gap;
+        if (trialShown) {
+          trial.style.left = `${dockLeft}px`;
+          trial.style.right = 'auto';
+          trial.style.bottom = 'auto';
+          trial.style.top = `${y}px`;
+          trial.style.width = 'auto';
+          trial.style.minWidth = '10.5em';
+          trial.style.maxWidth = '13em';
+          trialH = trial.getBoundingClientRect().height;
+          y += trialH + gap;
+        }
+        dock.style.top = `${y}px`;
+        dockH = dock.hidden ? 0 : dock.scrollHeight;
+        const room = Math.max(dockH, 44);
+        dock.style.maxHeight = `${Math.min(room, Math.max(44, bottom - y))}px`;
+        if (y + dockH <= bottom + 0.5) break;
+      }
     }
   }
 }
