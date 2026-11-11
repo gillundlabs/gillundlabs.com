@@ -5270,6 +5270,119 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
     return { x: pump.x + pump.r * (pump.ay * x + pump.ax * y), y: pump.y + pump.r * (-pump.ax * x + pump.ay * y) };
   }
   // shortest-path next cell from (i,j) toward the exit (used by the demo autopilot and tests)
+  // ConFlat cutaway, matching the DN40 proportions drawn by conflatFlange on this bore.
+  // Cheeks and bolt heads are separate boxes so the open bore is not counted as metal.
+  function conflatParts(x, y, ax, ay) {
+    const scale = H / 19;
+    const outerX = (0.1 + 12.7) * scale;
+    const shank = (0.1 + 12.7 + 1.6 + 5 + 2) * scale;
+    const boreR = H, od = 34.95 * scale, boltR = 29.4 * scale, af = (10 * scale) / 2;
+    const nx = -ay, ny = ax;
+    const box = (lx0, lx1, ly0, ly1) => {
+      const cs = [[lx0, ly0], [lx0, ly1], [lx1, ly0], [lx1, ly1]].map(([lx, ly]) => [x + ax * lx + nx * ly, y + ay * lx + ny * ly]);
+      return { l: Math.min(...cs.map((p) => p[0])), t: Math.min(...cs.map((p) => p[1])), r: Math.max(...cs.map((p) => p[0])), b: Math.max(...cs.map((p) => p[1])) };
+    };
+    return [
+      box(-outerX, outerX, boreR, od), box(-outerX, outerX, -od, -boreR),
+      box(-shank, shank, boltR - af, boltR + af), box(-shank, shank, -(boltR + af), -(boltR - af)),
+    ];
+  }
+  function flangePartsHit(a, b) {
+    return a.some((p) => b.some((q) => p.r > q.l + 0.5 && p.l < q.r - 0.5 && p.b > q.t + 0.5 && p.t < q.b - 0.5));
+  }
+  // Pump joints first, then a straight spool, then a branch. A joint whose bolts would
+  // cut through one already kept is left as plain tube.
+  function flangePlan(L) {
+    if (L._flangePlan) return L._flangePlan;
+    const cands = [];
+    for (const e of L.exits) {
+      const d = DIRS.find((dir) => dir.bit === e.side);
+      cands.push({ pri: 0, key: `X${e.i},${e.j},${e.side}`, x: (e.i + 0.5) * C + d.dx * HC, y: (e.j + 0.5) * C + d.dy * HC, ax: d.dx, ay: d.dy });
+    }
+    for (const cell of L.cells) {
+      if (!cell || cell.shape === 'empty') continue;
+      const straight = ((cell.mask & E) && (cell.mask & Wd)) || ((cell.mask & N) && (cell.mask & S));
+      const pri = straight ? 1 : 2;
+      const isExit = (bit) => L.exits.some((ex) => ex.i === cell.i && ex.j === cell.j && ex.side === bit);
+      if ((cell.mask & E) && !isExit(E)) cands.push({ pri, key: `J${cell.i},${cell.j},E`, x: cell.cx + HC, y: cell.cy, ax: 1, ay: 0 });
+      if ((cell.mask & S) && !isExit(S)) cands.push({ pri, key: `J${cell.i},${cell.j},S`, x: cell.cx, y: cell.cy + HC, ax: 0, ay: 1 });
+    }
+    cands.sort((a, b) => a.pri - b.pri || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+    const kept = [];
+    const dropped = [];
+    for (const c of cands) {
+      const parts = conflatParts(c.x, c.y, c.ax, c.ay);
+      const other = kept.find((k) => flangePartsHit(k.parts, parts));
+      if (other) dropped.push({ key: c.key, against: other.key, parts });
+      else kept.push({ key: c.key, parts });
+    }
+    return (L._flangePlan = { kept, dropped, draw: new Set(kept.map((k) => k.key)) });
+  }
+  function decorFootprint(cell, nx, ny, extra) {
+    const x = cell.cx + nx * (H + WALL_T + extra), y = cell.cy + ny * (H + WALL_T + extra);
+    const parts = [];
+    if (cell.kind === 'viewport') {
+      const r = 34, cx = x + nx * r * 1.1, cy = y + ny * r * 1.1, rad = r * 0.93;
+      parts.push({ l: cx - rad, t: cy - rad, r: cx + rad, b: cy + rad });
+    }
+    if (cell.kind === 'gauge') {
+      const cx = x + nx * 70, cy = y + ny * 70;
+      parts.push({ l: cx - 30, t: cy - 30, r: cx + 30, b: cy + 30 });
+    }
+    const w = cell.gate ? 64 : (cell.kind === 'valve' ? 70 : 0);
+    if (w) {
+      const rad = w * 0.07;
+      const bolts = [
+        [x + -ny * w * 0.32 + nx * w * 0.2, y + nx * w * 0.32 + ny * w * 0.2],
+        [x - (-ny) * w * 0.32 + nx * w * 0.2, y - nx * w * 0.32 + ny * w * 0.2],
+      ];
+      for (const [bx, by] of bolts) parts.push({ l: bx - rad, t: by - rad, r: bx + rad, b: by + rad });
+    }
+    return { x, y, nx, ny, extra, parts };
+  }
+  function deadFootprint(cell) {
+    for (const d of DIRS) if (cell.mask & d.bit) {
+      const h = 0.9 * H / 2, x = cell.cx - d.dx * (H + WALL_T), y = cell.cy - d.dy * (H + WALL_T);
+      const ax = -d.dx, ay = -d.dy, corners = [];
+      for (const lx of [-1.45 * h, 1.45 * h]) for (const ly of [0, 0.32 * h]) corners.push([x + ay * lx + ax * ly, y - ax * lx + ay * ly]);
+      return { key: `dead ${cell.i},${cell.j}`, parts: [{ l: Math.min(...corners.map((p) => p[0])), t: Math.min(...corners.map((p) => p[1])), r: Math.max(...corners.map((p) => p[0])), b: Math.max(...corners.map((p) => p[1])) }] };
+    }
+    return null;
+  }
+  // Side and stand-off for a viewport, gauge, valve or gate so its bolts clear flanges and neighbours.
+  function hardwareLayout(L) {
+    if (L._hardware) return L._hardware;
+    const flanges = flangePlan(L);
+    const placed = flanges.kept.map((k) => ({ key: k.key, parts: k.parts }));
+    for (const cell of L.cells) {
+      if (cell && cell.shape === 'dead') {
+        const dead = deadFootprint(cell);
+        if (dead) placed.push(dead);
+      }
+    }
+    const decor = {};
+    const cells = L.cells.filter((cell) => cell && (cell.kind === 'viewport' || cell.kind === 'valve' || cell.kind === 'gauge' || cell.gate));
+    for (const cell of cells) {
+      const vert = !!(cell.mask & N);
+      const prefer = (cell.i + cell.j) % 2 ? 1 : -1;
+      let chosen = null;
+      for (const extra of [0, 36, 72]) {
+        for (const side of [prefer, -prefer]) {
+          const nx = vert ? side : 0, ny = vert ? 0 : side;
+          const spot = decorFootprint(cell, nx, ny, extra);
+          if (!placed.some((p) => flangePartsHit(p.parts, spot.parts))) { chosen = spot; break; }
+        }
+        if (chosen) break;
+      }
+      if (!chosen) {
+        const side = prefer, nx = vert ? side : 0, ny = vert ? 0 : side;
+        chosen = decorFootprint(cell, nx, ny, 0);
+      }
+      decor[`${cell.i},${cell.j}`] = chosen;
+      placed.push({ key: `decor ${cell.i},${cell.j}`, parts: chosen.parts });
+    }
+    return (L._hardware = { flanges, decor, placed });
+  }
   function nextToward(L, i, j) {
     const k = j * L.cols + i, here = L.dist[k];
     if (here === 0) return null;
@@ -5282,7 +5395,7 @@ window.VM_LEVEL_DATA = {"version":2,"releasedThrough":30,"chapters":[{"n":1,"tit
   }
 
   return { C, D, H, HC, WALL_T, BIT, DIRS, SIDE_DIR, LEVELS, DEAD_END_PARTS, CROSS_S0, mulberry, generate, fromLayout, assemble, bfs, bfsMulti, buildCell, nearestWall, wallDistance,
-    insideBore, cellAt, connected, exitPlane, exitPlanes, PUMP_R, PUMP_NECK, PUMP_PORTS, pumpLayout, pumpPoint, nextToward, gateClosed, PLATE_T, setLevels: (l) => { LEVELS.length = 0; LEVELS.push(...l); } };
+    insideBore, cellAt, connected, exitPlane, exitPlanes, PUMP_R, PUMP_NECK, PUMP_PORTS, pumpLayout, pumpPoint, nextToward, gateClosed, PLATE_T, conflatParts, flangePlan, hardwareLayout, setLevels: (l) => { LEVELS.length = 0; LEVELS.push(...l); } };
 });
 
 </script>
@@ -7991,8 +8104,8 @@ function render() {
   const i0 = Math.max(0, Math.floor(x0 / C) - 1), i1 = Math.min(L.cols - 1, Math.floor(x1 / C) + 1), j0 = Math.max(0, Math.floor(y0 / C) - 1), j1 = Math.min(L.rows - 1, Math.floor(y1 / C) + 1);
   const vis = []; for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) vis.push(L.cells[j * L.cols + i]);
   for (const e of L.exits) drawPump(L, e, bw);
-  for (const cell of vis) drawDecorBehind(cell, bw);
-  for (const cell of vis) drawGateBonnet(cell, bw);
+  for (const cell of vis) drawDecorBehind(L, cell, bw);
+  for (const cell of vis) drawGateBonnet(L, cell, bw);
   for (const cell of vis) drawSteel(cell, bw);
   for (const cell of vis) drawBore(cell, bw);
   for (const e of L.exits) drawExitStub(L, e, bw);
@@ -8064,16 +8177,20 @@ function drawBore(cell, bw) {
 const isExitSide = (L, cell, bit) => L.exits.some((e) => e.i === cell.i && e.j === cell.j && e.side === bit);
 function drawJoints(L, cell, bw) {
   const m = cell.mask, o = { theme: settings.theme, wall: WALL_T };
-  if (m & M.BIT.E && !isExitSide(L, cell, M.BIT.E)) HW.conflatFlange(ctx, cell.cx + HC, cell.cy, 1, 0, H, o);
-  if (m & M.BIT.S && !isExitSide(L, cell, M.BIT.S)) HW.conflatFlange(ctx, cell.cx, cell.cy + HC, 0, 1, H, o);
+  const draw = M.flangePlan(L).draw;
+  if (draw.has(`J${cell.i},${cell.j},E`)) HW.conflatFlange(ctx, cell.cx + HC, cell.cy, 1, 0, H, o);
+  if (draw.has(`J${cell.i},${cell.j},S`)) HW.conflatFlange(ctx, cell.cx, cell.cy + HC, 0, 1, H, o);
   if (cell.shape === 'dead') {   // a real component closes every dead end (ion gauge, Pirani, viewport, …)
     for (const d of M.DIRS) if (m & d.bit) { HW.deadEndPart(ctx, cell.part || 'blank', cell.cx - d.dx * (H + WALL_T), cell.cy - d.dy * (H + WALL_T), -d.dx, -d.dy, 0.9 * H, { theme: settings.theme, t: state.clock, label: false }); deadEndLabel(cell.part || 'blank', cell.cx - d.dx * (H + WALL_T), cell.cy - d.dy * (H + WALL_T), -d.dx, -d.dy, 0.9 * H, bw); break; }
   }
 }
-function drawDecorBehind(cell, bw) {
+function decorSpot(L, cell) {
+  const spot = M.hardwareLayout(L).decor[`${cell.i},${cell.j}`];
+  return spot || { nx: 0, ny: 1, extra: 0, x: cell.cx, y: cell.cy + (H + WALL_T) };
+}
+function drawDecorBehind(L, cell, bw) {
   if (cell.kind !== 'viewport' && cell.kind !== 'valve' && cell.kind !== 'gauge') return;
-  const vert = !!(cell.mask & M.BIT.N), side = (cell.i + cell.j) % 2 ? 1 : -1;
-  const nx = vert ? side : 0, ny = vert ? 0 : side, x = cell.cx + nx * (H + WALL_T), y = cell.cy + ny * (H + WALL_T);
+  const spot = decorSpot(L, cell), nx = spot.nx, ny = spot.ny, x = spot.x, y = spot.y;
   const o = { theme: settings.theme };
   if (cell.kind === 'viewport') HW.viewport(ctx, x, y, nx, ny, 34, o);
   else if (cell.kind === 'gauge') { const cx = x + nx * 70, cy = y + ny * 70; HW.stainlessStroke(ctx, x, y, cx, cy, 22, o); HW.gauge(ctx, cx, cy, 30, { ...o, type: 'ion', t: state.clock }); }
@@ -8101,10 +8218,10 @@ function drawThermal(cell, bw) {
 // gate valves: the bonnet sits outside the tube; the blade slides across the bore when shut
 const gateOpenness = (g, t) => { const ph = ((t / g.period + g.phase) % 1), open = g.open, ramp = 0.18 / g.period;
   if (ph < open) return Math.min(1, ph / ramp, (open - ph) / ramp + 0); return 0; };
-function drawGateBonnet(cell, bw) {
+function drawGateBonnet(L, cell, bw) {
   if (!cell.gate) return;
-  const g = cell.gate, nx = g.vert ? 1 : 0, ny = g.vert ? 0 : 1;   // bonnet on the +x side of a vertical tube, +y side of a horizontal one
-  HW.gateValve(ctx, cell.cx + nx * (H + WALL_T), cell.cy + ny * (H + WALL_T), nx, ny, 64, { theme: settings.theme });
+  const spot = decorSpot(L, cell);
+  HW.gateValve(ctx, spot.x, spot.y, spot.nx, spot.ny, 64, { theme: settings.theme });
 }
 function drawPlates(cell, bw) {
   const t = state.world.stats.time;
@@ -8168,7 +8285,7 @@ function drawExitStub(L, e, bw) {
   for (let q = 0; q < 3; q++) { const u = ((q / 3 + ph) % 1) * len; ctx.globalAlpha = 0.18 + 0.3 * Math.sin(Math.PI * (u / len));
     ctx.fillStyle = bw ? '#fff' : PAL.paperLight; ctx.beginPath(); ctx.moveTo(u + 4, 0); ctx.lineTo(u - 3, -5); ctx.lineTo(u - 3, 5); ctx.closePath(); ctx.fill(); }
   ctx.globalAlpha = 1; ctx.restore();
-  HW.conflatFlange(ctx, ep.x, ep.y, ep.ax, ep.ay, H, { theme: settings.theme, wall: WALL_T, over: 26 });
+  if (M.flangePlan(L).draw.has(`X${e.i},${e.j},${e.side}`)) HW.conflatFlange(ctx, ep.x, ep.y, ep.ax, ep.ay, H, { theme: settings.theme, wall: WALL_T, over: 26 });
   if (e.bonus) {
     ctx.save(); ctx.font = bw ? `11px ${face(true)}` : `700 12px ${TK.font.serif}`; ctx.fillStyle = bw ? '#fff' : PAL.paperLight; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     clampedText('BONUS PUMP ×1.5', ep.x + ep.ax * 30 + nx * (H + WALL_T + 14), ep.y + ep.ay * 30 + ny * (H + WALL_T + 14)); ctx.restore();
