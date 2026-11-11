@@ -1,6 +1,8 @@
-/* Lock-screen trial and Escape during a lesson.
+/* Lock-screen trial, Escape during a lesson, and lesson layout.
    Try it free must start the locked mode and its tutorial.
    Escape closes Settings, then pause, and skips only when no panel is open.
+   At short and landscape sizes the stage, coach text, and Skip stay inside
+   the viewport, and the Trial label stays off the chamber.
    Run: node tests/maxwell-tutorial-browser.mjs [port]
    Screenshots go to /tmp/maxwell-hold-shots, not the repo. */
 import { spawn } from 'node:child_process';
@@ -164,6 +166,153 @@ try {
       }
     }
   }
+
+  const LAYOUT = `(() => {
+    const vw = innerWidth, vh = innerHeight;
+    const canvas = document.getElementById('game');
+    const cr = canvas.getBoundingClientRect();
+    const sx = cr.width / 1000, sy = cr.height / 680;
+    const mode = window.MDGameLive.tutorial().playMode;
+    const play = mode === 'sort'
+      ? { x: cr.left + 60 * sx, y: cr.top + 176 * sy, w: 880 * sx, h: 440 * sy }
+      : { x: cr.left + 60 * sx, y: cr.top + 118 * sy, w: 880 * sx, h: 500 * sy };
+    const overlap = (a, b) => {
+      if (!a || !b || a.hidden || a.w < 1 || a.h < 1) return 0;
+      const x = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+      const y = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+      return Math.round(x * y);
+    };
+    const box = (el) => {
+      if (!el) return { missing: true };
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return {
+        hidden: !!(el.hidden || cs.display === 'none' || cs.visibility === 'hidden'),
+        x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom,
+        scrollY: el.scrollHeight - el.clientHeight,
+      };
+    };
+    const inside = (b) => !!(b && !b.missing && !b.hidden && b.w > 1 && b.x >= -1 && b.y >= -1 && b.right <= vw + 1 && b.bottom <= vh + 1);
+    const stage = box(canvas);
+    const msg = box(document.getElementById('instrument-message'));
+    const skip = box(document.getElementById('b-skip-tutorial'));
+    const trial = box(document.getElementById('trial-badge'));
+    const pause = box(document.getElementById('p-pause'));
+    const pauseSkip = box(document.getElementById('b-pause-skip'));
+    const t = window.MDGameLive.tutorial();
+    const round = (b) => b && !b.missing ? { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h), bottom: Math.round(b.bottom) } : b;
+    return {
+      vw, vh,
+      stage: round(stage), msg: round(msg), skip: round(skip), trial: round(trial), pause: round(pause), pauseSkip: round(pauseSkip),
+      stageIn: inside(stage), msgIn: inside(msg), skipIn: inside(skip),
+      msgCut: !!(msg && msg.scrollY > 2),
+      coachStage: overlap(msg, { x: cr.x, y: cr.y, w: cr.width, h: cr.height }),
+      skipStage: overlap(skip, { x: cr.x, y: cr.y, w: cr.width, h: cr.height }),
+      trialChamber: trial.hidden ? 0 : overlap(trial, play),
+      pauseIn: inside(pause), pauseSkipIn: inside(pauseSkip),
+      pauseShown: document.getElementById('p-pause').classList.contains('show'),
+      step: t.step, active: t.active, playMode: t.playMode, screen: t.screen,
+    };
+  })()`;
+  const layoutRows = [];
+  const layoutViews = [
+    { name: '568x320', w: 568, h: 320 },
+    { name: '667x375', w: 667, h: 375 },
+    { name: '812x375', w: 812, h: 375 },
+    { name: '320x568', w: 320, h: 568 },
+    { name: '360x740', w: 360, h: 740 },
+    { name: '390x844', w: 390, h: 844 },
+    { name: '768x900', w: 768, h: 900 },
+    { name: '1280x800', w: 1280, h: 800 },
+  ];
+  let layoutPreload = null;
+  async function layoutBoot(view, theme) {
+    await send('Emulation.setDeviceMetricsOverride', { width: view.w, height: view.h, deviceScaleFactor: 1, mobile: view.w < 900 });
+    if (layoutPreload) { try { await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: layoutPreload }); } catch {} }
+    const saved = { settings: { theme, tempScale2: true, wallHeat: 'preset' }, coins: 0, unlockedZ: 1, best: {}, tutorials: { single: false, two: false, sort: false } };
+    layoutPreload = (await send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `try{localStorage.removeItem('maxwells-demon.access');localStorage.setItem('maxwells-demon.v2', ${JSON.stringify(JSON.stringify(saved))});}catch(e){}`,
+    })).identifier;
+    await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/play/maxwells-demon/?layout=${theme}-${view.name}` });
+    for (let i = 0; i < 50; i++) {
+      if (await evalJs('!!(window.MDGameLive && document.getElementById("b-begin"))')) return;
+      await sleep(100);
+    }
+    throw new Error(`layout game did not start ${theme} ${view.name}`);
+  }
+  async function waitLayoutStep(n) {
+    for (let i = 0; i < 70; i++) {
+      const t = await evalJs('window.MDGameLive.tutorial()');
+      if (t.active && t.step === n && t.coach) return t;
+      await sleep(100);
+    }
+    return await evalJs('window.MDGameLive.tutorial()');
+  }
+  function layoutProblems(m, { pause = false } = {}) {
+    const problems = [];
+    if (pause) {
+      if (!m.pauseShown) problems.push('pause panel hidden');
+      if (!m.pauseIn) problems.push(`pause panel outside ${JSON.stringify(m.pause)}`);
+      if (!m.pauseSkipIn) problems.push(`pause Skip outside ${JSON.stringify(m.pauseSkip)}`);
+      return problems;
+    }
+    if (!m.stageIn) problems.push(`stage outside ${JSON.stringify(m.stage)}`);
+    if (!m.msgIn) problems.push(`coach outside ${JSON.stringify(m.msg)}`);
+    if (!m.skipIn) problems.push(`Skip outside ${JSON.stringify(m.skip)}`);
+    if (m.msgCut) problems.push('coach text clipped');
+    if (m.coachStage > 0) problems.push(`coach overlaps stage by ${m.coachStage}px`);
+    if (m.skipStage > 0) problems.push(`Skip overlaps stage by ${m.skipStage}px`);
+    if (m.trialChamber > 0) problems.push(`Trial label overlaps chamber by ${m.trialChamber}px`);
+    return problems;
+  }
+  for (const view of layoutViews) {
+    for (const theme of ['victorian', 'bw']) {
+      await layoutBoot(view, theme);
+      for (const mode of ['single', 'two', 'sort']) {
+        if (mode === 'single') {
+          await evalJs("document.getElementById('b-begin').click(); true");
+          await sleep(120);
+          await evalJs("document.getElementById('b-single').click(); true");
+        } else {
+          const locked = await evalJs(`(() => { const b = document.getElementById(${JSON.stringify(mode === 'two' ? 'b-two' : 'b-sort')}); b.click(); return document.getElementById('p-locked').classList.contains('show'); })()`);
+          await sleep(150);
+          if (locked) await evalJs("document.getElementById('lk-trial').click(); true");
+        }
+        for (let step = 0; step < 3; step++) {
+          const got = await waitLayoutStep(step);
+          if (!got.active || got.step !== step) {
+            fail(`${view.name} ${theme} ${mode} did not reach step ${step}`);
+            layoutRows.push({ view: view.name, theme, mode, step, fail: 'missing step' });
+            break;
+          }
+          await sleep(250);
+          const m = await evalJs(LAYOUT);
+          const problems = layoutProblems(m);
+          if (m.step !== step || m.playMode !== mode) problems.push(`measured step ${m.step} mode ${m.playMode}`);
+          if (problems.length) fail(`${view.name} ${theme} ${mode} step ${step}: ${problems.join('; ')}`);
+          layoutRows.push({ view: view.name, theme, mode, step, problems, stage: m.stage, msg: m.msg, skip: m.skip, trial: m.trial, coachStage: m.coachStage, skipStage: m.skipStage, trialChamber: m.trialChamber });
+          await shot(`${theme}-${view.name}-${mode}-step${step}`);
+          console.log('layout', view.name, theme, mode, 'step', step, problems.length ? 'FAIL' : 'ok');
+          if (mode === 'single' && step === 0) {
+            await evalJs("document.getElementById('b-pausebtn').click(); true");
+            await sleep(200);
+            const p = await evalJs(LAYOUT);
+            const pp = layoutProblems(p, { pause: true });
+            if (pp.length) fail(`${view.name} ${theme} pause: ${pp.join('; ')}`);
+            layoutRows.push({ view: view.name, theme, mode: 'pause', step: 0, problems: pp, pause: p.pause, pauseSkip: p.pauseSkip });
+            await shot(`${theme}-${view.name}-pause`);
+            console.log('layout', view.name, theme, 'pause', pp.length ? 'FAIL' : 'ok');
+            await evalJs("document.getElementById('b-resume').click(); true");
+            await sleep(100);
+          }
+        }
+        await evalJs("document.getElementById('b-pausebtn').click(); document.getElementById('b-end').click(); true");
+        await sleep(200);
+        if (mode !== 'sort') await evalJs("document.getElementById('b-over-title').click(); document.getElementById('b-begin').click(); true");
+      }
+    }
+  }
+  await writeFile(`${OUT}/layout-measurements.json`, JSON.stringify(layoutRows, null, 2));
 } finally {
   try { ws && ws.close(); } catch {}
   chrome.kill('SIGKILL');
