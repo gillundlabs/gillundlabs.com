@@ -325,10 +325,15 @@ try {
       return Math.round(Math.max(0, x) * Math.max(0, y));
     };
     const corner = document.elementFromPoint(s.left + 6, s.bottom - 6);
-    const parse = (c) => (c.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
-    const lum = (rgb) => rgb.map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
-    const cs = getComputedStyle(read);
-    const fg = parse(cs.color), bg = parse(cs.backgroundColor);
+    const parse = (c) => (String(c).match(/[\\d.]+/g) || []).slice(0, 4).map(Number);
+    const lum = (rgb) => rgb.slice(0, 3).map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const opaque = (c) => { const p = parse(c); return p.length >= 3 && (p.length < 4 || p[3] > 0.05); };
+    let bgNode = read;
+    while (bgNode && !opaque(getComputedStyle(bgNode).backgroundColor)) bgNode = bgNode.parentElement;
+    const plateBg = getComputedStyle(bgNode || read).backgroundColor;
+    const label = read.querySelector('.vls-plaque__label') || read;
+    const labelColor = getComputedStyle(label).color;
+    const fg = parse(labelColor), bg = parse(plateBg);
     const L1 = lum(fg), L2 = lum(bg.length ? bg : [0, 0, 0]);
     const contrast = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
     return {
@@ -343,7 +348,7 @@ try {
       cornerTag: corner ? (corner.id || corner.tagName) : '',
       screws: chrome ? chrome.querySelectorAll('circle').length : 0,
       plaque: read.classList.contains('vls-plaque'),
-      color: cs.color, background: cs.backgroundColor, contrast,
+      color: labelColor, background: plateBg, contrast,
       theme: document.body.dataset.theme,
       vw: innerWidth, vh: innerHeight,
     };
@@ -370,7 +375,16 @@ try {
       if (!m.plaque || m.screws < 4) problems.push(`pressure is not an engraved plate (plaque ${m.plaque}, screws ${m.screws})`);
       if (m.plateStage > 0) problems.push(`pressure plate overlaps the stage by ${m.plateStage}px`);
       if (m.cornerIsPlate) problems.push(`chamber corner is the plate (${m.cornerTag})`);
-      if (m.theme === 'bw' && !(m.contrast >= 7)) problems.push(`B&W contrast ${m.contrast && m.contrast.toFixed(2)} (${m.color} on ${m.background})`);
+    }
+    return problems;
+  }
+  function readoutLegibility(m) {
+    const problems = [];
+    if (m.readHidden) return ['pressure readout hidden'];
+    if (m.theme === 'bw') {
+      if (!(m.contrast >= 7)) problems.push(`B&W label contrast ${Number(m.contrast).toFixed(2)} (${m.color} on ${m.background})`);
+    } else if (!(/241,\s*236,\s*223/.test(m.background) && /42,\s*24,\s*3/.test(m.color))) {
+      problems.push(`Victorian readout changed (${m.color} on ${m.background})`);
     }
     return problems;
   }
@@ -423,11 +437,15 @@ try {
       await settlePlate();
       const after = Object.assign({ view: view.name, theme, when: 'after-skip' }, await evalJs(STAGE));
       const afterProblems = fullSize[view.name] ? plateProblems(after) : (!after.inlineWidth ? [] : [`portrait stage still has inline width ${after.inlineWidth}`]);
+      afterProblems.push(...readoutLegibility(after));
       if (afterProblems.length) fail(`${view.name} ${theme} after Skip: ${afterProblems.join('; ')}`);
       after.problems = afterProblems;
       layoutRows.push(after);
       await shot(`${theme}-${view.name}-after-skip`);
       if (view.name === '568x320') await gutterCrops(theme, 'after-skip', after);
+      if (theme === 'bw' && (view.name === '320x568' || view.name === '390x844')) {
+        await cropShot(`${theme}-${view.name}-after-skip-readout`, { x: after.read.x, y: after.read.y, w: after.read.w, h: after.read.h });
+      }
       console.log('restore', view.name, theme, 'after-skip', afterProblems.length ? 'FAIL' : 'ok', after.width.toFixed(1), after.height.toFixed(1), 'top', after.top.toFixed(1));
 
       await layoutBoot(view, theme);
@@ -472,12 +490,16 @@ try {
       await settlePlate();
       const ordinary = Object.assign({ view: view.name, theme, when: 'ordinary-play' }, await evalJs(STAGE));
       const ordinaryProblems = fullSize[view.name] ? plateProblems(ordinary) : (!ordinary.inlineWidth ? [] : [`portrait stage still has inline width ${ordinary.inlineWidth}`]);
+      ordinaryProblems.push(...readoutLegibility(ordinary));
       if (ordinary.active) ordinaryProblems.push('ordinary play started a lesson');
       if (ordinaryProblems.length) fail(`${view.name} ${theme} ordinary play: ${ordinaryProblems.join('; ')}`);
       ordinary.problems = ordinaryProblems;
       layoutRows.push(ordinary);
       await shot(`${theme}-${view.name}-ordinary-play`);
       if (view.name === '568x320') await gutterCrops(theme, 'ordinary-play', ordinary);
+      if (theme === 'bw' && (view.name === '320x568' || view.name === '390x844')) {
+        await cropShot(`${theme}-${view.name}-ordinary-play-readout`, { x: ordinary.read.x, y: ordinary.read.y, w: ordinary.read.w, h: ordinary.read.h });
+      }
       console.log('restore', view.name, theme, 'ordinary', ordinaryProblems.length ? 'FAIL' : 'ok', ordinary.width.toFixed(1), ordinary.height.toFixed(1));
     }
   }

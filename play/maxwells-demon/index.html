@@ -1089,11 +1089,12 @@
     box-shadow: none !important; outline: none !important; filter: none !important;
   }
   body[data-theme="bw"] #instrument-message { border: 2px solid #fff !important; background-color: #000 !important; color: #fff !important; }
-  body[data-theme="bw"] #instrument-dock.pressure-gutter #sorting-readout {
+  body[data-theme="bw"] #sorting-readout {
     background: #fff !important; background-color: #fff !important; background-image: none !important;
-    color: #000 !important; border: 2px solid #000 !important; box-shadow: none !important;
+    color: #000 !important; border: 2px solid #000 !important; box-shadow: none !important; outline: none !important;
   }
-  body[data-theme="bw"] #instrument-dock.pressure-gutter #sorting-readout .vls-exp { color: #000 !important; }
+  body[data-theme="bw"] #sorting-readout .vls-exp,
+  body[data-theme="bw"] #sorting-readout .vls-plaque__label { color: #000 !important; background: transparent !important; }
   #instrument-dock.pressure-gutter #sorting-readout .vls-plaque__label {
     white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
     font-size: 12px !important; line-height: 1.25 !important; height: auto !important;
