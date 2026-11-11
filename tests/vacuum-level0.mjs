@@ -329,9 +329,11 @@ try {
   }
 
   const sensorLine = 'No motion sensor found. Drag or use arrow keys to tip the apparatus';
-  for (const [w, h, theme] of [[320, 700, 'bw'], [320, 700, 'victorian'], [360, 740, 'bw'], [360, 740, 'victorian'], [390, 844, 'bw'], [390, 844, 'victorian'], [768, 900, 'bw'], [768, 900, 'victorian'], [1280, 800, 'bw'], [1280, 800, 'victorian']]) {
-    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: w < 500 });
-    await send('Emulation.setTouchEmulationEnabled', { enabled: w < 500, maxTouchPoints: 1 });
+  const sensorSizes = [[320, 700, 'bw'], [320, 700, 'victorian'], [320, 568, 'bw'], [320, 568, 'victorian'], [568, 320, 'bw'], [568, 320, 'victorian'], [360, 640, 'bw'], [360, 640, 'victorian'], [360, 740, 'bw'], [360, 740, 'victorian'], [390, 844, 'bw'], [390, 844, 'victorian'], [412, 915, 'bw'], [412, 915, 'victorian'], [768, 900, 'bw'], [768, 900, 'victorian'], [1280, 800, 'bw'], [1280, 800, 'victorian']];
+  for (const [w, h, theme] of sensorSizes) {
+    const phone = Math.min(w, h) < 500;
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: phone });
+    await send('Emulation.setTouchEmulationEnabled', { enabled: phone, maxTouchPoints: 1 });
     await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
     await ev(`document.getElementById('b-begin').click(); true`);
     let appeared = false;
@@ -353,6 +355,10 @@ try {
       if (hits(hint, box.gauge)) fail(where + ' message covers the gauge ' + JSON.stringify({ hint, gauge: box.gauge }));
       for (const name of ['tube', 'atom', 'mouth', 'pump', 'plate']) {
         if (hits(hint, box[name])) fail(where + ' message covers the ' + name + ' ' + JSON.stringify(box));
+      }
+      for (const name of ['tube', 'atom', 'mouth', 'plate']) {
+        const part = box[name];
+        if (!part || part.b < 1 || part.t > h - 1 || part.r < 1 || part.l > w - 1) fail(where + ' ' + name + ' is off the screen ' + JSON.stringify(part));
       }
     }
     console.log('sensor', theme, w, hint && JSON.stringify({ l: Math.round(hint.l), t: Math.round(hint.t), r: Math.round(hint.r), b: Math.round(hint.b), clipped: hint.clipped }));
