@@ -146,13 +146,13 @@ try {
       playing: document.body.classList.contains('playing'),
       lesson: !!(document.getElementById('tutorial-hud') && document.getElementById('tutorial-hud').classList.contains('show')),
       skip: (document.getElementById('b-skip-tutorial') || {}).textContent || '',
-      line: (document.querySelector('#tutorial-plaque .vls-plaque__label') || {}).textContent || '',
+      line: ((document.querySelector('#tutorial-plaque .vls-plaque__label') || {}).textContent || '').replace(/\u00a0/g, ' '),
       levels: document.getElementById('p-levels').classList.contains('show'),
       settings: document.getElementById('p-settings').classList.contains('show'),
       settingsMsg: (document.getElementById('s-tutor-msg') || {}).textContent || '',
       win: document.getElementById('p-win').classList.contains('show'),
       winTitle: document.getElementById('win-title').textContent,
-      winNote: document.getElementById('win-note').textContent,
+      winNote: (document.getElementById('win-note').textContent || '').replace(/\u00a0/g, ' '),
       level0: !!(list && /Level 0/.test(list.textContent)),
       seenLevels: !!(seen && seen.levels),
       seenCustom: !!(seen && seen.custom),
@@ -444,7 +444,7 @@ try {
         };
       })()`);
       if (foldedText.plaque) fail(where + ' sensor plaque is still a separate plate');
-      if (foldedText.text !== sensorLine) fail(where + ' wording changed ' + foldedText.text);
+      if ((foldedText.text || '').replace(/\u00a0/g, ' ') !== sensorLine) fail(where + ' wording changed ' + foldedText.text);
       if (!foldedText.range || foldedText.range.w < 20 || foldedText.range.h < 8) fail(where + ' sensor line has no box ' + JSON.stringify(foldedText));
       if (foldedText.scroll > 0) fail(where + ' sensor line is scrolled');
       const plateHolds = (a, b) => a.l >= b.l - 1 && a.t >= b.t - 1 && a.r <= b.r + 1 && a.b <= b.b + 1;
@@ -587,8 +587,8 @@ try {
       const sensor = lab.querySelector('.tutor-sensor');
       const sr = sensor ? (document.createRange(), range.selectNodeContents(sensor), range.getBoundingClientRect()) : null;
       return {
-        text: line ? line.textContent : lab.textContent,
-        sensor: sensor ? sensor.textContent : '',
+        text: (line ? line.textContent : lab.textContent).replace(/\u00a0/g, ' '),
+        sensor: sensor ? sensor.textContent.replace(/\u00a0/g, ' ') : '',
         sensorRange: sr ? { l: sr.left, t: sr.top, r: sr.right, b: sr.bottom, w: sr.width, h: sr.height } : null,
         range: { l: rr.left, t: rr.top, r: rr.right, b: rr.bottom, w: rr.width, h: rr.height },
         plate: { l: pr.left, t: pr.top, r: pr.right, b: pr.bottom },
@@ -806,9 +806,31 @@ try {
       if (lay.hint && lay.hint.shown && over(lay[name], lay.hint)) problems.push(name + ' over plaque');
     }
     if (!machine || machine.b - machine.t < 40) problems.push('machine ' + (machine ? (machine.b - machine.t).toFixed(1) : 'missing'));
+    const lineWords = (el) => {
+      if (!el || getComputedStyle(el).display === 'none') return [];
+      const node = [...el.childNodes].find((n) => n.nodeType === 3);
+      if (!node) return [];
+      const s = node.textContent;
+      const lines = [];
+      let start = 0, top = null;
+      for (let i = 0; i < s.length; i++) {
+        const range = document.createRange();
+        range.setStart(node, i); range.setEnd(node, Math.min(s.length, i + 1));
+        const rect = range.getClientRects()[0];
+        if (!rect || rect.width < 0.2) continue;
+        if (top === null) top = rect.top;
+        else if (Math.abs(rect.top - top) > 2) { lines.push(s.slice(start, i)); start = i; top = rect.top; }
+      }
+      lines.push(s.slice(start));
+      return lines.map((l) => l.replace(/\u00a0/g, ' ').trim()).filter(Boolean);
+    };
+    for (const el of [plate.querySelector('.tutor-line'), plate.querySelector('.tutor-sensor'), document.getElementById('rotate-hint')]) {
+      const lines = lineWords(el);
+      if (lines.length > 1 && lines[lines.length - 1].split(/\\s+/).filter(Boolean).length < 2) problems.push('widow ' + lines[lines.length - 1]);
+    }
     const fold = document.body.classList.contains('sensor-in-plate');
     const plaqueOn = getComputedStyle(document.getElementById('hint-plaque')).display !== 'none' && document.getElementById('hint-plaque').classList.contains('show');
-    const sensor = (plate.querySelector('.tutor-sensor') || {}).textContent || '';
+    const sensor = ((plate.querySelector('.tutor-sensor') || {}).textContent || '').replace(/\u00a0/g, ' ');
     return { problems, fold, plaqueOn, sensor, mh: machine ? +(machine.b - machine.t).toFixed(1) : 0 };
   })()`;
   const pauseReport = `(() => {
@@ -975,6 +997,93 @@ try {
         await ev(`document.getElementById('b-resume').click(); true`);
         await sleep(100);
         console.log('resize', where, 'mh', lesson.mh);
+      }
+    }
+  }
+  const winReport = `(() => {
+    const problems = [];
+    const panel = document.getElementById('p-win');
+    if (!panel.classList.contains('show')) return ['win panel hidden'];
+    const pr = panel.getBoundingClientRect();
+    const visT = pr.top + panel.clientTop, visB = visT + panel.clientHeight;
+    const engraved = (el) => {
+      const cs = getComputedStyle(el);
+      const after = getComputedStyle(el, '::after');
+      const border = parseFloat(cs.borderTopWidth) || 0;
+      if (after && after.content && after.content !== 'none' && after.position === 'absolute' && after.borderTopStyle && after.borderTopStyle !== 'none') {
+        return border + (parseFloat(after.top) || 0) + (parseFloat(after.borderTopWidth) || 0);
+      }
+      return border;
+    };
+    for (const id of ['b-next', 'b-retry', 'b-win-levels']) {
+      const el = document.getElementById(id);
+      if (!el || el.style.display === 'none') { problems.push(id + ' hidden'); continue; }
+      const face = el.getBoundingClientRect();
+      const node = el.querySelector('.vm-button-face') || el;
+      const range = document.createRange(); range.selectNodeContents(node);
+      const ink = range.getBoundingClientRect();
+      const edge = engraved(el);
+      const g = Math.min(ink.left - face.left - edge, ink.top - face.top - edge, face.right - edge - ink.right, face.bottom - edge - ink.bottom);
+      const cx = face.left + face.width / 2, cy = face.top + face.height / 2;
+      const hit = document.elementFromPoint(cx, cy);
+      if (face.width < 8 || face.top < visT - 0.5 || face.bottom > visB + 0.5 || face.top < -0.5 || face.bottom > innerHeight + 0.5 || face.left < -0.5 || face.right > innerWidth + 0.5) problems.push(id + ' off screen');
+      if (!(hit && el.contains(hit))) problems.push(id + ' not hit');
+      if (g < 3) problems.push(id + ' text ' + g.toFixed(2));
+    }
+    const note = document.getElementById('win-note');
+    const node = note && [...note.childNodes].find((n) => n.nodeType === 3);
+    if (node) {
+      const s = node.textContent;
+      const lines = [];
+      let start = 0, top = null;
+      for (let i = 0; i < s.length; i++) {
+        const range = document.createRange();
+        range.setStart(node, i); range.setEnd(node, Math.min(s.length, i + 1));
+        const rect = range.getClientRects()[0];
+        if (!rect || rect.width < 0.2) continue;
+        if (top === null) top = rect.top;
+        else if (Math.abs(rect.top - top) > 2) { lines.push(s.slice(start, i)); start = i; top = rect.top; }
+      }
+      lines.push(s.slice(start));
+      const clean = lines.map((l) => l.replace(/\\u00a0/g, ' ').trim()).filter(Boolean);
+      if (clean.length > 1 && clean[clean.length - 1].split(/\\s+/).filter(Boolean).length < 2) problems.push('widow ' + clean[clean.length - 1]);
+    }
+    return problems;
+  })()`;
+  async function openCustomLesson() {
+    const code = await ev(`(() => { const EC = window.VMEditorCore; let m = EC.resize(EC.newMaze('Practice'), 2, 2); EC.place(m, 'tube', 0, 0, 1); EC.place(m, 'source', 0, 0); EC.place(m, 'rotary', 0, 0); const errors = EC.validate(m); return errors.length ? '' : EC.encode(m); })()`);
+    if (!code) return false;
+    await ev(`document.getElementById('b-begin').click(); true`);
+    for (let i = 0; i < 40 && !await ev(`document.getElementById('hint-plaque').classList.contains('show')`); i++) await sleep(80);
+    await ev(`document.getElementById('b-levels-back').click(); true`);
+    await sleep(80);
+    await ev(`document.getElementById('b-editor').click(); true`);
+    await sleep(150);
+    await ev(`document.getElementById('mm-code').value = ${JSON.stringify(code)}; document.getElementById('mm-import').click(); true`);
+    await sleep(150);
+    await ev(`document.querySelector('#mm-list button[data-play]').click(); true`);
+    await sleep(400);
+    return true;
+  }
+  for (const theme of ['victorian', 'bw']) {
+    for (const mode of ['levels', 'custom']) {
+      for (const [w, h] of sweepSizes) {
+        const where = theme + ' ' + mode + ' done ' + w + 'x' + h;
+        const phone = Math.min(w, h) < 900;
+        await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: phone });
+        await send('Emulation.setTouchEmulationEnabled', { enabled: phone, maxTouchPoints: 1 });
+        const seen = mode === 'custom'
+          ? { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: false } }
+          : { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } };
+        await boot(seen);
+        if (mode === 'custom') {
+          if (!await openCustomLesson()) { fail(where + ' maze did not open'); continue; }
+        } else await openLevelsLesson();
+        const opened = await ev(`window.VMShowPracticeDone()`);
+        if (!opened) fail(where + ' practice did not finish');
+        await sleep(200);
+        for (const p of await ev(winReport)) fail(where + ' ' + p);
+        console.log('done', where);
       }
     }
   }

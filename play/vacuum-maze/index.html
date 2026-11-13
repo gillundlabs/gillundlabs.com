@@ -784,6 +784,34 @@
     }
     #p-pause .sub { font-size: 12px; line-height: 1.25; margin: 6px 0 0; }
   }
+  /* Practice-done: the pump card and the long note push Continue past the fold, with no scroll cue. */
+  #p-win.show { display: flex; flex-direction: column; }
+  #p-win .row { flex: 0 0 auto; }
+  #tutorial-plaque .tutor-line,
+  #tutorial-plaque .tutor-sensor,
+  #rotate-hint,
+  #win-note,
+  #p-win h2 { text-wrap: pretty; }
+  @media (max-height: 700px) {
+    #p-win { padding: 8px 10px; }
+    #p-win h2 { font-size: 16px; margin: 0 0 2px; }
+    #p-win .big-stars { font-size: 20px; letter-spacing: 2px; margin: 0; line-height: 1; }
+    #win-pump-canvas { max-width: 120px; max-height: 56px; margin: 2px auto; }
+    #p-win .stat { gap: 1px 8px; margin: 4px auto; font-size: 12px; }
+    #p-win #win-note { font-size: 12px; line-height: 1.2; margin: 2px 0; }
+    #p-win .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+    #p-win #b-next { grid-column: 1 / -1; }
+    #p-win .row button { padding: 12px 14px !important; min-height: 36px; font-size: 12px !important; letter-spacing: .02em !important; white-space: nowrap !important; }
+  }
+  @media (max-height: 420px) {
+    #win-pump-canvas { display: none !important; }
+  }
+  @media (max-height: 340px) {
+    #p-win .big-stars { display: none; }
+    #p-win .big-stars { font-size: 16px; }
+    #p-win .stat { font-size: 11px; }
+    #p-win #win-note { font-size: 11px; }
+  }
   .tutor-restart { margin: 10px 0; }
   .tutor-restart > span { display: block; line-height: 1.3; }
   .tutor-restart small { display: block; font-weight: normal; opacity: .8; }
@@ -1114,7 +1142,7 @@
   <button id="b-pausebtn" aria-label="Pause"><svg class="vm-control-engraving" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M10 7v18M22 7v18" fill="none" stroke="currentColor" stroke-width="5"/></svg></button>
   <button id="b-level" aria-label="Set the current tilt as level" title="Set the current tilt as level (L)">◎</button>
 </div>
-<div id="rotate-hint">Turn the phone upright to tip the apparatus.</div>
+<div id="rotate-hint">Turn the phone upright to tip the&nbsp;apparatus.</div>
 <div id="ledger-scrim" aria-hidden="true"></div>
 <div id="hint-plaque" class="vls-plaque vls-plaque--ivory" data-vls-ivory="vm/hint-plaque" role="status" aria-live="polite"><span class="vls-plaque__label"></span></div>
 <div id="tutorial-hud">
@@ -7744,6 +7772,8 @@ function resize() {
   if (hint) delete hint.dataset.hintPlace;
   lessonInsetHold = null;
   if (hint && hint.classList.contains('show')) requestAnimationFrame(mountHintPlaque);
+  // The lesson plate's engraved rule is measured for the size it was built at. Rebuild it so a resize matches a cold boot.
+  if (lessonFraming()) requestAnimationFrame(mountTutorialPlaque);
   syncLessonChrome();
 }
 
@@ -8204,6 +8234,10 @@ function tutorialLine() {
     ? 'A maze you build keeps no best time and pays no coins. This practice saves nothing.'
     : 'Stars use record pace, not the screen clock. This practice saves nothing.';
 }
+function keepPair(text) {
+  // A non-breaking space between the last two words, so a wrap cannot leave one word on the last line.
+  return String(text).replace(/(\S+)\s+(\S+)\s*$/, '$1\u00A0$2');
+}
 function sensorSentence() {
   if (inputMode !== 'manual') return '';
   const why = inputReason === 'denied' ? 'Motion access was denied. ' : inputReason === 'none' ? 'No motion sensor found. ' : '';
@@ -8277,15 +8311,16 @@ function tutorialTick() {
     label.appendChild(lineEl);
   }
   let sensorEl = label.querySelector(':scope > .tutor-sensor');
-  const changed = lineEl.textContent !== line || (sensor ? !sensorEl || sensorEl.textContent !== sensor : !!sensorEl);
-  lineEl.textContent = line;
+  const shownLine = keepPair(line), shownSensor = sensor ? keepPair(sensor) : '';
+  const changed = lineEl.textContent !== shownLine || (shownSensor ? !sensorEl || sensorEl.textContent !== shownSensor : !!sensorEl);
+  lineEl.textContent = shownLine;
   if (sensor) {
     if (!sensorEl) {
       sensorEl = document.createElement('span');
       sensorEl.className = 'tutor-sensor';
       label.appendChild(sensorEl);
     }
-    sensorEl.textContent = sensor;
+    sensorEl.textContent = shownSensor;
   } else if (sensorEl) sensorEl.remove();
   const framed = document.body.dataset.theme !== 'bw';
   const missing = framed && !label.parentElement.querySelector('.vls-plaque__chrome');
@@ -8371,9 +8406,9 @@ function showTutorialWin() {
   const rows = [['Screen time', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par', `${r.par} s at record pace`],
     ['Stars', 'on record pace'], ['Pump', pumpName(r.exit.pump)], ['Saved', 'Nothing']];
   $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
-  $('win-note').textContent = r.mode === 'custom'
+  $('win-note').textContent = keepPair(r.mode === 'custom'
     ? 'A maze you build keeps no best time and pays no coins. This practice saved nothing.'
-    : `Stars follow record pace against par. Screen time is the other clock. Record pace is the same crossing on every screen (${b.name}). This practice saved nothing.`;
+    : `Stars follow record pace against par. Screen time is the other clock. Record pace is the same crossing on every screen (${b.name}). This practice saved nothing.`);
   $('b-next').style.display = ''; $('b-next').textContent = 'Continue ▸';
   showPanel('win');
 }
@@ -8684,6 +8719,16 @@ window.VMCanvasSig = function () {
   };
   const y0 = Math.max(0, canvas.height - Math.round(110 * dpr));
   return { full: fold(0, bitmap.length, 4), caption: fold(y0 * canvas.width * 4, bitmap.length, 4), w: canvas.width, h: canvas.height };
+};
+window.VMShowPracticeDone = function () {
+  if (!state.level || !state.level.tutorial || !state.world) return false;
+  const exit = state.level.exits && state.level.exits[0];
+  if (exit) state.world.wonExit = exit;
+  if (!(state.world.stats.time > 0)) state.world.stats.time = 3;
+  onTutorialWin();
+  clearTimeout(winTimer);
+  showTutorialWin();
+  return document.getElementById('p-win').classList.contains('show');
 };
 function practiceFrame(includePump) {
   const L = state.level;
@@ -9147,10 +9192,39 @@ function hud(theme) {
   }
   y += labH + 4 + valH + (narrow ? 6 : 8);
   const marks = `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`;
-  const parLine = L.tutorial
-    ? (narrow ? `${marks} par ${par} s · pace` : `${marks} par ${par} s at record pace`)
-    : `${marks} par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
-  field(parLine, x0, y, inner, parH, narrow ? 8 : 9);
+  const parWords = L.tutorial
+    ? (narrow ? `par ${par} s · pace` : `par ${par} s at record pace`)
+    : `par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
+  if (!L.tutorial) field(`${marks} ${parWords}`, x0, y, inner, parH, narrow ? 8 : 9);
+  else {
+    // The kit engraving face has no star glyph, so a canvas star is drawn instead of a fallback ×.
+    const r = narrow ? 4.5 : 5.5;
+    const gap = 2, starY = y + parH / 2;
+    ctx.save();
+    ctx.fillStyle = bw ? '#fff' : (PAL.engraving || '#2a1803');
+    ctx.strokeStyle = ctx.fillStyle;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      const cx = x0 + r + i * (r * 2 + gap);
+      ctx.beginPath();
+      for (let k = 0; k < 10; k++) {
+        const rad = (k % 2 ? r * 0.42 : r);
+        const a = -Math.PI / 2 + k * Math.PI / 5;
+        const px = cx + Math.cos(a) * rad, py = starY + Math.sin(a) * rad;
+        if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+      if (i < stars) ctx.fill(); else ctx.stroke();
+    }
+    ctx.restore();
+    const starW = 3 * (r * 2 + gap);
+    hudInk.push({ left: x0, right: x0 + starW - gap, top: starY - r, bottom: starY + r });
+    const words = window.VMChrome.faceText(ctx, parWords, x0 + starW, y + parH / 2, narrow ? 8 : 9, {
+      align: 'left', face: { x: x0 + starW, y, w: Math.max(20, inner - starW), h: parH, inset: 0 },
+      engraved: !bw, font: bw ? face(true) : FONTS.engraved, weight: '600', minSize: narrow ? 8 : 7,
+    });
+    if (words && words.bounds) hudInk.push(...words.bounds);
+  }
   window.VMHudInk = { plate: { l: left, t: top, r: left + width, b: top + h }, s: screw, lines: hudInk };
   const trRun = purchase.getEntitlement().trial;
   const trialBand = L.tutorial && trRun.enabled && trRun.state === 'running' && !purchase.getEntitlement().full ? 40 : 0;
