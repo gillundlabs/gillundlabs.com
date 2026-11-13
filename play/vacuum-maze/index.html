@@ -784,6 +784,7 @@
     }
     #p-pause .sub { font-size: 12px; line-height: 1.25; margin: 6px 0 0; }
   }
+  #p-pause .sub, #p-pause h2, #p-pause .vm-button-face { overflow-wrap: normal; word-break: normal; hyphens: manual; }
   /* Practice-done: the pump card and the long note push Continue past the fold, with no scroll cue. */
   #p-win.show { display: flex; flex-direction: column; }
   #p-win .row { flex: 0 0 auto; }
@@ -1270,7 +1271,7 @@
     <label>Breadcrumb map <input id="s-map" type="checkbox" style="justify-self:start"></label>
     <label>Live angle histogram <input id="s-hist" type="checkbox" style="justify-self:start"></label>
     <div class="tutor-restart">
-      <span>Tutorials <small>Show a first-time practice again. Best times stay as they are.</small></span>
+      <span>Tutorials <small>Show a first-time practice again. Best times stay as they&nbsp;are.</small></span>
       <div class="row" style="margin-top:6px"><button id="s-tutor-levels" type="button">Levels again</button><button id="s-tutor-custom" type="button">My mazes again</button></div>
       <p class="fine" id="s-tutor-msg" role="status"></p>
     </div>
@@ -1282,8 +1283,8 @@
 
   <div class="panel scrollable" id="p-pause" data-vls-ivory="vm/panel/pause">
     <h2>Paused</h2>
-    <div class="row"><button id="b-resume">Resume ▸</button><button id="b-restart">Restart</button><button id="b-pause-skip" type="button" hidden>Skip tutorial</button><button id="b-pause-settings">Settings</button><button id="b-pause-notebook">Notebook</button><button id="b-pause-levels">Levels</button></div>
-    <p class="sub">Tap Resume, or press P or Esc. On a computer, Space does the same.</p>
+    <div class="row"><button id="b-resume">Resume&nbsp;▸</button><button id="b-restart">Restart</button><button id="b-pause-skip" type="button" hidden>Skip&nbsp;tutorial</button><button id="b-pause-settings">Settings</button><button id="b-pause-notebook">Notebook</button><button id="b-pause-levels">Levels</button></div>
+    <p class="sub">Tap Resume, or press P or Esc. On a computer, Space does the&nbsp;same.</p>
   </div>
 
   <div class="panel scrollable" id="p-win" data-vls-ivory="vm/panel/win">
@@ -8422,15 +8423,15 @@ function onTutorialWin() {
 function showTutorialWin() {
   const r = state.lastResult, b = E.BODIES[r.body];
   ensureWinPump();
-  $('win-title').textContent = 'Practice done';
+  $('win-title').textContent = keepPair('Practice done');
   $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
   const rows = [['Screen time', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par', `${r.par} s at record pace`],
     ['Stars', 'on record pace'], ['Pump', pumpName(r.exit.pump)], ['Saved', 'Nothing']];
-  $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
+  $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${keepPair(k)}</span><b>${keepPair(v)}</b>`).join('');
   $('win-note').textContent = keepPair(r.mode === 'custom'
     ? 'A maze you build keeps no best time and pays no coins. This practice saved nothing.'
     : `Stars follow record pace against par. Screen time is the other clock. Record pace is the same crossing on every screen (${b.name}). This practice saved nothing.`);
-  $('b-next').style.display = ''; $('b-next').textContent = 'Continue ▸';
+  $('b-next').style.display = ''; $('b-next').textContent = keepPair('Continue ▸');
   showPanel('win');
 }
 function onWin() {
@@ -9805,9 +9806,9 @@ $('s-close').onclick = () => { if (state.world && !state.demo && state.world.ato
 function showTutorialAgain(mode) {
   store.tutorialSeen[mode] = false;
   persist();
-  $('s-tutor-msg').textContent = mode === 'custom'
+  $('s-tutor-msg').textContent = keepPair(mode === 'custom'
     ? 'The My mazes practice will show the next time you test-play or play a saved maze. Best times are unchanged.'
-    : 'The levels practice will show the next time you start a level. Best times are unchanged.';
+    : 'The levels practice will show the next time you start a level. Best times are unchanged.');
 }
 $('s-tutor-levels').onclick = () => showTutorialAgain('levels');
 $('s-tutor-custom').onclick = () => showTutorialAgain('custom');

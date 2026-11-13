@@ -159,9 +159,9 @@ try {
       line: ((document.querySelector('#tutorial-plaque .vls-plaque__label') || {}).textContent || '').replace(/\u00a0/g, ' '),
       levels: document.getElementById('p-levels').classList.contains('show'),
       settings: document.getElementById('p-settings').classList.contains('show'),
-      settingsMsg: (document.getElementById('s-tutor-msg') || {}).textContent || '',
+      settingsMsg: ((document.getElementById('s-tutor-msg') || {}).textContent || '').replace(/\u00a0/g, ' '),
       win: document.getElementById('p-win').classList.contains('show'),
-      winTitle: document.getElementById('win-title').textContent,
+      winTitle: (document.getElementById('win-title').textContent || '').replace(/\u00a0/g, ' '),
       winNote: (document.getElementById('win-note').textContent || '').replace(/\u00a0/g, ' '),
       level0: !!(list && /Level 0/.test(list.textContent)),
       seenLevels: !!(seen && seen.levels),
@@ -293,7 +293,7 @@ try {
     await hold('ArrowDown', 'ArrowDown', 40, 250);
   }
   console.log('done', JSON.stringify({ title: won.winTitle, note: won.winNote, seen: won.seenLevels }));
-  if (!won.win || won.winTitle !== 'Practice done') fail('the practice did not finish ' + JSON.stringify(won));
+  if (!won.win || (won.winTitle || '').replace(/\u00a0/g, ' ') !== 'Practice done') fail('the practice did not finish ' + JSON.stringify(won));
   if (!/saved nothing/.test(won.winNote) || !/record pace/.test(won.winNote)) fail('the practice result does not teach scoring ' + won.winNote);
   const scored = await ev(`(() => {
     const stats = document.getElementById('win-stats').innerText.replace(/\\s+/g, ' ');
@@ -732,7 +732,7 @@ try {
     let won = false;
     for (let i = 0; i < 40 && !won; i++) {
       await hold('ArrowLeft', 'ArrowLeft', 37, 180);
-      won = await ev(`document.getElementById('p-win').classList.contains('show') || (document.getElementById('win-title') || {}).textContent === 'Practice done'`);
+      won = await ev(`document.getElementById('p-win').classList.contains('show') || ((document.getElementById('win-title') || {}).textContent || '').replace(/\\u00a0/g, ' ') === 'Practice done'`);
     }
     if (!won) {
       for (let i = 0; i < 20 && !won; i++) { await sleep(100); won = await ev(`document.getElementById('p-win').classList.contains('show')`); }
@@ -1309,6 +1309,118 @@ try {
         }
       }
     }
+  }
+  const pauseAudit = `(() => {
+    const problems = [];
+    const panel = document.getElementById('p-pause');
+    if (!panel.classList.contains('show')) return ['pause hidden'];
+    const shown = (el) => {
+      if (!el || !el.getClientRects().length) return false;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 2 && r.height > 2;
+    };
+    const textNode = (el) => el && [...el.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim());
+    const lineBoxes = (el) => {
+      const node = textNode(el);
+      if (!node) return [];
+      const s = node.textContent;
+      const boxes = [];
+      let cur = null, top = null, start = 0;
+      const push = (end) => {
+        if (!cur) return;
+        const words = s.slice(start, end).replace(/\\u00a0/g, ' ').trim().split(/\\s+/).filter(Boolean);
+        boxes.push({ l: cur.l, t: cur.t, r: cur.r, b: cur.b, words });
+      };
+      for (let i = 0; i < s.length; i++) {
+        const range = document.createRange();
+        range.setStart(node, i); range.setEnd(node, Math.min(s.length, i + 1));
+        const rect = range.getClientRects()[0];
+        if (!rect || rect.width < 0.2) continue;
+        if (top === null) { top = rect.top; cur = { l: rect.left, t: rect.top, r: rect.right, b: rect.bottom }; start = i; }
+        else if (Math.abs(rect.top - top) > 2) {
+          const prev = s[i - 1] || '', ch = s[i] || '';
+          if (/\\S/.test(prev) && /\\S/.test(ch)) problems.push('mid-word ' + s.slice(Math.max(0, i - 6), i + 6).replace(/\\u00a0/g, ' '));
+          push(i);
+          start = i; top = rect.top;
+          cur = { l: rect.left, t: rect.top, r: rect.right, b: rect.bottom };
+        } else {
+          cur.l = Math.min(cur.l, rect.left); cur.t = Math.min(cur.t, rect.top);
+          cur.r = Math.max(cur.r, rect.right); cur.b = Math.max(cur.b, rect.bottom);
+        }
+      }
+      push(s.length);
+      return boxes;
+    };
+    const engraved = (el) => {
+      const cs = getComputedStyle(el);
+      const after = getComputedStyle(el, '::after');
+      const border = parseFloat(cs.borderTopWidth) || 0;
+      if (after && after.content && after.content !== 'none' && after.position === 'absolute' && after.borderTopStyle && after.borderTopStyle !== 'none') {
+        return border + (parseFloat(after.top) || 0) + (parseFloat(after.borderTopWidth) || 0);
+      }
+      const s = parseFloat(cs.getPropertyValue('--_s'));
+      if (Number.isFinite(s)) {
+        const rule = el.querySelector('.vls-plaque__chrome path');
+        const stroke = rule ? (parseFloat(rule.getAttribute('stroke-width')) || 1.55) : 1.55;
+        return s + stroke / 2;
+      }
+      return border;
+    };
+    const pr = panel.getBoundingClientRect();
+    const visT = pr.top + panel.clientTop, visB = visT + panel.clientHeight;
+    const blocks = [['title', panel, document.querySelector('#p-pause h2')], ['help', panel, document.querySelector('#p-pause .sub')]];
+    for (const id of ['b-resume', 'b-restart', 'b-pause-skip', 'b-pause-settings', 'b-pause-notebook', 'b-pause-levels']) {
+      const el = document.getElementById(id);
+      if (!shown(el)) continue;
+      blocks.push([id, el, el.querySelector('.vm-button-face') || el]);
+    }
+    for (const [name, frame, inkEl] of blocks) {
+      if (!shown(inkEl)) { problems.push(name + ' hidden'); continue; }
+      const boxes = lineBoxes(inkEl);
+      if (!boxes.length) { problems.push(name + ' no text'); continue; }
+      if (boxes.length > 1 && boxes[boxes.length - 1].words.length < 2) problems.push(name + ' widow ' + boxes[boxes.length - 1].words.join(' '));
+      const face = frame.getBoundingClientRect();
+      const edge = engraved(frame);
+      for (const box of boxes) {
+        if (box.b < visT - 0.5 || box.t > visB + 0.5 || box.r < pr.left - 0.5 || box.l > pr.right + 0.5) { problems.push(name + ' clipped'); continue; }
+        const g = Math.min(box.l - face.left - edge, box.t - face.top - edge, face.right - edge - box.r, face.bottom - edge - box.b);
+        if (g < 3) problems.push(name + ' border ' + g.toFixed(2));
+      }
+    }
+    return problems;
+  })()`;
+  async function sweepPause(label) {
+    await ev(`window.VMHoldWorld(true); document.getElementById('b-pausebtn').click(); true`);
+    for (let i = 0; i < 20 && !await ev(`document.getElementById('p-pause').classList.contains('show')`); i++) await sleep(40);
+    for (const [w, h] of textSizes) {
+      await fit(w, h);
+      const where = label + ' ' + w + 'x' + h;
+      for (const p of await ev(pauseAudit)) fail(where + ' ' + p);
+    }
+    console.log('pause sweep', label, textSizes.length);
+  }
+  for (const theme of ['victorian', 'bw']) {
+    for (const mode of ['levels', 'custom']) {
+      const seen = mode === 'custom'
+        ? { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: false } }
+        : { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } };
+      await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 700, deviceScaleFactor: 1, mobile: true });
+      await boot(seen);
+      if (mode === 'custom') {
+        if (!await openCustomLesson()) { fail(theme + ' lesson pause ' + mode + ' maze did not open'); continue; }
+      } else await openLevelsLesson();
+      await sweepPause(theme + ' lesson pause ' + mode);
+    }
+    const seenPlay = { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: true } };
+    await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 700, deviceScaleFactor: 1, mobile: true });
+    await boot(seenPlay);
+    await ev(`window.VMHoldWorld(true); document.getElementById('b-begin').click(); true`);
+    for (let i = 0; i < 30 && !await ev(`!!document.querySelector('#level-list button[data-lv="0"]')`); i++) await sleep(60);
+    await ev(`window.VMHoldWorld(true); document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+    await sleep(200);
+    await sweepPause(theme + ' levels pause');
   }
   const portraitSizes = sweepSizes.filter(([w, h]) => h >= w);
   for (const theme of ['victorian', 'bw']) {
