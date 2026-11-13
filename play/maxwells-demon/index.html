@@ -7643,7 +7643,13 @@ function layoutInstruments() {
     skip0.style.height = '';
     skip0.style.margin = '';
   }
-  if (trial) trial.classList.remove('gutter-badge');
+  if (trial) {
+    trial.classList.remove('gutter-badge', 'gutter-compact');
+    trial.style.maxWidth = '';
+    trial.style.minWidth = '';
+    trial.style.right = '';
+    trial.style.width = '';
+  }
   const css = getComputedStyle(document.body), safe = (n) => parseFloat(css.getPropertyValue(n)) || 0;
   const top = safe('--sat') + 8, bottom = innerHeight - safe('--sab') - 8;
   let cr = canvas.getBoundingClientRect();
@@ -7792,7 +7798,7 @@ function layoutInstruments() {
     controls.style.left = '50%'; controls.style.right = 'auto'; controls.style.transform = 'translateX(-50%)';
     dock.style.left = `${safe('--sal') + 8}px`; dock.style.width = `${innerWidth - safe('--sal') - safe('--sar') - 16}px`;
     dock.style.maxHeight = ''; dock.style.top = '0px';
-    trial.style.left = dock.style.left; trial.style.right = 'auto'; trial.style.width = dock.style.width; trial.style.bottom = 'auto';
+    trial.style.left = dock.style.left; trial.style.right = 'auto'; trial.style.width = dock.style.width; trial.style.maxWidth = dock.style.width; trial.style.minWidth = '0'; trial.style.bottom = 'auto';
     const trialHeight = trial.hidden ? 0 : trial.getBoundingClientRect().height + 8;
     const controlTop = controls.getBoundingClientRect().top;
     const desired = (dock.hidden ? 0 : dock.getBoundingClientRect().height + 12) + trialHeight;
@@ -7943,6 +7949,10 @@ function layoutInstruments() {
     }
   }
   settleReadout();
+  if (state.screen === 'playing') {
+    const liveRead = $('sorting-readout');
+    if (liveRead) liveRead.hidden = false;
+  }
   const measure = document.querySelector('#sorting-readout .read-measure');
   const plate = document.getElementById('sorting-readout');
   if (measure && plate && !plate.hidden) {
