@@ -59,16 +59,16 @@ try {
   async function beginRun() {
     await ev(`document.getElementById('b-begin').click(); true`);
     await sleep(200);
-    if (await ev(`document.getElementById('level0-hud') && document.getElementById('level0-hud').classList.contains('show')`)) {
-      await ev(`document.getElementById('b-skip-level0').click(); true`);
-      await sleep(250);
-    }
     for (let i = 0; i < 30; i++) {
       if (await ev(`!!document.querySelector('#level-list button[data-lv="0"]')`)) break;
       await sleep(80);
     }
     await ev(`document.querySelector('#level-list button[data-lv="0"]').click(); true`);
-    await sleep(100);
+    await sleep(200);
+    if (await ev(`document.getElementById('tutorial-hud') && document.getElementById('tutorial-hud').classList.contains('show')`)) {
+      await ev(`document.getElementById('b-skip-tutorial').click(); true`);
+      await sleep(250);
+    }
   }
   async function key(code, keyName, vk) {
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
