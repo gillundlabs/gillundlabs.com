@@ -823,7 +823,7 @@ try {
     if (m.trial && !m.trial.hidden) {
       const floor = m.theme === 'victorian' ? 3 : 0;
       if (m.trial.clear && m.trial.clear.min < floor - 0.05 && m.trial.clear.min >= -0.5) {
-        console.log('preexisting', view.name, theme, mode, kind, `trial clearance ${m.trial.clear.min.toFixed(1)}px, same shrink as main`);
+        console.log('preexisting', m.view, m.theme, m.mode, kind, `trial clearance ${m.trial.clear.min.toFixed(1)}px, same shrink as main`);
       } else checkClear(m.trial, 'trial');
     }
     if (!lesson && m.msg && !m.msg.hidden) checkClear(m.msg, 'door help');
