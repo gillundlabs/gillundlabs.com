@@ -57,7 +57,26 @@ window.VMPlayGeometry = function () {
     const b = el.getBoundingClientRect(); if (b.width < 2 || b.height < 2) return null;
     return { l: b.left, t: b.top, r: b.right, b: b.bottom };
   };
-  return { tube, atom: boxOf(w.atom.x, w.atom.y, 22, 22), pump, gauge: { l: gx - ring, t: gy - ring, r: gx + ring, b: gy + ring }, hud: { l: left, t: top, r: left + width, b: top + pad * 2 + block }, rotate: shown('rotate-hint'), hint: shown('hint-plaque'), cam: { x: c.x, y: c.y, k: c.k } };
+  return { tube, atom: boxOf(w.atom.x, w.atom.y, 22, 22), pump, gauge: { l: gx - ring, t: gy - ring, r: gx + ring, b: gy + ring }, hud: { l: left, t: top, r: left + width, b: top + pad * 2 + block }, rotate: shown('rotate-hint'), hint: shown('hint-plaque'), caption: { x: safe.l + 100, y1: vh - safe.b - 64, y2: vh - safe.b - 48 }, cam: { x: c.x, y: c.y, k: c.k } };
+};
+window.VMFreezeFrame = function () {
+  const w = state.world, L = state.level;
+  if (!w || !L) return false;
+  const start = L.cells[L.start.j * L.cols + L.start.i];
+  w.atom.x = start.cx; w.atom.y = start.cy; w.atom.vx = 0; w.atom.vy = 0;
+  w.stats.time = 0; w.stats.refTime = 0; w.stats.contacts = 0;
+  state.tilt = { x: 0, y: 0 };
+  devHooks.on = true; state.freeze = true; state.holdWorld = true;
+  state.cam.x = start.cx; state.cam.y = start.cy; state.cam.lx = 0; state.cam.ly = 0;
+  state.cam.k = E.viewZoom(vw, vh) * devHooks.zoom();
+  return true;
+};
+window.VMCanvasSig = function () {
+  const bitmap = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const y0 = Math.max(0, canvas.height - Math.round(110 * dpr));
+  let hash = 0;
+  for (let i = y0 * canvas.width * 4; i < bitmap.length; i += 4) hash = (Math.imul(hash, 33) + bitmap[i] + bitmap[i + 1] + bitmap[i + 2]) | 0;
+  return { caption: hash, w: canvas.width, h: canvas.height };
 };
 `;
 let mainHtml = execSync('git show ' + MAIN_REV + ':play/vacuum-maze/index.html', { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
@@ -629,6 +648,8 @@ try {
       const a = JSON.stringify(round(branch[key])), b = JSON.stringify(round(main[key]));
       if (a !== b) fail(where + ' ' + key + ' branch ' + a + ' main ' + b);
     }
+    const cap = (g) => g && g.caption && { x: g.caption.x, y1: g.caption.y1, y2: g.caption.y2 };
+    if (JSON.stringify(round(cap(branch))) !== JSON.stringify(round(cap(main)))) fail(where + ' caption branch ' + JSON.stringify(round(cap(branch))) + ' main ' + JSON.stringify(round(cap(main))));
   }
   async function frozenLevel(base) {
     await ev(`window.VMHoldWorld(true); document.getElementById('b-begin').click(); true`);
@@ -714,6 +735,208 @@ try {
       await sleep(350);
       sameGeom(await ev(`window.VMPlayGeometry()`), mainGeom['victorian' + w + 'x' + h], 'victorian ' + w + 'x' + h + ' after the lesson ended');
       console.log('geom ended', w + 'x' + h);
+    }
+  }
+
+  const sweepSizes = [[320, 320], [360, 360], [400, 400], [440, 440], [480, 480], [520, 520], [580, 580], [640, 640], [320, 340], [320, 360], [340, 360], [360, 340], [400, 320], [320, 420], [360, 420], [480, 320], [568, 320], [667, 375], [812, 375], [320, 568], [390, 844], [1280, 800]];
+  const isSquare = (w, h) => Math.max(w, h) <= 640 && Math.max(w, h) / Math.min(w, h) <= 4 / 3 + 1e-9;
+  const sensorWords = 'No motion sensor found. Drag or use arrow keys to tip the apparatus';
+  const layoutReport = `(() => {
+    const bw = document.body.dataset.theme === 'bw';
+    const inkOf = (node) => { const range = document.createRange(); range.selectNodeContents(node); const r = range.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height }; };
+    const gap = (ink, face, edge) => Math.min(ink.l - face.l - edge, ink.t - face.t - edge, face.r - edge - ink.r, face.b - edge - ink.b);
+    const problems = [];
+    const lay = window.VMTutorialLayout();
+    const skip = document.getElementById('b-skip-tutorial');
+    const sr = skip.getBoundingClientRect();
+    const hit = document.elementFromPoint(sr.left + sr.width / 2, sr.top + sr.height / 2);
+    if (sr.width < 8 || sr.top < -1 || sr.left < -1 || sr.right > innerWidth + 1 || sr.bottom > innerHeight + 1) problems.push('skip off screen');
+    if (!(hit && (hit === skip || skip.contains(hit)))) problems.push('skip not hit');
+    const btnEdge = bw ? 2 : 7;
+    if (getComputedStyle(document.getElementById('tutorial-hud')).display !== 'none') {
+      const g = gap(inkOf(skip.querySelector('.vm-button-face') || skip), { l: sr.left, t: sr.top, r: sr.right, b: sr.bottom }, btnEdge);
+      if (g < 3) problems.push('skip text ' + g.toFixed(2));
+    }
+    const plate = document.getElementById('tutorial-plaque');
+    let s = parseFloat(getComputedStyle(plate).getPropertyValue('--_s'));
+    if (!Number.isFinite(s)) s = bw ? 2 : 10;
+    for (const sel of ['.tutor-line', '.tutor-sensor']) {
+      const node = plate.querySelector(sel);
+      if (!node) continue;
+      const g = gap(inkOf(node), { l: plate.getBoundingClientRect().left, t: plate.getBoundingClientRect().top, r: plate.getBoundingClientRect().right, b: plate.getBoundingClientRect().bottom }, s);
+      if (g < 3) problems.push(sel + ' text ' + g.toFixed(2));
+    }
+    const hud = window.VMHudInk;
+    if (!hud || !hud.lines.length) problems.push('hud ink missing');
+    else hud.lines.forEach((ln, i) => {
+      const g = gap({ l: ln.left, t: ln.top, r: ln.right, b: ln.bottom }, hud.plate, hud.s);
+      if (g < 3) problems.push('hud ' + i + ' ' + g.toFixed(2));
+    });
+    const rot = document.getElementById('rotate-hint');
+    if (rot && getComputedStyle(rot).display !== 'none') {
+      const rr = rot.getBoundingClientRect();
+      const g = gap(inkOf(rot), { l: rr.left, t: rr.top, r: rr.right, b: rr.bottom }, 0);
+      if (g < 3) problems.push('rotate text ' + g.toFixed(2));
+    }
+    const over = (a, b) => !!(a && b && a.r > b.l + 1 && a.l < b.r - 1 && a.b > b.t + 1 && a.t < b.b - 1);
+    const clip = (p) => !p ? 999 : Math.max(0, -p.l, -p.t, p.r - innerWidth, p.b - innerHeight);
+    const union = (a, b) => a && b ? { l: Math.min(a.l, b.l), t: Math.min(a.t, b.t), r: Math.max(a.r, b.r), b: Math.max(a.b, b.b) } : (a || b);
+    const machine = union(union(lay.tube, lay.atom), lay.pump);
+    for (const name of ['tube', 'atom', 'pump']) {
+      if (clip(lay[name]) > 0.5) problems.push(name + ' clipped ' + clip(lay[name]).toFixed(1));
+      for (const blocker of ['plate', 'gauge', 'skip', 'rotate']) {
+        const box = blocker === 'skip' ? { l: sr.left, t: sr.top, r: sr.right, b: sr.bottom } : lay[blocker];
+        if (over(lay[name], box)) problems.push(name + ' over ' + blocker);
+      }
+      if (lay.hint && lay.hint.shown && over(lay[name], lay.hint)) problems.push(name + ' over plaque');
+    }
+    if (!machine || machine.b - machine.t < 40) problems.push('machine ' + (machine ? (machine.b - machine.t).toFixed(1) : 'missing'));
+    const fold = document.body.classList.contains('sensor-in-plate');
+    const plaqueOn = getComputedStyle(document.getElementById('hint-plaque')).display !== 'none' && document.getElementById('hint-plaque').classList.contains('show');
+    const sensor = (plate.querySelector('.tutor-sensor') || {}).textContent || '';
+    return { problems, fold, plaqueOn, sensor, mh: machine ? +(machine.b - machine.t).toFixed(1) : 0 };
+  })()`;
+  const pauseReport = `(() => {
+    const bw = document.body.dataset.theme === 'bw';
+    const edge = bw ? 2 : 7;
+    const panel = document.getElementById('p-pause');
+    const pr = panel.getBoundingClientRect();
+    const visT = pr.top + panel.clientTop, visB = visT + panel.clientHeight;
+    const problems = [];
+    for (const id of ['b-resume', 'b-restart', 'b-pause-skip', 'b-pause-settings', 'b-pause-notebook', 'b-pause-levels']) {
+      const el = document.getElementById(id);
+      const face = el.getBoundingClientRect();
+      const node = el.querySelector('.vm-button-face') || el;
+      const range = document.createRange(); range.selectNodeContents(node);
+      const ink = range.getBoundingClientRect();
+      const g = Math.min(ink.left - face.left - edge, ink.top - face.top - edge, face.right - edge - ink.right, face.bottom - edge - ink.bottom);
+      const cx = face.left + face.width / 2, cy = face.top + face.height / 2;
+      const hit = document.elementFromPoint(cx, cy);
+      if (face.top < visT - 0.5 || face.bottom > visB + 0.5 || face.top < -0.5 || face.bottom > innerHeight + 0.5 || face.left < -0.5 || face.right > innerWidth + 0.5) problems.push(id + ' clipped');
+      if (!(hit && el.contains(hit))) problems.push(id + ' not hit');
+      if (g < 3) problems.push(id + ' text ' + g.toFixed(2));
+    }
+    const lay = window.VMTutorialLayout();
+    const over = (a, b) => !!(a && b && a.r > b.l + 1 && a.l < b.r - 1 && a.b > b.t + 1 && a.t < b.b - 1);
+    const rot = lay.rotate;
+    for (const name of ['tube', 'atom', 'pump']) if (rot && over(lay[name], rot)) problems.push('rotate over ' + name);
+    return problems;
+  })()`;
+  async function openLevelsLesson() {
+    await ev(`document.getElementById('b-begin').click(); true`);
+    for (let i = 0; i < 30 && !await ev(`document.getElementById('hint-plaque').classList.contains('show')`); i++) await sleep(80);
+    await ev(`document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+    await sleep(400);
+  }
+  for (const theme of ['victorian', 'bw']) {
+    for (const [w, h] of sweepSizes) {
+      const where = theme + ' ' + w + 'x' + h;
+      const phone = Math.min(w, h) < 900;
+      await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: phone });
+      await send('Emulation.setTouchEmulationEnabled', { enabled: phone, maxTouchPoints: 1 });
+      const folded = isSquare(w, h) || h <= 420;
+      await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
+      await openLevelsLesson();
+      if (folded) for (let i = 0; i < 20 && !await ev(`!!document.querySelector('#tutorial-plaque .tutor-sensor')`); i++) await sleep(80);
+      const lesson = await ev(layoutReport);
+      if (folded && !lesson.fold) fail(where + ' sensor line was not folded into the plate');
+      if (folded && lesson.plaqueOn) fail(where + ' sensor plaque is still showing');
+      if (folded && lesson.sensor !== sensorWords) fail(where + ' sensor wording ' + lesson.sensor);
+      if (!folded && lesson.plaqueOn === false) fail(where + ' sensor plaque hidden outside the compact layout');
+      for (const p of lesson.problems) fail(where + ' lesson ' + p);
+      await ev(`document.getElementById('b-pausebtn').click(); true`);
+      await sleep(180);
+      for (const p of await ev(pauseReport)) fail(where + ' pause ' + p);
+      await ev(`document.getElementById('b-resume').click(); true`);
+      await sleep(120);
+      console.log('sweep', where, 'mh', lesson.mh);
+    }
+  }
+  for (const theme of ['victorian', 'bw']) {
+    for (const [w, h] of sweepSizes.filter(([a, b]) => isSquare(a, b))) {
+      const where = theme + ' maze ' + w + 'x' + h;
+      await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: true });
+      await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+      await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: false } });
+      const code = await ev(`(() => { const EC = window.VMEditorCore; let m = EC.resize(EC.newMaze('Practice'), 2, 2); EC.place(m, 'tube', 0, 0, 1); EC.place(m, 'source', 0, 0); EC.place(m, 'rotary', 0, 0); const errors = EC.validate(m); return errors.length ? '' : EC.encode(m); })()`);
+      if (!code) fail(where + ' maze did not encode');
+      await ev(`document.getElementById('b-begin').click(); true`);
+      for (let i = 0; i < 40 && !await ev(`document.getElementById('hint-plaque').classList.contains('show')`); i++) await sleep(80);
+      await ev(`document.getElementById('b-levels-back').click(); true`);
+      await sleep(80);
+      await ev(`document.getElementById('b-editor').click(); true`);
+      await sleep(150);
+      await ev(`document.getElementById('mm-code').value = ${JSON.stringify(code)}; document.getElementById('mm-import').click(); true`);
+      await sleep(150);
+      await ev(`document.querySelector('#mm-list button[data-play]').click(); true`);
+      await sleep(500);
+      for (let i = 0; i < 30 && !await ev(`!!document.querySelector('#tutorial-plaque .tutor-sensor')`); i++) await sleep(100);
+      const lesson = await ev(layoutReport);
+      if (!lesson.fold) fail(where + ' sensor line was not folded');
+      if (lesson.sensor !== sensorWords) fail(where + ' sensor wording ' + lesson.sensor);
+      for (const p of lesson.problems) fail(where + ' ' + p);
+      await ev(`document.getElementById('b-pausebtn').click(); true`);
+      await sleep(150);
+      for (const p of await ev(pauseReport)) fail(where + ' pause ' + p);
+      console.log('sweep', where, 'mh', lesson.mh);
+    }
+  }
+  async function resizeTo(w, h) {
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: true });
+    await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+    await ev(`window.dispatchEvent(new Event('resize')); true`);
+    await sleep(400);
+  }
+  for (const theme of ['victorian', 'bw']) {
+    for (const [sw, sh] of [[1280, 800], [390, 844]]) {
+      await send('Emulation.setDeviceMetricsOverride', { width: sw, height: sh, deviceScaleFactor: 1, mobile: sh > sw });
+      await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+      await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
+      await openLevelsLesson();
+      for (const [w, h] of [[320, 320], [400, 400], [320, 340]]) {
+        await resizeTo(w, h);
+        for (let i = 0; i < 20 && !await ev(`!!document.querySelector('#tutorial-plaque .tutor-sensor')`); i++) await sleep(60);
+        const where = theme + ' resize ' + sw + 'x' + sh + ' to ' + w + 'x' + h;
+        const lesson = await ev(layoutReport);
+        if (!lesson.fold || lesson.plaqueOn || lesson.sensor !== sensorWords) fail(where + ' fold ' + JSON.stringify({ fold: lesson.fold, plaque: lesson.plaqueOn, sensor: lesson.sensor }));
+        for (const p of lesson.problems) fail(where + ' ' + p);
+        await ev(`document.getElementById('b-pausebtn').click(); true`);
+        await sleep(150);
+        for (const p of await ev(pauseReport)) fail(where + ' pause ' + p);
+        await ev(`document.getElementById('b-resume').click(); true`);
+        await sleep(100);
+        console.log('resize', where, 'mh', lesson.mh);
+      }
+    }
+  }
+  const portraitSizes = sweepSizes.filter(([w, h]) => h >= w);
+  for (const theme of ['victorian', 'bw']) {
+    for (const [w, h] of portraitSizes) {
+      const phone = Math.min(w, h) < 900;
+      await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: phone });
+      await send('Emulation.setTouchEmulationEnabled', { enabled: phone, maxTouchPoints: 1 });
+      const seenMain = { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: true };
+      const seenBranch = { ...seenMain, tutorialSeen: { levels: true, custom: true } };
+      await boot(seenMain, MAIN);
+      await ev(`window.VMHoldWorld(true); document.getElementById('b-begin').click(); true`);
+      for (let i = 0; i < 30 && !await ev(`!!document.querySelector('#level-list button[data-lv="0"]')`); i++) await sleep(60);
+      await ev(`window.VMHoldWorld(true); document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+      await sleep(150);
+      await ev(`window.VMFreezeFrame(); window.VMShowHint(); true`);
+      await sleep(300);
+      const mainSig = await ev(`({ geo: window.VMPlayGeometry(), sig: window.VMCanvasSig() })`);
+      await boot(seenBranch);
+      await ev(`window.VMHoldWorld(true); document.getElementById('b-begin').click(); true`);
+      for (let i = 0; i < 30 && !await ev(`!!document.querySelector('#level-list button[data-lv="0"]')`); i++) await sleep(60);
+      await ev(`window.VMHoldWorld(true); document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+      await sleep(150);
+      await ev(`window.VMFreezeFrame(); window.VMShowHint(); true`);
+      await sleep(300);
+      const branchSig = await ev(`({ geo: window.VMPlayGeometry(), sig: window.VMCanvasSig() })`);
+      const where = theme + ' ' + w + 'x' + h + ' ordinary portrait';
+      sameGeom(branchSig.geo, mainSig.geo, where);
+      if (!mainSig.sig || !branchSig.sig || mainSig.sig.caption !== branchSig.sig.caption) fail(where + ' caption pixels differ');
+      console.log('portrait', where);
     }
   }
 } catch (err) {

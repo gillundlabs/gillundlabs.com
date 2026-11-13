@@ -314,10 +314,13 @@
   .stepper b { min-width: 1.4em; text-align: center; }
   .stepper button { min-width: 44px; padding: 0 !important; font-size: 18px !important; }
   #rotate-hint { display: none; position: fixed; left: 0; right: 0; bottom: calc(var(--sab) + 18px); text-align: center; font-size: 13px; line-height: 1.25; opacity: .8; color: var(--vls-paper-light); pointer-events: none; }
+  body.lesson-frame #rotate-hint { padding: 3px 4px; box-sizing: border-box; }
   body[data-theme="bw"] #rotate-hint { color: #fff; }
   @media (orientation: portrait) and (max-width: 820px) { #rotate-hint { display: block; } }
-  /* Lesson, trial practice and pause only: lift the line off the gauge, its caption and the corner icon. */
-  body.lesson-frame #rotate-hint { left: 16px; right: 56px; bottom: calc(var(--sab) + 112px); }
+  /* Lesson, trial practice and pause only, and only when the screen is tall enough to spare a band above the gauge. */
+  @media (min-height: 421px) {
+    body.lesson-frame #rotate-hint { left: 16px; right: 56px; bottom: calc(var(--sab) + 112px); }
+  }
   @media (max-height: 520px), (max-width: 520px) {
     .panel { padding: 10px 14px; }
     .panel h1 { font-size: 28px; } .panel h2 { font-size: 20px; margin-bottom: 4px; }
@@ -745,9 +748,40 @@
     #tutorial-hud { flex-direction: row; align-items: center; gap: 8px; left: 8px; right: 72px; max-width: none; }
     #tutorial-hud #tutorial-plaque { flex: 1 1 auto; width: auto; }
     #b-skip-tutorial { flex: 0 0 auto; white-space: nowrap !important; }
-    #tutorial-plaque, #tutorial-plaque .vls-plaque__label { font-size: 13px !important; }
-    #tutorial-plaque.vls-plaque { padding: 8px 12px !important; }
-    #tutorial-plaque .tutor-sensor { font-size: 12px; line-height: 1.25; margin-top: 2px; }
+    #tutorial-plaque, #tutorial-plaque .vls-plaque__label,
+    #tutorial-plaque .tutor-line, #tutorial-plaque .tutor-sensor { font-size: 12px !important; line-height: 1.2 !important; }
+    /* Screw 2 px, so 6 px of padding leaves the sentence 3 px inside the inner rule. */
+    #tutorial-plaque.vls-plaque { --vls-plaque-screw: 2px; --vls-plaque-head: 1px; padding: 6px 8px !important; }
+    #tutorial-plaque .tutor-sensor { margin-top: 2px; }
+  }
+  /* Squares and near-squares, including ones taller than the short-landscape query.
+     Skip stays beside the plate so the row does not eat the pump's band. The same
+     query is listened to in lessonMedia(). */
+  @media (max-height: 640px) and (max-width: 640px) and (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3) {
+    #tutorial-hud { flex-direction: row; align-items: flex-start; gap: 6px; left: 8px; right: 8px; max-width: none; }
+    #tutorial-hud #tutorial-plaque { flex: 1 1 auto; width: auto; min-width: 0; }
+    #b-skip-tutorial { flex: 0 0 auto; align-self: flex-start; white-space: nowrap !important; }
+    #tutorial-plaque, #tutorial-plaque .vls-plaque__label,
+    #tutorial-plaque .tutor-line, #tutorial-plaque .tutor-sensor { font-size: 12px !important; line-height: 1.15 !important; }
+    #tutorial-plaque.vls-plaque { --vls-plaque-screw: 2px; --vls-plaque-head: 1px; padding: 6px 8px !important; }
+    #tutorial-plaque .tutor-sensor { margin-top: 2px; }
+  }
+  @media (max-height: 360px) and (max-width: 400px) and (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3) {
+    #tutorial-plaque, #tutorial-plaque .vls-plaque__label,
+    #tutorial-plaque .tutor-line, #tutorial-plaque .tutor-sensor { font-size: 11px !important; line-height: 1.05 !important; }
+    #tutorial-plaque.vls-plaque { --vls-plaque-screw: 2px; --vls-plaque-head: 1px; padding: 6px 8px !important; }
+  }
+  /* Square pause: one button per row is taller than the panel, so Levels sits past the fold. Two columns keep every button on screen. */
+  @media (max-height: 640px) and (max-width: 640px) and (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3) {
+    #p-pause { padding: 8px 10px; }
+    #p-pause h2 { font-size: 18px; margin: 0 0 2px; }
+    #p-pause .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+    #p-pause #b-pause-skip { grid-column: 1 / -1; }
+    #p-pause .row button {
+      padding: 10px 10px !important; font-size: 12px !important; letter-spacing: 0.02em !important;
+      min-height: 40px; white-space: nowrap !important;
+    }
+    #p-pause .sub { font-size: 12px; line-height: 1.25; margin: 6px 0 0; }
   }
   .tutor-restart { margin: 10px 0; }
   .tutor-restart > span { display: block; line-height: 1.3; }
@@ -7704,7 +7738,12 @@ function resize() {
     E.retunePace(state.world, pace);
     state.pace = pace;
   }
-  if ($('hint-plaque') && $('hint-plaque').classList.contains('show')) requestAnimationFrame(mountHintPlaque);
+  hintPlaced = false;
+  const hint = $('hint-plaque');
+  if (hint) delete hint.dataset.hintPlace;
+  lessonInsetHold = null;
+  if (hint && hint.classList.contains('show')) requestAnimationFrame(mountHintPlaque);
+  syncLessonChrome();
 }
 
 // ------------------------------------------------------------------ purchases (thin interface, src/purchase)
@@ -7891,7 +7930,7 @@ function clientBox(el) {
 function lessonObstacles(apparatus) {
   const boxes = [gaugeBox(), readoutBox(), captionBox(), cornerIconBox()];
   if (apparatus !== false) boxes.push(pumpScreenBox(), tubeScreenBox());
-  for (const id of ['tutorial-plaque', 'b-skip-tutorial', 'b-pausebtn', 'b-level', 'rotate-hint']) {
+  for (const id of ['tutorial-plaque', 'b-skip-tutorial', 'b-pausebtn', 'b-level', 'rotate-hint', 'b-resume', 'b-restart', 'b-pause-skip', 'b-pause-settings', 'b-pause-notebook', 'b-pause-levels']) {
     const box = clientBox(document.getElementById(id));
     if (box) boxes.push(box);
   }
@@ -7949,7 +7988,7 @@ function placeSensorHint() {
   const saved = { left: el.style.left, top: el.style.top, right: el.style.right, bottom: el.style.bottom, width: el.style.width, transform: el.style.transform };
   const savedSize = el.style.getPropertyValue('--hint-size');
   let chosen = null;
-  const portrait = !(vh < 420 && vw > vh);
+  const portrait = !lessonMedia().compact;
   if (portrait && skipRect && skipRect.width) {
     const width = Math.min(320, Math.max(150, vw - skipRect.right - margin * 2));
     if (width >= 150 && width <= vw - margin) {
@@ -7971,7 +8010,7 @@ function placeSensorHint() {
       el.style.setProperty('--hint-size', size + 'px');
       const height = el.getBoundingClientRect().height;
       const spots = [];
-      if (! (vh < 420 && vw > vh) && skipRect && skipRect.width) spots.push({ l: skipRect.right + margin, t: skipRect.top });
+      if (!lessonMedia().compact && skipRect && skipRect.width) spots.push({ l: skipRect.right + margin, t: skipRect.top });
       spots.push({ l: Math.max(margin, blocked + margin), t: vh - margin - height });
       if (pr && pr.width) {
         spots.push({ l: margin, t: pr.bottom + margin });
@@ -8123,14 +8162,7 @@ function frame(now) {
   if (state.toastT > 0 && (state.toastT -= dt) <= 0) state.toast = null;
   if (hintT > 0 && (hintT -= dt) <= 0) $('hint-plaque').classList.remove('show');
   if (state.unlockFlash > 0) state.unlockFlash -= dt;
-  document.body.classList.toggle('lesson-frame', lessonFraming());
-  document.body.classList.toggle('sensor-in-plate', sensorFoldsIntoLesson());
-  if (sensorFoldsIntoLesson()) {
-    const el = $('hint-plaque');
-    if (el && el.classList.contains('show')) { el.classList.remove('show'); hintPlaced = false; }
-  } else if (lessonFraming()) {
-    if ($('hint-plaque').classList.contains('show') && placeSensorHint()) requestAnimationFrame(mountHintPlaque);
-  } else releaseSensorHint();
+  syncLessonChrome();
   camera(dt);
   render();
   if ($('p-pump').classList.contains('show')) drawPumpCard();
@@ -8176,8 +8208,48 @@ function sensorSentence() {
   const why = inputReason === 'denied' ? 'Motion access was denied. ' : inputReason === 'none' ? 'No motion sensor found. ' : '';
   return `${why}Drag or use arrow keys to tip the apparatus`;
 }
+// The same query strings as the lesson CSS. max-height includes 420, and squares are portrait.
+const LESSON_COMPACT_QUERY = '(max-height: 420px)';
+const LESSON_SQUARE_QUERY = '(max-height: 640px) and (max-width: 640px) and (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3)';
+const LESSON_ROTATE_QUERY = '(orientation: portrait) and (max-width: 820px)';
+function lessonMedia() {
+  return {
+    compact: window.matchMedia(LESSON_COMPACT_QUERY).matches,
+    square: window.matchMedia(LESSON_SQUARE_QUERY).matches,
+    rotate: window.matchMedia(LESSON_ROTATE_QUERY).matches,
+  };
+}
+function lessonTight() {
+  const media = lessonMedia();
+  return lessonFraming() && (media.compact || media.square);
+}
 function sensorFoldsIntoLesson() {
-  return lessonFraming() && vh < 420 && vw > vh && inputMode === 'manual';
+  // Fold on the short-landscape layout and on squares, where a separate plaque has no free band.
+  return lessonTight() && inputMode === 'manual';
+}
+function syncLessonChrome() {
+  const framing = lessonFraming();
+  const fold = sensorFoldsIntoLesson();
+  document.body.classList.toggle('lesson-frame', framing);
+  document.body.classList.toggle('sensor-in-plate', fold);
+  if (!framing) { releaseSensorHint(); return; }
+  if (state.level && state.level.tutorial) tutorialTick();
+  const el = $('hint-plaque');
+  if (!el) return;
+  if (fold) {
+    if (el.classList.contains('show')) { el.classList.remove('show'); hintPlaced = false; }
+    return;
+  }
+  if (inputMode === 'manual' && !el.classList.contains('show')) { showHint(); return; }
+  if (el.classList.contains('show') && placeSensorHint()) requestAnimationFrame(mountHintPlaque);
+}
+function bindLessonMedia() {
+  const onChange = () => { resize(); };
+  for (const query of [LESSON_COMPACT_QUERY, LESSON_SQUARE_QUERY, LESSON_ROTATE_QUERY]) {
+    const mq = window.matchMedia(query);
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  }
 }
 function tutorialTick() {
   const t = state.tutorial;
@@ -8390,10 +8462,10 @@ function playInset() {
   const el = document.getElementById('tutorial-hud');
   const plateBottom = el && el.classList.contains('show') ? Math.ceil(el.getBoundingClientRect().bottom) : 0;
   // The whole practice plate, including Skip, stays above the tube. The source label sits just over the steel.
-  const landscape = vh < 420 && vw > vh;
-  const gap = landscape ? 4 : 10;
+  const compact = lessonTight();
+  const gap = compact ? 2 : 10;
   let top = plateBottom + gap;
-  if (!landscape) {
+  if (!compact) {
     const skip = document.getElementById('b-skip-tutorial');
     if (skip && el && el.classList.contains('show')) {
       const sr = skip.getBoundingClientRect();
@@ -8404,17 +8476,19 @@ function playInset() {
     const skipBox = skip && el && el.classList.contains('show') ? skip.getBoundingClientRect() : null;
     if (hint && hint.classList.contains('show')) {
       const hr = hint.getBoundingClientRect();
+      // Reserve only the plaque's real box. A guessed block under Skip used to consume the only free band on a square.
       if (hr.height > 8 && hr.left > 2 && hr.top < vh * 0.55) top = Math.max(top, Math.ceil(hr.bottom + 8));
-      else if (skipBox && skipBox.height > 8) top = Math.max(top, Math.ceil(skipBox.top + 104));
     }
   }
-  let bottom = landscape ? 6 : Math.min(110, Math.max(64, vh * 0.1));
+  let bottom = compact ? 6 : Math.min(110, Math.max(64, vh * 0.1));
   const rot = document.getElementById('rotate-hint');
   if (rot && getComputedStyle(rot).display !== 'none') {
     const hintTop = rot.getBoundingClientRect().top;
-    if (hintTop > 40) bottom = Math.max(bottom, Math.ceil(vh - hintTop) + 8);
+    // A hint sitting in the gauge band is already below the machine. Reserving it would steal the only free strip on a square.
+    const aboveGauge = hintTop + 8 < gaugeBox().t;
+    if (hintTop > 40 && aboveGauge) bottom = Math.max(bottom, Math.ceil(vh - hintTop) + 8);
   }
-  const minView = landscape ? Math.max(96, Math.round(vh * 0.42)) : 80;
+  const minView = compact ? 40 : 80;
   if (top + bottom + minView > vh) {
     bottom = Math.max(6, vh - top - minView);
   }
@@ -8462,10 +8536,11 @@ function cornerIconBox() {
 function readoutBox() {
   const left = safe.l + 8, top = safe.t + 8;
   let avail = vw - safe.r - left - 64;
-  // A short landscape practice keeps a column free beside the readout for the lesson and the sensor line.
-  if (state.level && state.level.tutorial && vh < 420 && vw > vh) avail = Math.min(avail, 248);
+  const compact = lessonTight();
+  // The compact lesson keeps a column free beside the readout for Skip and the pause buttons.
+  if (compact) avail = Math.min(avail, 248);
   const width = Math.min(560, Math.max(148, avail)), narrow = width < 340, bw = document.body.dataset.theme === 'bw';
-  const pad = bw ? (narrow ? 8 : 12) : (narrow ? 22 : 20);
+  const pad = bw ? (narrow ? 8 : 12) : (compact ? 6 : (narrow ? 22 : 20));
   const titleH = narrow ? 15 : 18, labH = 12, valH = narrow ? 16 : 22, parH = narrow ? 14 : 16;
   const block = titleH + (narrow ? 6 : 10) + labH + 4 + valH + (narrow ? 6 : 8) + parH;
   const h = pad * 2 + block;
@@ -8578,9 +8653,32 @@ window.VMPlayGeometry = function () {
     tube, atom: boxOf(w.atom.x, w.atom.y, 22, 22), pump,
     gauge: { l: gx - ring, t: gy - ring, r: gx + ring, b: gy + ring },
     hud, rotate: shown('rotate-hint'), hint: shown('hint-plaque'),
+    caption: window.VMCaptionInk || null,
     framing: lessonFraming(),
     cam: { x: c.x, y: c.y, k: c.k },
   };
+};
+window.VMFreezeFrame = function () {
+  const w = state.world, L = state.level;
+  if (!w || !L) return false;
+  const start = L.cells[L.start.j * L.cols + L.start.i];
+  w.atom.x = start.cx; w.atom.y = start.cy; w.atom.vx = 0; w.atom.vy = 0;
+  w.stats.time = 0; w.stats.refTime = 0; w.stats.contacts = 0;
+  state.tilt = { x: 0, y: 0 };
+  state.holdWorld = true;
+  state.cam.x = start.cx; state.cam.y = start.cy; state.cam.lx = 0; state.cam.ly = 0;
+  state.cam.k = E.viewZoom(vw, vh) * devHooks.zoom();
+  return true;
+};
+window.VMCanvasSig = function () {
+  const bitmap = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const fold = (from, to, step) => {
+    let hash = 0;
+    for (let i = from; i < to; i += step) hash = (Math.imul(hash, 33) + bitmap[i] + bitmap[i + 1] + bitmap[i + 2]) | 0;
+    return hash;
+  };
+  const y0 = Math.max(0, canvas.height - Math.round(110 * dpr));
+  return { full: fold(0, bitmap.length, 4), caption: fold(y0 * canvas.width * 4, bitmap.length, 4), w: canvas.width, h: canvas.height };
 };
 function practiceFrame(includePump) {
   const L = state.level;
@@ -8616,24 +8714,19 @@ function practiceFrame(includePump) {
 }
 function practiceClearRects() {
   const inset = playInset();
-  const pause = clientBox(document.getElementById('b-pausebtn'));
-  const level = clientBox(document.getElementById('b-level'));
-  const rightLim = Math.min(pause ? pause.l : vw, level ? level.l : vw) - 8;
-  const g = gaugeBox(), cap = captionBox(), corner = cornerIconBox();
-  const t = inset.top + 4;
-  const b = vh - Math.max(inset.bottom, 2) - 4;
+  const g = gaugeBox(), cap = captionBox();
+  const top = inset.top;
+  const rot = clientBox(document.getElementById('rotate-hint'));
+  // A full-width hint that sits above the gauge (the lifted portrait hint) ends the band.
+  const hintTop = rot && rot.r - rot.l > vw * 0.45 ? rot.t - 4 : vh;
+  const aboveGauge = Math.min(vh - 2, g.t - 2, hintTop);
   const out = [];
-  const push = (l, top, r, bot) => {
-    if (r - l >= 64 && bot - top >= 36) out.push({ l, t: top, r, b: bot });
+  const push = (l, t, r, b) => {
+    if (r - l >= 100 && b - t >= 40) out.push({ l, t, r, b });
   };
-  // When the gauge is already below the play band, the whole band is free.
-  if (g.t >= b - 2) push(8, t, rightLim, b);
-  else {
-    push(8, t, rightLim, Math.min(b, g.t - 8));
-    // The corner icon is to the right of the pause column. A machine that stops before that column can use the full height beside the caption.
-    const besideBottom = rightLim <= corner.l ? b : Math.min(b, corner.t - 6);
-    push(Math.max(8, cap.r + 8), t, rightLim, besideBottom);
-  }
+  push(4, top, vw - 4, aboveGauge);
+  // When the gauge reaches the plate, the pump can still sit to the right of it, above the hint.
+  if (!out.length) push(Math.max(g.r, cap.r) + 6, top, vw - 4, Math.min(vh - 4, hintTop));
   return out;
 }
 function camera(dt) {
@@ -8653,7 +8746,9 @@ function camera(dt) {
     let best = null;
     for (const rect of practiceClearRects()) {
       const fitK = Math.min((rect.r - rect.l) / worldW, (rect.b - rect.t) / worldH);
-      if (!best || fitK > best.k) best = { k: fitK, rect };
+      const screenH = worldH * fitK;
+      const fits = screenH >= 40;
+      if (!best || (fits && !best.fits) || (fits === best.fits && screenH > best.screenH)) best = { k: fitK, rect, screenH, fits };
     }
     const c = state.cam;
     if (best && best.k > 0.04) {
@@ -9011,20 +9106,28 @@ function hud(theme) {
   // The pause/view stack is 52 px. The plate stops short of it; a 280 px floor used to run under those buttons on a 320 phone.
   const box = readoutBox(), left = box.l, top = box.t, width = box.r - box.l;
   const narrow = width < 340;
-  const inset = bw ? (narrow ? 8 : 12) : (narrow ? 22 : 20);
+  const compact = lessonTight();
+  const inset = bw ? (narrow ? 8 : 12) : (compact ? 6 : (narrow ? 22 : 20));
   const titleH = narrow ? 15 : 18, labH = 12, valH = narrow ? 16 : 22, parH = narrow ? 14 : 16;
   const block = titleH + (narrow ? 6 : 10) + labH + 4 + valH + (narrow ? 6 : 8) + parH;
   const h = inset * 2 + block;
   const best = !L.tutorial && store.best[S.bestKey(L.id, body)], bname = body === 'arcade' ? `Arcade ${g.toFixed(2)} m/s²` : E.BODIES[body].name;
-  if (!bw) AP.plaque(ctx, left, top, width, h, 3);
+  // A tight lesson uses a smaller screw so the readout text still clears that rule by 3 px without eating the pump's band.
+  const screw = bw ? 1 : (compact ? 2 : 10);
+  if (!bw) AP.plaque(ctx, left, top, width, h, 3, compact ? { s: 2, r: 1 } : undefined);
   else { ctx.fillStyle = '#000'; ctx.fillRect(left, top, width, h); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(left, top, width, h); }
   const x0 = left + inset, inner = width - inset * 2, colGap = narrow ? 8 : 6;
   const fr = narrow ? [0.24, 0.28, 0.48] : [0.28, 0.30, 0.42];
   const usable = inner - colGap * 2;
   const colW = fr.map((f) => usable * f);
   const colX = [x0, x0 + colW[0] + colGap, x0 + colW[0] + colGap + colW[1] + colGap];
-  const field = (text, x, y, w, hh, size, weight = '600') => window.VMChrome.faceText(ctx, text, x + w / 2, y + hh / 2, size,
-    { face: { x, y, w, h: hh, inset: 0 }, engraved: !bw, font: bw ? face(true) : FONTS.engraved, weight, minSize: narrow ? 8 : 7 });
+  const hudInk = [];
+  const field = (text, x, y, w, hh, size, weight = '600') => {
+    const drawn = window.VMChrome.faceText(ctx, text, x + w / 2, y + hh / 2, size,
+      { face: { x, y, w, h: hh, inset: 0 }, engraved: !bw, font: bw ? face(true) : FONTS.engraved, weight, minSize: narrow ? 8 : 7 });
+    if (drawn && drawn.bounds) hudInk.push(...drawn.bounds);
+    return drawn;
+  };
   const title = L.tutorial ? `PRACTICE · ${L.cf}` : `${L.custom ? '' : L.id + '. '}${L.name.toUpperCase()} · ${L.cf}`;
   const y0 = top + inset;
   let y = y0;
@@ -9043,16 +9146,22 @@ function hud(theme) {
     ? (narrow ? `${marks} par ${par} s · pace` : `${marks} par ${par} s at record pace`)
     : `${marks} par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
   field(parLine, x0, y, inner, parH, narrow ? 8 : 9);
+  window.VMHudInk = { plate: { l: left, t: top, r: left + width, b: top + h }, s: screw, lines: hudInk };
   const trRun = purchase.getEntitlement().trial;
   const trialBand = L.tutorial && trRun.enabled && trRun.state === 'running' && !purchase.getEntitlement().full ? 40 : 0;
-  const lessonGap = (L.tutorial ? (vh < 420 && vw > vh ? 6 : 28) : 10) + trialBand;
+  const lessonGap = (L.tutorial ? (lessonTight() ? 2 : 28) : 10) + trialBand;
   document.documentElement.style.setProperty('--vm-hud-bottom', `${top + h + lessonGap}px`);
   // spirit level: in-plane gravity g·sin θ
   const gm = Math.hypot(state.tilt.x, state.tilt.y), ang = T.angleOf(state.tilt);
   HW.bubbleLevel(ctx, safe.l + 52, vh - safe.b - 56, 34, state.tilt.x, state.tilt.y, { theme: settings.theme });
   // B&W tilt note: Inter regular (never italic/hand/script). Victorian keeps italic ivory.
   ctx.save(); ctx.font = bw ? `500 10px ${face(true)}` : `italic 12px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  outlined(`tipped ${ang.toFixed(0)}° · g∥ ${(gm * g).toFixed(2)} m/s²`, safe.l + 100, vh - safe.b - 64, bw); outlined(`${state.tiltSource || ''}${inputMode === 'manual' ? ' (no tilt sensor)' : ''}`, safe.l + 100, vh - safe.b - 48, bw); ctx.restore();
+  const capX = safe.l + 100, capY1 = vh - safe.b - 64, capY2 = vh - safe.b - 48;
+  const cap1 = `tipped ${ang.toFixed(0)}° · g∥ ${(gm * g).toFixed(2)} m/s²`;
+  const cap2 = `${state.tiltSource || ''}${inputMode === 'manual' ? ' (no tilt sensor)' : ''}`;
+  outlined(cap1, capX, capY1, bw); outlined(cap2, capX, capY2, bw);
+  window.VMCaptionInk = { x: capX, y1: capY1, y2: capY2, w1: ctx.measureText(cap1).width, w2: ctx.measureText(cap2).width };
+  ctx.restore();
   if (settings.minimap) minimap(bw);
   if (settings.showAngleHistogram) HIST.drawHistogram(ctx, vw / 2 - 140, vh - safe.b - 130, 280, 100, w.hist, theme, { title: `θ about local normal · n=${w.hist.reduce((x, y) => x + y, 0)}` });
   // the tray indicator while tipping by hand: a big plumb-bob dial at the drag origin (or screen centre for keys)
@@ -9676,6 +9785,7 @@ document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('resize', resize);
 addEventListener('orientationchange', () => setTimeout(resize, 200));
+bindLessonMedia();
 sensor.attach();   // Android / desktop deliver events without a prompt; iOS needs request() from a tap (Begin)
 // desktops: no motion events within 1.5 s of load → manual steering, with the plaque hint once a level starts
 setTimeout(() => { if (inputMode === 'unknown' && sensor.st.events === 0 && !('ontouchstart' in window)) { inputMode = 'manual'; inputReason = 'none'; } }, 1500);
