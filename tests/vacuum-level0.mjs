@@ -123,8 +123,18 @@ try {
   await send('Runtime.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
 
+  await send('Page.navigate', { url: BASE + '/play/vacuum-maze/' });
+  for (let i = 0; i < 50; i++) {
+    if (await ev(`!!document.getElementById('b-begin') && document.readyState === 'complete'`)) break;
+    await sleep(120);
+  }
+  await sleep(400);
+  const exposed = await ev(`['VMHoldWorld','VMShowPracticeDone','VMTutorialLayout','VMSettlePlay','VMShowHint','VMPlayGeometry','VMFreezeFrame','VMCanvasSig','VMSetLesson','VMHudInk','VMCaptionInk'].filter((k) => window[k] != null)`);
+  if (exposed && exposed.length) fail('production exposes ' + exposed.join(' '));
+  else console.log('dev hooks hidden');
+
   async function boot(save, base = BASE) {
-    await send('Page.navigate', { url: base + '/play/vacuum-maze/' });
+    await send('Page.navigate', { url: base + '/play/vacuum-maze/?dev=1' });
     for (let i = 0; i < 50; i++) {
       if (await ev(`!!document.getElementById('b-begin') && document.readyState === 'complete'`)) break;
       await sleep(120);
@@ -404,7 +414,7 @@ try {
     console.log('clear', theme, w);
   }
 
-  const sensorLine = 'No motion sensor found. Drag or use arrow keys to tip the apparatus';
+  const sensorLine = 'No motion sensor found. Drag or use arrow keys to tip the apparatus.';
   const sensorSizes = [[320, 700, 'bw'], [320, 700, 'victorian'], [320, 568, 'bw'], [320, 568, 'victorian'], [568, 320, 'bw'], [568, 320, 'victorian'], [667, 375, 'bw'], [667, 375, 'victorian'], [812, 375, 'bw'], [812, 375, 'victorian'], [360, 640, 'bw'], [360, 640, 'victorian'], [360, 740, 'bw'], [360, 740, 'victorian'], [390, 844, 'bw'], [390, 844, 'victorian'], [412, 915, 'bw'], [412, 915, 'victorian'], [768, 900, 'bw'], [768, 900, 'victorian'], [1280, 800, 'bw'], [1280, 800, 'victorian']];
   for (const [w, h, theme] of sensorSizes) {
     const phone = Math.min(w, h) < 500;
@@ -451,7 +461,7 @@ try {
       if (!plateHolds(foldedText.range, { l: 0, t: 0, r: w, b: h }) || !plateHolds(foldedText.range, foldedText.plate)) fail(where + ' sensor line is cut off ' + JSON.stringify(foldedText));
     } else if (!hint || !hint.shown) fail(where + ' message is not showing in the practice');
     else {
-      if (hint.text !== sensorLine) fail(where + ' wording changed ' + hint.text);
+      if ((hint.text || '').replace(/\u00a0/g, ' ') !== sensorLine) fail(where + ' wording changed ' + hint.text);
       if (hint.clipped) fail(where + ' message is clipped ' + JSON.stringify(hint));
       if (hint.l < -1 || hint.t < -1 || hint.r > w + 1 || hint.b > h + 1) fail(where + ' message leaves the viewport ' + JSON.stringify(hint));
       if (hits(hint, box.gauge)) fail(where + ' message covers the gauge ' + JSON.stringify({ hint, gauge: box.gauge }));
@@ -599,7 +609,7 @@ try {
     })()`);
     if (!FULL_LINES.includes(info.text)) fail(where + ' lesson text is not a full line: ' + info.text);
     if (info.vw > info.vh && info.vh <= 420) {
-      if (info.sensor !== 'No motion sensor found. Drag or use arrow keys to tip the apparatus') fail(where + ' sensor line missing from the plate ' + info.sensor);
+      if (info.sensor !== 'No motion sensor found. Drag or use arrow keys to tip the apparatus.') fail(where + ' sensor line missing from the plate ' + info.sensor);
       if (!info.sensorRange || info.sensorRange.h < 8) fail(where + ' sensor line has no box');
     }
     if (info.range.w < 20 || info.range.h < 8) fail(where + ' lesson text has no box ' + JSON.stringify(info.range));
@@ -740,7 +750,7 @@ try {
 
   const sweepSizes = [[320, 320], [360, 360], [400, 400], [440, 440], [480, 480], [520, 520], [580, 580], [640, 640], [320, 340], [320, 360], [340, 360], [360, 340], [400, 320], [320, 420], [360, 420], [480, 320], [568, 320], [667, 375], [812, 375], [320, 568], [390, 844], [1280, 800]];
   const isSquare = (w, h) => Math.max(w, h) <= 640 && Math.max(w, h) / Math.min(w, h) <= 4 / 3 + 1e-9;
-  const sensorWords = 'No motion sensor found. Drag or use arrow keys to tip the apparatus';
+  const sensorWords = 'No motion sensor found. Drag or use arrow keys to tip the apparatus.';
   const layoutReport = `(() => {
     const bw = document.body.dataset.theme === 'bw';
     const inkOf = (node) => { const range = document.createRange(); range.selectNodeContents(node); const r = range.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height }; };
@@ -1090,6 +1100,213 @@ try {
         await sleep(200);
         for (const p of await ev(winReport)) fail(where + ' ' + p);
         console.log('done', where);
+      }
+    }
+  }
+  const textAudit = `(() => {
+    const problems = [];
+    const shown = (el) => {
+      if (!el || !el.getClientRects().length) return false;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 2 && r.height > 2;
+    };
+    const textNode = (el) => el && [...el.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim());
+    const lineBoxes = (el) => {
+      const node = textNode(el);
+      if (!node) return [];
+      const s = node.textContent;
+      const boxes = [];
+      let cur = null, top = null, start = 0;
+      const push = (end) => {
+        if (!cur) return;
+        const words = s.slice(start, end).replace(/\\u00a0/g, ' ').trim().split(/\\s+/).filter(Boolean);
+        boxes.push({ l: cur.l, t: cur.t, r: cur.r, b: cur.b, words });
+      };
+      for (let i = 0; i < s.length; i++) {
+        const range = document.createRange();
+        range.setStart(node, i); range.setEnd(node, Math.min(s.length, i + 1));
+        const rect = range.getClientRects()[0];
+        if (!rect || rect.width < 0.2) continue;
+        if (top === null) { top = rect.top; cur = { l: rect.left, t: rect.top, r: rect.right, b: rect.bottom }; start = i; }
+        else if (Math.abs(rect.top - top) > 2) {
+          const prev = s[i - 1] || '', ch = s[i] || '';
+          if (/\\S/.test(prev) && /\\S/.test(ch)) problems.push('mid-word ' + s.slice(Math.max(0, i - 6), i + 6).replace(/\\u00a0/g, ' '));
+          push(i);
+          start = i; top = rect.top;
+          cur = { l: rect.left, t: rect.top, r: rect.right, b: rect.bottom };
+        } else {
+          cur.l = Math.min(cur.l, rect.left); cur.t = Math.min(cur.t, rect.top);
+          cur.r = Math.max(cur.r, rect.right); cur.b = Math.max(cur.b, rect.bottom);
+        }
+      }
+      push(s.length);
+      return boxes;
+    };
+    const engraved = (el) => {
+      const cs = getComputedStyle(el);
+      const after = getComputedStyle(el, '::after');
+      const border = parseFloat(cs.borderTopWidth) || 0;
+      if (after && after.content && after.content !== 'none' && after.position === 'absolute' && after.borderTopStyle && after.borderTopStyle !== 'none') {
+        return border + (parseFloat(after.top) || 0) + (parseFloat(after.borderTopWidth) || 0);
+      }
+      const s = parseFloat(cs.getPropertyValue('--_s'));
+      if (Number.isFinite(s)) {
+        const rule = el.querySelector('.vls-plaque__chrome path');
+        const stroke = rule ? (parseFloat(rule.getAttribute('stroke-width')) || 1.55) : 1.55;
+        return s + stroke / 2;
+      }
+      return border;
+    };
+    const notchGap = (el, box) => {
+      if (document.body.dataset.theme === 'bw') return 99;
+      const svg = el.querySelector('svg.vls-plaque__chrome');
+      if (!svg || !svg.viewBox || !svg.viewBox.baseVal || svg.viewBox.baseVal.width < 2) return 99;
+      const cs = getComputedStyle(el);
+      const s = parseFloat(cs.getPropertyValue('--_s'));
+      const R = parseFloat(cs.getPropertyValue('--_R'));
+      if (!Number.isFinite(s) || !Number.isFinite(R)) return 99;
+      const vb = svg.viewBox.baseVal, sr = svg.getBoundingClientRect();
+      const map = (x, y) => [sr.left + (x / vb.width) * sr.width, sr.top + (y / vb.height) * sr.height];
+      const screws = [[s, s], [vb.width - s, s], [s, vb.height - s], [vb.width - s, vb.height - s]];
+      const pts = [[box.l, box.t], [box.r, box.t], [box.l, box.b], [box.r, box.b]];
+      let worst = 99;
+      for (const [sx, sy] of screws) {
+        const c = map(sx, sy);
+        const inwardX = sx < vb.width / 2 ? 1 : -1, inwardY = sy < vb.height / 2 ? 1 : -1;
+        const edge = map(sx + inwardX * R * Math.SQRT1_2, sy + inwardY * R * Math.SQRT1_2);
+        const rad = Math.hypot(edge[0] - c[0], edge[1] - c[1]) + 0.775;
+        for (const [x, y] of pts) worst = Math.min(worst, Math.hypot(x - c[0], y - c[1]) - rad);
+      }
+      return worst;
+    };
+    const check = (name, frame, inkEl) => {
+      if (!shown(frame) || !inkEl || !shown(inkEl)) return;
+      const boxes = lineBoxes(inkEl);
+      if (boxes.length > 1 && boxes[boxes.length - 1].words.length < 2) problems.push(name + ' widow ' + boxes[boxes.length - 1].words.join(' '));
+      const face = frame.getBoundingClientRect();
+      const edge = engraved(frame);
+      for (const box of boxes) {
+        const g = Math.min(box.l - face.left - edge, box.t - face.top - edge, face.right - edge - box.r, face.bottom - edge - box.b);
+        if (g < 3) problems.push(name + ' border ' + g.toFixed(2));
+        const ng = notchGap(frame, box);
+        if (ng < 3) problems.push(name + ' notch ' + ng.toFixed(2));
+      }
+    };
+    const plate = document.getElementById('tutorial-plaque');
+    if (shown(plate)) {
+      check('lesson', plate, plate.querySelector('.tutor-line'));
+      check('lesson-sensor', plate, plate.querySelector('.tutor-sensor'));
+    }
+    const hint = document.getElementById('hint-plaque');
+    if (shown(hint)) check('sensor', hint, hint.querySelector('.vls-plaque__label') || hint);
+    const rot = document.getElementById('rotate-hint');
+    if (shown(rot)) check('rotate', rot, rot);
+    const skip = document.getElementById('b-skip-tutorial');
+    const hudEl = document.getElementById('tutorial-hud');
+    if (shown(skip) && hudEl && getComputedStyle(hudEl).display !== 'none') check('skip', skip, skip.querySelector('.vm-button-face') || skip);
+    const hud = window.VMHudInk;
+    if (!hud || !hud.lines || !hud.lines.length) problems.push('hud ink missing');
+    else hud.lines.forEach((ln, i) => {
+      const inset = hud.s + 0.78;
+      const g = Math.min(ln.left - hud.plate.l - inset, ln.top - hud.plate.t - inset, hud.plate.r - inset - ln.right, hud.plate.b - inset - ln.bottom);
+      if (g < 3) problems.push('hud ' + i + ' border ' + g.toFixed(2));
+    });
+    const win = document.getElementById('p-win');
+    const note = document.getElementById('win-note');
+    if (win && win.classList.contains('show')) check('done-note', win, note);
+    const sensorNode = (plate && plate.querySelector('.tutor-sensor')) || (shown(hint) ? hint.querySelector('.vls-plaque__label') : null);
+    const sensorText = sensorNode ? sensorNode.textContent.replace(/\\u00a0/g, ' ') : '';
+    if (sensorText && sensorText !== 'No motion sensor found. Drag or use arrow keys to tip the apparatus.') problems.push('sensor wording ' + sensorText);
+    if (sensorText && !/apparatus\\.$/.test(sensorText)) problems.push('sensor period missing');
+    return problems;
+  })()`;
+  async function settleFrame() {
+    await ev(`new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)))`);
+  }
+  async function fit(w, h) {
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: Math.min(w, h) < 900 });
+    await send('Emulation.setTouchEmulationEnabled', { enabled: Math.min(w, h) < 900, maxTouchPoints: 1 });
+    await ev(`window.dispatchEvent(new Event('resize')); true`);
+    await settleFrame();
+    await sleep(60);
+  }
+  async function auditSteps(where) {
+    for (const step of [1, 2, 3]) {
+      const line = await ev(`window.VMSetLesson(${step})`);
+      if (!line) { fail(where + ' step ' + step + ' did not set'); continue; }
+      await settleFrame();
+      for (const p of await ev(textAudit)) fail(where + ' step ' + step + ' ' + p);
+    }
+    await ev(`document.getElementById('b-pausebtn').click(); true`);
+    await sleep(80);
+    await ev(`document.getElementById('b-resume').click(); true`);
+    await settleFrame();
+    for (const p of await ev(textAudit)) fail(where + ' resume ' + p);
+  }
+  const textSizes = [];
+  for (let w = 320; w <= 440; w += 20) for (let h = 300; h <= 900; h += 40) textSizes.push([w, h]);
+  for (const extra of [...sweepSizes, [360, 640], [320, 440], [320, 460], [480, 480]]) {
+    if (!textSizes.some(([w, h]) => w === extra[0] && h === extra[1])) textSizes.push(extra);
+  }
+  for (const theme of ['victorian', 'bw']) {
+    for (const mode of ['levels', 'custom']) {
+      const seen = mode === 'custom'
+        ? { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: false } }
+        : { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } };
+      await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 700, deviceScaleFactor: 1, mobile: true });
+      await boot(seen);
+      if (mode === 'custom') {
+        if (!await openCustomLesson()) { fail(theme + ' ' + mode + ' text maze did not open'); continue; }
+      } else await openLevelsLesson();
+      await ev(`window.VMHoldWorld(true); true`);
+      for (const [w, h] of textSizes) {
+        await fit(w, h);
+        await auditSteps(theme + ' ' + mode + ' text ' + w + 'x' + h);
+      }
+      console.log('text sweep', theme, mode, textSizes.length);
+    }
+  }
+  const freshSizes = [[360, 640], [340, 460], [340, 900], [360, 500], [360, 620], [320, 440], [320, 460], [480, 480]];
+  for (const theme of ['victorian', 'bw']) {
+    for (const mode of ['levels', 'custom']) {
+      for (const [w, h] of freshSizes) {
+        const seen = mode === 'custom'
+          ? { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: false } }
+          : { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } };
+        await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: true });
+        await boot(seen);
+        if (mode === 'custom') {
+          if (!await openCustomLesson()) { fail(theme + ' ' + mode + ' fresh ' + w + 'x' + h + ' maze did not open'); continue; }
+        } else await openLevelsLesson();
+        await ev(`window.VMHoldWorld(true); true`);
+        await auditSteps(theme + ' ' + mode + ' fresh ' + w + 'x' + h);
+        console.log('fresh', theme, mode, w + 'x' + h);
+      }
+    }
+  }
+  for (const theme of ['victorian', 'bw']) {
+    for (const mode of ['levels', 'custom']) {
+      const seen = mode === 'custom'
+        ? { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: false } }
+        : { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } };
+      await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 1, mobile: true });
+      await boot(seen);
+      if (mode === 'custom') {
+        if (!await openCustomLesson()) { fail(theme + ' ' + mode + ' short done maze did not open'); continue; }
+      } else await openLevelsLesson();
+      await ev(`window.VMHoldWorld(true); true`);
+      if (!await ev(`window.VMShowPracticeDone()`)) fail(theme + ' ' + mode + ' short done did not open');
+      await sleep(150);
+      for (const w of [320, 340, 360]) {
+        for (const h of [300, 320, 340]) {
+          await fit(w, h);
+          const where = theme + ' ' + mode + ' short done ' + w + 'x' + h;
+          for (const p of await ev(winReport)) fail(where + ' ' + p);
+          for (const p of await ev(textAudit)) if (/done-note|widow|mid-word/.test(p)) fail(where + ' ' + p);
+          console.log('short', where);
+        }
       }
     }
   }

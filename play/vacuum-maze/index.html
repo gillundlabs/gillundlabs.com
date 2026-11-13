@@ -811,6 +811,16 @@
     #p-win .stat { font-size: 11px; }
     #p-win #win-note { font-size: 11px; }
   }
+  /* 300px: the two button rows were about 5px past the fold. Tighten everything above them; leave the 11px face padding so the engraving still clears the ink by 3px. */
+  @media (max-height: 320px) {
+    #p-win { max-height: calc(var(--vh) - 4px); padding: 3px 8px; }
+    #p-win h2 { font-size: 14px; margin: 0; line-height: 1.05; }
+    body[data-theme="victorian"] #p-win h2 { padding-bottom: 2px; }
+    #p-win .big-stars { font-size: 13px; letter-spacing: 1px; margin: 0; line-height: 1; }
+    #p-win .stat { gap: 0 6px; margin: 1px auto; font-size: 10px; line-height: 1.1; }
+    #p-win #win-note { font-size: 10px; line-height: 1.15; margin: 0; }
+    #p-win .row { gap: 4px; margin-top: 3px; }
+  }
   .tutor-restart { margin: 10px 0; }
   .tutor-restart > span { display: block; line-height: 1.3; }
   .tutor-restart small { display: block; font-weight: normal; opacity: .8; }
@@ -821,10 +831,15 @@
     white-space: normal; overflow: visible; text-overflow: clip; pointer-events: none;
     font: 500 14px var(--vls-font-ivory); color: inherit; letter-spacing: .02em; line-height: 1.25;
   }
-  body.lesson-frame #hint-plaque { --hint-size: 14px; }
+  body.lesson-frame #hint-plaque {
+    --hint-size: 14px;
+    /* Wrapped lesson copy was meeting the corner notch. Pad past the arc (s+R) and the stroke. */
+    padding: calc(var(--_s) + var(--_R) + 4px) calc(var(--_s) + var(--_R) + 8px);
+  }
   body.lesson-frame #hint-plaque .vls-plaque__label {
     white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
     height: auto !important; max-width: 100%; min-width: 0;
+    overflow-wrap: normal; word-break: normal; hyphens: manual;
     font-size: var(--hint-size, 14px) !important; line-height: 1.3;
   }
   body[data-theme="bw"] #hint-plaque {
@@ -8108,9 +8123,8 @@ function hintLabel() {
   const el = $('hint-plaque'); return (el && el.querySelector('.vls-plaque__label')) || el;
 }
 function showHint() {
-  const why = inputReason === 'denied' ? 'Motion access was denied. ' : inputReason === 'none' ? 'No motion sensor found. ' : '';
   const el = $('hint-plaque');
-  hintLabel().textContent = `${why}Drag or use arrow keys to tip the apparatus`;
+  hintLabel().textContent = sensorSentence();
   if (!lessonFraming()) {
     hintPlaced = false;
     document.body.classList.remove('lesson-frame');
@@ -8240,7 +8254,10 @@ function keepPair(text) {
 function sensorSentence() {
   if (inputMode !== 'manual') return '';
   const why = inputReason === 'denied' ? 'Motion access was denied. ' : inputReason === 'none' ? 'No motion sensor found. ' : '';
-  return `${why}Drag or use arrow keys to tip the apparatus`;
+  const sentence = `${why}Drag or use arrow keys to tip the apparatus`;
+  // Ordinary play keeps main's sentence. The lesson plaque closes it, and keeps the last two words together.
+  if (!lessonFraming()) return sentence;
+  return keepPair(sentence + '.');
 }
 // The same query strings as the lesson CSS. max-height includes 420, and squares are portrait.
 const LESSON_COMPACT_QUERY = '(max-height: 420px)';
@@ -8279,7 +8296,12 @@ function syncLessonChrome() {
   }
   if (held) return;
   if (inputMode === 'manual' && !el.classList.contains('show')) { showHint(); return; }
-  if (el.classList.contains('show') && placeSensorHint()) requestAnimationFrame(mountHintPlaque);
+  if (el.classList.contains('show')) {
+    const next = sensorSentence();
+    const lab = hintLabel();
+    if (lab && next && lab.textContent !== next) lab.textContent = next;
+    if (placeSensorHint()) requestAnimationFrame(mountHintPlaque);
+  }
 }
 function bindLessonMedia() {
   const onChange = () => { resize(); };
@@ -8649,8 +8671,10 @@ function tutorialLayout() {
   }
   return out;
 }
-window.VMTutorialLayout = tutorialLayout;
-window.VMHoldWorld = (on) => { state.holdWorld = !!on; };
+function publishDevHooks() {
+  if (!devHooks.on) return;
+  window.VMTutorialLayout = tutorialLayout;
+  window.VMHoldWorld = (on) => { state.holdWorld = !!on; };
 window.VMSettlePlay = function () {
   state.holdWorld = true;
   const w = state.world;
@@ -8729,6 +8753,15 @@ window.VMShowPracticeDone = function () {
   showTutorialWin();
   return document.getElementById('p-win').classList.contains('show');
 };
+  window.VMSetLesson = function (step) {
+    const t = state.tutorial;
+    if (!t || !t.active) return '';
+    t.steered = step >= 2;
+    t.aimed = step >= 3;
+    tutorialTick();
+    return tutorialLine();
+  };
+}
 function practiceFrame(includePump) {
   const L = state.level;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -9224,7 +9257,7 @@ function hud(theme) {
     });
     if (words && words.bounds) hudInk.push(...words.bounds);
   }
-  window.VMHudInk = { plate: { l: left, t: top, r: left + width, b: top + h }, s: screw, lines: hudInk };
+  if (devHooks.on) window.VMHudInk = { plate: { l: left, t: top, r: left + width, b: top + h }, s: screw, lines: hudInk };
   const trRun = purchase.getEntitlement().trial;
   const trialBand = L.tutorial && trRun.enabled && trRun.state === 'running' && !purchase.getEntitlement().full ? 40 : 0;
   const lessonGap = (L.tutorial ? (lessonTight() ? 2 : 28) : 10) + trialBand;
@@ -9238,7 +9271,7 @@ function hud(theme) {
   const cap1 = `tipped ${ang.toFixed(0)}° · g∥ ${(gm * g).toFixed(2)} m/s²`;
   const cap2 = `${state.tiltSource || ''}${inputMode === 'manual' ? ' (no tilt sensor)' : ''}`;
   outlined(cap1, capX, capY1, bw); outlined(cap2, capX, capY2, bw);
-  window.VMCaptionInk = { x: capX, y1: capY1, y2: capY2, w1: ctx.measureText(cap1).width, w2: ctx.measureText(cap2).width };
+  if (devHooks.on) window.VMCaptionInk = { x: capX, y1: capY1, y2: capY2, w1: ctx.measureText(cap1).width, w2: ctx.measureText(cap2).width };
   ctx.restore();
   if (settings.minimap) minimap(bw);
   if (settings.showAngleHistogram) HIST.drawHistogram(ctx, vw / 2 - 140, vh - safe.b - 130, 280, 100, w.hist, theme, { title: `θ about local normal · n=${w.hist.reduce((x, y) => x + y, 0)}` });
@@ -9873,6 +9906,12 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !wind
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
 
+
+// The release file leaves devHooks.on false. Layout tests open the page with ?dev=1, which is the same flag the dist-test block turns on.
+try {
+  if (new URLSearchParams(location.search).get('dev') === '1') devHooks.on = true;
+} catch (e) { /* no location */ }
+publishDevHooks();
 
 resize();
 const ivoryReady = (VLS.ivory && typeof VLS.ivory.ready === 'function')
