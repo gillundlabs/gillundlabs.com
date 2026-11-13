@@ -625,7 +625,8 @@
   #controls { max-height: calc(var(--vh) - var(--sat) - var(--sab) - 16px); overflow: auto; }
   #trial-badge { max-width: calc(100vw - var(--sal) - var(--sar) - 32px); }
   body[data-theme] .fv-tag { display: inline-block; --md-face-bevel: 2px; padding: 4px 7px; line-height: 1.3; overflow-wrap: anywhere; max-width: 100%; box-sizing: border-box; }
-  body[data-theme] #trial-badge { --md-face-bevel: 4px; padding: 8px 12px; line-height: 1.3; }
+  body[data-theme] #trial-badge { --md-face-bevel: 4px; padding: 8px 12px; line-height: 1.3; white-space: nowrap !important; }
+  body[data-theme] #trial-badge .vls-plaque__label { white-space: nowrap !important; }
   body[data-theme="victorian"] { --md-brass-button-surface: repeating-linear-gradient(0deg, #28160409 0 1px, transparent 1px 3px), linear-gradient(116deg, transparent 20%, #fff1b82b 38%, transparent 56%), linear-gradient(180deg, #d5ad59, #dbb65f 46%, #ba9140); }
   body[data-theme="victorian"] button {
     --md-face-bevel: 7px; border-width: 1px; font-family: var(--vls-font-engraved);
@@ -7774,15 +7775,7 @@ function layoutInstruments() {
         }
       }
       const lessonRead = $('sorting-readout');
-      if (lessonRead && !lessonRead.hidden) {
-        lessonRead.classList.add('ink-safe');
-        lessonRead.style.position = 'fixed';
-        lessonRead.style.margin = '0';
-        lessonRead.style.right = `${safe('--sar') + 8}px`;
-        lessonRead.style.left = 'auto';
-        lessonRead.style.width = `${Math.max(72, ctrlW - 8)}px`;
-        lessonRead.style.top = `${Math.min(bottom - 44, bandTop + 52)}px`;
-      }
+      if (lessonRead && !lessonRead.hidden) lessonRead.classList.add('ink-safe');
       if (trial && !trial.hidden) {
         trial.classList.add('gutter-badge');
         trial.style.minWidth = '0';
