@@ -745,6 +745,22 @@ try {
     const bw = document.body.dataset.theme === 'bw';
     const inkOf = (node) => { const range = document.createRange(); range.selectNodeContents(node); const r = range.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height }; };
     const gap = (ink, face, edge) => Math.min(ink.l - face.l - edge, ink.t - face.t - edge, face.r - edge - ink.r, face.b - edge - ink.b);
+    // Distance from the border box to the inside of the engraved stroke. A plaque's rule is centred on --_s; a brass button's frame is its ::after.
+    const engraved = (el) => {
+      const cs = getComputedStyle(el);
+      const after = getComputedStyle(el, '::after');
+      const border = parseFloat(cs.borderTopWidth) || 0;
+      if (after && after.content && after.content !== 'none' && after.position === 'absolute' && after.borderTopStyle && after.borderTopStyle !== 'none') {
+        return border + (parseFloat(after.top) || 0) + (parseFloat(after.borderTopWidth) || 0);
+      }
+      const s = parseFloat(cs.getPropertyValue('--_s'));
+      if (Number.isFinite(s)) {
+        const rule = el.querySelector('.vls-plaque__chrome path');
+        const stroke = rule ? (parseFloat(rule.getAttribute('stroke-width')) || 1.55) : 1.55;
+        return s + stroke / 2;
+      }
+      return border;
+    };
     const problems = [];
     const lay = window.VMTutorialLayout();
     const skip = document.getElementById('b-skip-tutorial');
@@ -752,30 +768,29 @@ try {
     const hit = document.elementFromPoint(sr.left + sr.width / 2, sr.top + sr.height / 2);
     if (sr.width < 8 || sr.top < -1 || sr.left < -1 || sr.right > innerWidth + 1 || sr.bottom > innerHeight + 1) problems.push('skip off screen');
     if (!(hit && (hit === skip || skip.contains(hit)))) problems.push('skip not hit');
-    const btnEdge = bw ? 2 : 7;
     if (getComputedStyle(document.getElementById('tutorial-hud')).display !== 'none') {
-      const g = gap(inkOf(skip.querySelector('.vm-button-face') || skip), { l: sr.left, t: sr.top, r: sr.right, b: sr.bottom }, btnEdge);
+      const g = gap(inkOf(skip.querySelector('.vm-button-face') || skip), { l: sr.left, t: sr.top, r: sr.right, b: sr.bottom }, engraved(skip));
       if (g < 3) problems.push('skip text ' + g.toFixed(2));
     }
     const plate = document.getElementById('tutorial-plaque');
-    let s = parseFloat(getComputedStyle(plate).getPropertyValue('--_s'));
-    if (!Number.isFinite(s)) s = bw ? 2 : 10;
+    const plateEdge = engraved(plate);
     for (const sel of ['.tutor-line', '.tutor-sensor']) {
       const node = plate.querySelector(sel);
       if (!node) continue;
-      const g = gap(inkOf(node), { l: plate.getBoundingClientRect().left, t: plate.getBoundingClientRect().top, r: plate.getBoundingClientRect().right, b: plate.getBoundingClientRect().bottom }, s);
+      const pr = plate.getBoundingClientRect();
+      const g = gap(inkOf(node), { l: pr.left, t: pr.top, r: pr.right, b: pr.bottom }, plateEdge);
       if (g < 3) problems.push(sel + ' text ' + g.toFixed(2));
     }
     const hud = window.VMHudInk;
     if (!hud || !hud.lines.length) problems.push('hud ink missing');
     else hud.lines.forEach((ln, i) => {
-      const g = gap({ l: ln.left, t: ln.top, r: ln.right, b: ln.bottom }, hud.plate, hud.s);
+      const g = gap({ l: ln.left, t: ln.top, r: ln.right, b: ln.bottom }, hud.plate, hud.s + (bw ? 0 : 0.78));
       if (g < 3) problems.push('hud ' + i + ' ' + g.toFixed(2));
     });
     const rot = document.getElementById('rotate-hint');
     if (rot && getComputedStyle(rot).display !== 'none') {
       const rr = rot.getBoundingClientRect();
-      const g = gap(inkOf(rot), { l: rr.left, t: rr.top, r: rr.right, b: rr.bottom }, 0);
+      const g = gap(inkOf(rot), { l: rr.left, t: rr.top, r: rr.right, b: rr.bottom }, engraved(rot));
       if (g < 3) problems.push('rotate text ' + g.toFixed(2));
     }
     const over = (a, b) => !!(a && b && a.r > b.l + 1 && a.l < b.r - 1 && a.b > b.t + 1 && a.t < b.b - 1);
@@ -798,7 +813,22 @@ try {
   })()`;
   const pauseReport = `(() => {
     const bw = document.body.dataset.theme === 'bw';
-    const edge = bw ? 2 : 7;
+    const inkOf = (node) => { const range = document.createRange(); range.selectNodeContents(node); const r = range.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; };
+    const engraved = (el) => {
+      const cs = getComputedStyle(el);
+      const after = getComputedStyle(el, '::after');
+      const border = parseFloat(cs.borderTopWidth) || 0;
+      if (after && after.content && after.content !== 'none' && after.position === 'absolute' && after.borderTopStyle && after.borderTopStyle !== 'none') {
+        return border + (parseFloat(after.top) || 0) + (parseFloat(after.borderTopWidth) || 0);
+      }
+      const s = parseFloat(cs.getPropertyValue('--_s'));
+      if (Number.isFinite(s)) {
+        const rule = el.querySelector('.vls-plaque__chrome path');
+        const stroke = rule ? (parseFloat(rule.getAttribute('stroke-width')) || 1.55) : 1.55;
+        return s + stroke / 2;
+      }
+      return border;
+    };
     const panel = document.getElementById('p-pause');
     const pr = panel.getBoundingClientRect();
     const visT = pr.top + panel.clientTop, visB = visT + panel.clientHeight;
@@ -809,6 +839,7 @@ try {
       const node = el.querySelector('.vm-button-face') || el;
       const range = document.createRange(); range.selectNodeContents(node);
       const ink = range.getBoundingClientRect();
+      const edge = engraved(el);
       const g = Math.min(ink.left - face.left - edge, ink.top - face.top - edge, face.right - edge - ink.right, face.bottom - edge - ink.bottom);
       const cx = face.left + face.width / 2, cy = face.top + face.height / 2;
       const hit = document.elementFromPoint(cx, cy);
@@ -820,6 +851,22 @@ try {
     const over = (a, b) => !!(a && b && a.r > b.l + 1 && a.l < b.r - 1 && a.b > b.t + 1 && a.t < b.b - 1);
     const rot = lay.rotate;
     for (const name of ['tube', 'atom', 'pump']) if (rot && over(lay[name], rot)) problems.push('rotate over ' + name);
+    const shown = (el) => {
+      if (!el || !el.getClientRects().length) return null;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return null;
+      return { l: r.left, t: r.top, r: r.right, b: r.bottom };
+    };
+    const title = shown(document.querySelector('#p-pause h2'));
+    const blockers = [['plaque', shown(document.getElementById('hint-plaque'))], ['plate', shown(document.getElementById('tutorial-plaque'))]];
+    const targets = ['b-resume', 'b-restart', 'b-pause-skip', 'b-pause-settings', 'b-pause-notebook', 'b-pause-levels'].map((id) => [id, shown(document.getElementById(id))]);
+    if (title) targets.push(['PAUSED', title]);
+    for (const [name, box] of blockers) {
+      if (!box) continue;
+      for (const [id, part] of targets) if (over(box, part)) problems.push(name + ' covers ' + id);
+    }
     return problems;
   })()`;
   async function openLevelsLesson() {
@@ -848,8 +895,30 @@ try {
       await sleep(180);
       for (const p of await ev(pauseReport)) fail(where + ' pause ' + p);
       await ev(`document.getElementById('b-resume').click(); true`);
-      await sleep(120);
+      await sleep(200);
+      if (!folded) {
+        const back = await ev(`document.getElementById('hint-plaque').classList.contains('show') && getComputedStyle(document.getElementById('hint-plaque')).display !== 'none' && !document.body.classList.contains('sensor-held')`);
+        if (!back) fail(where + ' sensor plaque did not return on Resume');
+      }
       console.log('sweep', where, 'mh', lesson.mh);
+    }
+  }
+  const pauseOnly = [];
+  for (let side = 320; side <= 640; side += 20) {
+    if (!sweepSizes.some(([w, h]) => w === side && h === side)) pauseOnly.push([side, side]);
+  }
+  pauseOnly.push([720, 720]);
+  for (const theme of ['victorian', 'bw']) {
+    for (const [w, h] of pauseOnly) {
+      const where = theme + ' pause ' + w + 'x' + h;
+      await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: true });
+      await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+      await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
+      await openLevelsLesson();
+      await ev(`document.getElementById('b-pausebtn').click(); true`);
+      await sleep(180);
+      for (const p of await ev(pauseReport)) fail(where + ' ' + p);
+      console.log('pause', where);
     }
   }
   for (const theme of ['victorian', 'bw']) {

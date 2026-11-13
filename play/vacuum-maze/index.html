@@ -728,7 +728,8 @@
   }
   #tutorial-plaque .tutor-sensor { margin-top: 4px; }
   /* Short landscape with no tilt sensor: the sensor sentence lives on the lesson plate, not a third plaque. */
-  body.lesson-frame.sensor-in-plate #hint-plaque { display: none !important; }
+  body.lesson-frame.sensor-in-plate #hint-plaque,
+  body.lesson-frame.sensor-held #hint-plaque { display: none !important; }
   #b-skip-tutorial { pointer-events: auto; align-self: flex-start; }
   #b-pause-skip[hidden] { display: none !important; }
   body[data-theme="bw"] #tutorial-plaque {
@@ -8230,8 +8231,11 @@ function sensorFoldsIntoLesson() {
 function syncLessonChrome() {
   const framing = lessonFraming();
   const fold = sensorFoldsIntoLesson();
+  // Any lesson pause hides the separate plaque, including sizes that do not fold it into the plate. Resume drops the class and the plaque comes back.
+  const held = framing && state.screen === 'paused';
   document.body.classList.toggle('lesson-frame', framing);
   document.body.classList.toggle('sensor-in-plate', fold);
+  document.body.classList.toggle('sensor-held', held);
   if (!framing) { releaseSensorHint(); return; }
   if (state.level && state.level.tutorial) tutorialTick();
   const el = $('hint-plaque');
@@ -8240,6 +8244,7 @@ function syncLessonChrome() {
     if (el.classList.contains('show')) { el.classList.remove('show'); hintPlaced = false; }
     return;
   }
+  if (held) return;
   if (inputMode === 'manual' && !el.classList.contains('show')) { showHint(); return; }
   if (el.classList.contains('show') && placeSensorHint()) requestAnimationFrame(mountHintPlaque);
 }
