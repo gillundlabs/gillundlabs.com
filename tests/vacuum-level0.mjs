@@ -1474,8 +1474,41 @@ try {
     for (const [w, h] of textSizes) {
       await fit(w, h);
       for (const p of await ev(panelCover)) fail(label + ' ' + w + 'x' + h + ' ' + p);
+      const ink = await ev(`window.VMHudPanelInk()`);
+      if (!ink || ink.painted || (ink.n > 40 && ink.ink === 0)) fail(label + ' ' + w + 'x' + h + ' hud ink ' + JSON.stringify(ink));
     }
     console.log('cover', label, textSizes.length);
+  }
+  async function controlGaps(where) {
+    const problems = await ev(`(() => {
+      const problems = [];
+      const box = (id) => { const r = document.getElementById(id).getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; };
+      const ids = ['b-pausebtn', 'b-level', 'b-skip-tutorial'];
+      const gapOf = (a, b) => {
+        const xOver = Math.min(a.r, b.r) - Math.max(a.l, b.l);
+        const yOver = Math.min(a.b, b.b) - Math.max(a.t, b.t);
+        if (xOver > 0 && yOver > 0) return -Math.min(xOver, yOver);
+        if (xOver > 0) return Math.max(a.t, b.t) - Math.min(a.b, b.b);
+        if (yOver > 0) return Math.max(a.l, b.l) - Math.min(a.r, b.r);
+        return Math.hypot(Math.max(a.l, b.l) - Math.min(a.r, b.r), Math.max(a.t, b.t) - Math.min(a.b, b.b));
+      };
+      const boxes = ids.map((id) => [id, box(id)]);
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        const g = gapOf(boxes[i][1], boxes[j][1]);
+        if (g < 4) problems.push(boxes[i][0] + '/' + boxes[j][0] + ' gap ' + g.toFixed(1));
+      }
+      for (const [id, f] of boxes) {
+        const el = document.getElementById(id);
+        const inset = 3;
+        const pts = [[(f.l + f.r) / 2, (f.t + f.b) / 2], [f.l + inset, f.t + inset], [f.r - inset, f.t + inset], [f.l + inset, f.b - inset], [f.r - inset, f.b - inset]];
+        for (const [x, y] of pts) {
+          const hit = document.elementFromPoint(x, y);
+          if (!(hit && el.contains(hit))) problems.push(id + ' miss ' + Math.round(x) + ',' + Math.round(y));
+        }
+      }
+      return problems;
+    })()`);
+    for (const p of problems || []) fail(where + ' ' + p);
   }
   for (const theme of ['victorian', 'bw']) {
     for (const mode of ['levels', 'custom']) {
@@ -1488,6 +1521,10 @@ try {
         if (!await openCustomLesson()) { fail(theme + ' ' + mode + ' cover maze did not open'); continue; }
       } else await openLevelsLesson();
       await ev(`window.VMHoldWorld(true); true`);
+      for (const w of [320, 340, 360, 380]) {
+        await fit(w, 300);
+        await controlGaps(theme + ' ' + mode + ' controls ' + w + 'x300');
+      }
       await ev(`document.getElementById('b-pausebtn').click(); true`);
       await coverSweep(theme + ' ' + mode + ' pause');
       await ev(`document.getElementById('b-pause-settings').click(); true`);
@@ -1507,6 +1544,33 @@ try {
       const restored = await ev(`!document.querySelector('.panel.show') && document.getElementById('hint-plaque').classList.contains('show') && getComputedStyle(document.getElementById('hint-plaque')).display !== 'none'`);
       if (back && !restored) fail(theme + ' ' + mode + ' sensor plaque did not return to play');
     }
+  }
+  function near(a, b, tol) {
+    if (!a || !b) return false;
+    return ['l', 't', 'w', 'h'].every((k) => a[k] == null || Math.abs(a[k] - b[k]) <= tol);
+  }
+  for (const theme of ['victorian', 'bw']) {
+    await send('Emulation.setDeviceMetricsOverride', { width: 320, height: 300, deviceScaleFactor: 1, mobile: true });
+    await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
+    await openLevelsLesson();
+    await ev(`window.VMHoldWorld(true); document.getElementById('b-pausebtn').click(); true`);
+    await fit(390, 844);
+    await ev(`document.getElementById('b-resume').click(); true`);
+    await sleep(600);
+    const drifted = await ev(`window.VMLessonRects()`);
+    await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } });
+    await openLevelsLesson();
+    await ev(`window.VMHoldWorld(true); true`);
+    await sleep(600);
+    const fresh = await ev(`window.VMLessonRects()`);
+    for (const key of ['plate', 'skip', 'hud']) {
+      if (!near(drifted[key], fresh[key], 2)) fail(theme + ' resize-while-paused ' + key + ' drifted ' + JSON.stringify(drifted[key]) + ' fresh ' + JSON.stringify(fresh[key]));
+    }
+    if (!drifted.tube || !fresh.tube || Math.abs(drifted.tube.t - fresh.tube.t) > 2 || Math.abs(drifted.tube.h - fresh.tube.h) > 2) {
+      fail(theme + ' resize-while-paused tube drifted ' + JSON.stringify(drifted.tube) + ' fresh ' + JSON.stringify(fresh.tube));
+    }
+    console.log('relayout', theme, JSON.stringify({ drifted, fresh }));
   }
   const portraitSizes = sweepSizes.filter(([w, h]) => h >= w);
   for (const theme of ['victorian', 'bw']) {

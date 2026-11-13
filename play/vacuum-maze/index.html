@@ -772,6 +772,10 @@
     #tutorial-plaque .tutor-line, #tutorial-plaque .tutor-sensor { font-size: 11px !important; line-height: 1.05 !important; }
     #tutorial-plaque.vls-plaque { --vls-plaque-screw: 2px; --vls-plaque-head: 1px; padding: 6px 8px !important; }
   }
+  /* Short screens: the square rule's right: 8px puts Skip on top of the level button. Stay clear of the control column. */
+  @media (max-height: 420px) {
+    #tutorial-hud { right: 76px; }
+  }
   /* Square pause: one button per row is taller than the panel, so Levels sits past the fold. Two columns keep every button on screen. */
   @media (max-height: 640px) and (max-width: 640px) and (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3) {
     #p-pause { padding: 8px 10px; }
@@ -7789,9 +7793,8 @@ function resize() {
   const hint = $('hint-plaque');
   if (hint) delete hint.dataset.hintPlace;
   lessonInsetHold = null;
-  if (hint && hint.classList.contains('show')) requestAnimationFrame(mountHintPlaque);
   // The lesson plate's engraved rule is measured for the size it was built at. Rebuild it so a resize matches a cold boot.
-  if (lessonFraming()) requestAnimationFrame(mountTutorialPlaque);
+  scheduleLessonLayout();
   syncLessonChrome();
 }
 
@@ -8367,6 +8370,12 @@ function mountTutorialPlaque() {
   }
   // B&W stays the plain Inter plate. Victorian uses the kit frame.
   if (document.body.dataset.theme === 'bw' || !VLS.plaqueChrome || !el.getClientRects().length) return;
+  // A resize while the row was hidden left the previous screw inline, which keeps the plate short.
+  el.style.removeProperty('--_s');
+  el.style.removeProperty('--_r');
+  el.style.removeProperty('--_R');
+  el.style.removeProperty('--_d');
+  el.getBoundingClientRect();
   VLS.plaqueChrome(el);
   if (label) {
     label.style.whiteSpace = 'normal';
@@ -8521,9 +8530,34 @@ function releaseSensorHint() {
   }
   if (el.classList.contains('show')) requestAnimationFrame(mountHintPlaque);
 }
+function scheduleLessonLayout() {
+  lessonInsetHold = null;
+  hintPlaced = false;
+  const hint = $('hint-plaque');
+  if (hint) delete hint.dataset.hintPlace;
+  // Two frames: the first applies the new size, the second measures the rebuilt Victorian chrome.
+  requestAnimationFrame(() => {
+    relayoutLesson();
+    requestAnimationFrame(() => { lessonInsetHold = null; relayoutLesson(); });
+  });
+}
+function relayoutLesson() {
+  lessonInsetHold = null;
+  if (curPanel() || !lessonFraming()) return;
+  const plate = $('tutorial-plaque');
+  if (plate && plate.getClientRects().length) mountTutorialPlaque();
+  const hint = $('hint-plaque');
+  if (hint && hint.classList.contains('show') && hint.getClientRects().length) {
+    delete hint.dataset.hintPlace;
+    mountHintPlaque();
+  }
+}
 function playInset() {
   if (!lessonFraming()) { lessonInsetHold = null; return { top: 0, bottom: 0, bias: 0 }; }
-  if (state.screen !== 'playing' && lessonInsetHold) return lessonInsetHold;
+  // Don't freeze a measurement taken while the lesson row is hidden behind a panel.
+  const hudEl = document.getElementById('tutorial-hud');
+  const hudHidden = hudEl && getComputedStyle(hudEl).display === 'none';
+  if (!hudHidden && state.screen !== 'playing' && lessonInsetHold) return lessonInsetHold;
   const el = document.getElementById('tutorial-hud');
   const plateBottom = el && el.classList.contains('show') ? Math.ceil(el.getBoundingClientRect().bottom) : 0;
   // The whole practice plate, including Skip, stays above the tube. The source label sits just over the steel.
@@ -8764,6 +8798,63 @@ window.VMShowPracticeDone = function () {
     t.aimed = step >= 3;
     tutorialTick();
     return tutorialLine();
+  };
+  window.VMHudPanelInk = function () {
+    const panel = document.querySelector('.panel.show');
+    if (!panel) return { n: 0, same: true, painted: false };
+    const pr = panel.getBoundingClientRect();
+    const clip = { l: pr.left - 4, t: pr.top - 4, r: pr.right + 4, b: pr.bottom + 4 };
+    const plate = readoutBox();
+    const cap = captionBox();
+    const zones = [plate, cap];
+    const samples = () => {
+      const bitmap = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      const pix = [];
+      let n = 0;
+      for (const z of zones) {
+        const l = Math.max(0, Math.floor(Math.max(z.l, clip.l)));
+        const t = Math.max(0, Math.floor(Math.max(z.t, clip.t)));
+        const r = Math.min(vw, Math.ceil(Math.min(z.r, clip.r)));
+        const b = Math.min(vh, Math.ceil(Math.min(z.b, clip.b)));
+        for (let y = t; y < b; y += 3) {
+          for (let x = l; x < r; x += 3) {
+            const i = (Math.round(y * dpr) * canvas.width + Math.round(x * dpr)) * 4;
+            pix.push((bitmap[i] << 16) | (bitmap[i + 1] << 8) | bitmap[i + 2]);
+            n++;
+          }
+        }
+      }
+      return { pix, n };
+    };
+    state.paintHud = true;
+    render();
+    const loud = samples();
+    state.paintHud = false;
+    render();
+    const quiet = samples();
+    render();
+    const live = samples();
+    let ink = 0, leaked = 0;
+    for (let i = 0; i < quiet.pix.length; i++) {
+      if (loud.pix[i] === quiet.pix[i]) continue;
+      ink++;
+      if (live.pix[i] !== quiet.pix[i]) leaked++;
+    }
+    return { n: quiet.n, ink, leaked, painted: leaked > 0 };
+  };
+  window.VMLessonRects = function () {
+    const box = (el) => {
+      if (!el || !el.getClientRects().length) return null;
+      const r = el.getBoundingClientRect();
+      return { l: +r.left.toFixed(1), t: +r.top.toFixed(1), w: +r.width.toFixed(1), h: +r.height.toFixed(1) };
+    };
+    const lay = tutorialLayout();
+    return {
+      plate: box(document.getElementById('tutorial-plaque')),
+      skip: box(document.getElementById('b-skip-tutorial')),
+      hud: box(document.getElementById('tutorial-hud')),
+      tube: lay.tube && { t: +lay.tube.t.toFixed(1), h: +(lay.tube.b - lay.tube.t).toFixed(1) },
+    };
   };
 }
 function practiceFrame(includePump) {
@@ -9200,6 +9291,16 @@ function hud(theme) {
   const best = !L.tutorial && store.best[S.bestKey(L.id, body)], bname = body === 'arcade' ? `Arcade ${g.toFixed(2)} m/s²` : E.BODIES[body].name;
   // A tight lesson uses a smaller screw so the readout text still clears that rule by 3 px without eating the pump's band.
   const screw = bw ? 1 : (compact ? 2 : 10);
+  const trRunEarly = purchase.getEntitlement().trial;
+  const trialBandEarly = L.tutorial && trRunEarly.enabled && trRunEarly.state === 'running' && !purchase.getEntitlement().full ? 40 : 0;
+  const lessonGapEarly = (L.tutorial ? (lessonTight() ? 2 : 28) : 10) + trialBandEarly;
+  document.documentElement.style.setProperty('--vm-hud-bottom', `${top + h + lessonGapEarly}px`);
+  // Main paints this plate under ordinary pause and win. Skipping it whenever a panel is open
+  // does not change a frame with no panel, so ordinary-play pixels stay the same.
+  if (curPanel() && state.paintHud !== true) {
+    if (devHooks.on) { window.VMHudInk = null; window.VMCaptionInk = null; }
+    return;
+  }
   if (!bw) AP.plaque(ctx, left, top, width, h, 3, compact ? { s: 2, r: 1 } : undefined);
   else { ctx.fillStyle = '#000'; ctx.fillRect(left, top, width, h); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(left, top, width, h); }
   const x0 = left + inset, inner = width - inset * 2, colGap = narrow ? 8 : 6;
@@ -9262,10 +9363,6 @@ function hud(theme) {
     if (words && words.bounds) hudInk.push(...words.bounds);
   }
   if (devHooks.on) window.VMHudInk = { plate: { l: left, t: top, r: left + width, b: top + h }, s: screw, lines: hudInk };
-  const trRun = purchase.getEntitlement().trial;
-  const trialBand = L.tutorial && trRun.enabled && trRun.state === 'running' && !purchase.getEntitlement().full ? 40 : 0;
-  const lessonGap = (L.tutorial ? (lessonTight() ? 2 : 28) : 10) + trialBand;
-  document.documentElement.style.setProperty('--vm-hud-bottom', `${top + h + lessonGap}px`);
   // spirit level: in-plane gravity g·sin θ
   const gm = Math.hypot(state.tilt.x, state.tilt.y), ang = T.angleOf(state.tilt);
   HW.bubbleLevel(ctx, safe.l + 52, vh - safe.b - 56, 34, state.tilt.x, state.tilt.y, { theme: settings.theme });
@@ -9369,6 +9466,7 @@ function showPanel(name) {
   if (scrim) scrim.classList.toggle('show', name === 'ledger');
   if (name === 'levels') buildLevels();
   if (name === 'title') { $('tilt-note').textContent = tiltNote(); syncTutorial(); }
+  scheduleLessonLayout();
 }
 const curPanel = () => PANELS.find((p) => $('p-' + p).classList.contains('show')) || null;
 function tiltNote() {
