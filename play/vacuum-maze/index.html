@@ -772,8 +772,9 @@
     #tutorial-plaque .tutor-line, #tutorial-plaque .tutor-sensor { font-size: 11px !important; line-height: 1.05 !important; }
     #tutorial-plaque.vls-plaque { --vls-plaque-screw: 2px; --vls-plaque-head: 1px; padding: 6px 8px !important; }
   }
-  /* Short screens: the square rule's right: 8px puts Skip on top of the level button. Stay clear of the control column. */
-  @media (max-height: 420px) {
+  /* Short screens, and near-squares through 640px: right: 8px puts Skip on the level button. */
+  @media (max-height: 420px),
+         (max-height: 640px) and (max-width: 640px) and (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3) {
     #tutorial-hud { right: 76px; }
   }
   /* Square pause: one button per row is taller than the panel, so Levels sits past the fold. Two columns keep every button on screen. */

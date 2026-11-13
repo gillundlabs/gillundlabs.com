@@ -1525,6 +1525,10 @@ try {
         await fit(w, 300);
         await controlGaps(theme + ' ' + mode + ' controls ' + w + 'x300');
       }
+      for (const [w, h] of [[400, 440], [480, 480], [560, 560], [640, 640], [600, 500]]) {
+        await fit(w, h);
+        await controlGaps(theme + ' ' + mode + ' controls ' + w + 'x' + h);
+      }
       await ev(`document.getElementById('b-pausebtn').click(); true`);
       await coverSweep(theme + ' ' + mode + ' pause');
       await ev(`document.getElementById('b-pause-settings').click(); true`);
