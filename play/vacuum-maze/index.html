@@ -818,8 +818,9 @@
     #p-win h2 { font-size: 14px; margin: 0; line-height: 1.05; }
     body[data-theme="victorian"] #p-win h2 { padding-bottom: 2px; }
     #p-win .big-stars { font-size: 13px; letter-spacing: 1px; margin: 0; line-height: 1; }
-    #p-win .stat { gap: 0 6px; margin: 1px auto; font-size: 10px; line-height: 1.1; }
-    #p-win #win-note { font-size: 10px; line-height: 1.15; margin: 0; }
+    #p-win .stat { gap: 0 6px; margin: 1px auto; font-size: 11px; line-height: 1.15; }
+    /* The note is the line that can go, so the type stays at 11 px and the buttons stay on screen. */
+    #p-win #win-note { display: none !important; }
     #p-win .row { gap: 4px; margin-top: 3px; }
   }
   .tutor-restart { margin: 10px 0; }
@@ -828,6 +829,8 @@
   .tutor-restart .row { flex-wrap: wrap; }
   #hint-plaque.vls-plaque:not(.show) { display: none !important; }
   #hint-plaque.show { display: inline-flex !important; align-items: center; justify-content: center; }
+  /* The sensor plaque is painted above the panels. Hide it, and the play HUD, while any panel is open; closing the panel shows them again. */
+  body:has(.panel.show) :is(#hint-plaque, #tutorial-hud, #rotate-hint, #controls) { display: none !important; }
   #hint-plaque .vls-plaque__label {
     white-space: normal; overflow: visible; text-overflow: clip; pointer-events: none;
     font: 500 14px var(--vls-font-ivory); color: inherit; letter-spacing: .02em; line-height: 1.25;
@@ -8586,7 +8589,7 @@ function captionBox() {
   if (typeof ctx !== 'undefined' && ctx) {
     const bw = document.body.dataset.theme === 'bw';
     ctx.save();
-    ctx.font = bw ? `500 10px ${face(true)}` : `italic 12px ${TK.font.italic}`;
+    ctx.font = bw ? `500 11px ${face(true)}` : `italic 12px ${TK.font.italic}`;
     textW = Math.ceil(Math.max(ctx.measureText('tipped 0° · g∥ 0.00 m/s²').width, ctx.measureText('level (no tilt sensor)').width)) + 6;
     ctx.restore();
   }
@@ -9267,7 +9270,7 @@ function hud(theme) {
   const gm = Math.hypot(state.tilt.x, state.tilt.y), ang = T.angleOf(state.tilt);
   HW.bubbleLevel(ctx, safe.l + 52, vh - safe.b - 56, 34, state.tilt.x, state.tilt.y, { theme: settings.theme });
   // B&W tilt note: Inter regular (never italic/hand/script). Victorian keeps italic ivory.
-  ctx.save(); ctx.font = bw ? `500 10px ${face(true)}` : `italic 12px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.save(); ctx.font = bw ? `500 11px ${face(true)}` : `italic 12px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   const capX = safe.l + 100, capY1 = vh - safe.b - 64, capY2 = vh - safe.b - 48;
   const cap1 = `tipped ${ang.toFixed(0)}° · g∥ ${(gm * g).toFixed(2)} m/s²`;
   const cap2 = `${state.tiltSource || ''}${inputMode === 'manual' ? ' (no tilt sensor)' : ''}`;

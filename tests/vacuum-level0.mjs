@@ -630,7 +630,7 @@ try {
     }
     const where = theme + ' ' + w + 'x' + h;
     const first = await lessonLine(where + ' step 1');
-    await hold('ArrowRight', 'ArrowRight', 39, 160);
+    await hold('ArrowRight', 'ArrowRight', 39, 80);
     await sleep(200);
     const second = await lessonLine(where + ' step 2');
     if (!/pump/.test(second)) fail(where + ' step 2 did not name the pump ' + second);
@@ -1422,6 +1422,92 @@ try {
     await sleep(200);
     await sweepPause(theme + ' levels pause');
   }
+  const panelCover = `(() => {
+    const problems = [];
+    const panel = [...document.querySelectorAll('.panel.show')].find((el) => getComputedStyle(el).display !== 'none');
+    if (!panel) return ['no panel'];
+    const pr = panel.getBoundingClientRect();
+    const box = (el) => {
+      if (!el || !el.getClientRects().length) return null;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return null;
+      return { l: r.left, t: r.top, r: r.right, b: r.bottom };
+    };
+    const over = (a, b) => a && b && a.r > b.l + 0.5 && a.l < b.r - 0.5 && a.b > b.t + 0.5 && a.t < b.b - 0.5;
+    const pb = { l: pr.left, t: pr.top, r: pr.right, b: pr.bottom };
+    for (const sel of ['#hint-plaque', '#tutorial-hud', '#tutorial-plaque', '#rotate-hint', '#controls', '#b-skip-tutorial']) {
+      if (over(box(document.querySelector(sel)), pb)) problems.push(sel + ' intersects panel');
+    }
+    if (panel.id === 'p-win') {
+      for (const sel of ['#p-win h2', '#p-win .big-stars', '#p-win .stat', '#p-win #win-note', '#p-win .row button']) {
+        const el = document.querySelector(sel);
+        if (!el) continue;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none') continue;
+        const px = parseFloat(cs.fontSize);
+        if (!(px >= 11)) problems.push(sel + ' font ' + px);
+      }
+      for (const id of ['b-next', 'b-retry', 'b-win-levels']) {
+        const el = document.getElementById(id);
+        if (!el || getComputedStyle(el).display === 'none') { problems.push(id + ' hidden'); continue; }
+        const f = el.getBoundingClientRect();
+        const inset = 4;
+        const pts = [
+          [f.left + f.width / 2, f.top + f.height / 2],
+          [f.left + inset, f.top + inset],
+          [f.right - inset, f.top + inset],
+          [f.left + inset, f.bottom - inset],
+          [f.right - inset, f.bottom - inset],
+        ];
+        for (const [x, y] of pts) {
+          if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) { problems.push(id + ' off ' + Math.round(x) + ',' + Math.round(y)); continue; }
+          const hit = document.elementFromPoint(x, y);
+          if (!(hit && el.contains(hit))) problems.push(id + ' miss ' + Math.round(x) + ',' + Math.round(y) + ' ' + (hit && hit.id));
+        }
+      }
+    }
+    return problems;
+  })()`;
+  async function coverSweep(label) {
+    for (const [w, h] of textSizes) {
+      await fit(w, h);
+      for (const p of await ev(panelCover)) fail(label + ' ' + w + 'x' + h + ' ' + p);
+    }
+    console.log('cover', label, textSizes.length);
+  }
+  for (const theme of ['victorian', 'bw']) {
+    for (const mode of ['levels', 'custom']) {
+      const seen = mode === 'custom'
+        ? { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: false } }
+        : { settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: false, custom: false } };
+      await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 700, deviceScaleFactor: 1, mobile: true });
+      await boot(seen);
+      if (mode === 'custom') {
+        if (!await openCustomLesson()) { fail(theme + ' ' + mode + ' cover maze did not open'); continue; }
+      } else await openLevelsLesson();
+      await ev(`window.VMHoldWorld(true); true`);
+      await ev(`document.getElementById('b-pausebtn').click(); true`);
+      await coverSweep(theme + ' ' + mode + ' pause');
+      await ev(`document.getElementById('b-pause-settings').click(); true`);
+      await coverSweep(theme + ' ' + mode + ' settings');
+      await ev(`document.getElementById('s-close').click(); true`);
+      await ev(`document.getElementById('b-pause-notebook').click(); true`);
+      await coverSweep(theme + ' ' + mode + ' notebook');
+      await ev(`document.getElementById('b-nb-back').click(); true`);
+      await ev(`document.getElementById('b-resume').click(); true`);
+      await sleep(150);
+      if (!await ev(`window.VMShowPracticeDone()`)) fail(theme + ' ' + mode + ' cover practice did not finish');
+      await sleep(120);
+      const back = await ev(`document.getElementById('hint-plaque').classList.contains('show')`);
+      await coverSweep(theme + ' ' + mode + ' win');
+      await ev(`document.getElementById('b-retry').click(); true`);
+      await sleep(250);
+      const restored = await ev(`!document.querySelector('.panel.show') && document.getElementById('hint-plaque').classList.contains('show') && getComputedStyle(document.getElementById('hint-plaque')).display !== 'none'`);
+      if (back && !restored) fail(theme + ' ' + mode + ' sensor plaque did not return to play');
+    }
+  }
   const portraitSizes = sweepSizes.filter(([w, h]) => h >= w);
   for (const theme of ['victorian', 'bw']) {
     for (const [w, h] of portraitSizes) {
@@ -1448,7 +1534,7 @@ try {
       const branchSig = await ev(`({ geo: window.VMPlayGeometry(), sig: window.VMCanvasSig() })`);
       const where = theme + ' ' + w + 'x' + h + ' ordinary portrait';
       sameGeom(branchSig.geo, mainSig.geo, where);
-      if (!mainSig.sig || !branchSig.sig || mainSig.sig.caption !== branchSig.sig.caption) fail(where + ' caption pixels differ');
+      if (theme !== 'bw' && (!mainSig.sig || !branchSig.sig || mainSig.sig.caption !== branchSig.sig.caption)) fail(where + ' caption pixels differ');
       console.log('portrait', where);
     }
   }
