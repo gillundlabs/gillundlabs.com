@@ -1015,6 +1015,12 @@ try {
       }
       return border;
     };
+    const stars = document.getElementById('win-stars');
+    const starBox = stars.getBoundingClientRect();
+    const starStyle = getComputedStyle(stars);
+    if (starStyle.display === 'none' || starStyle.visibility === 'hidden' || starBox.height < 8 || starBox.width < 8) problems.push('stars hidden');
+    else if (!/[★☆]/.test(stars.textContent)) problems.push('stars empty');
+    else if (starBox.top < visT - 0.5 || starBox.bottom > visB + 0.5 || starBox.top < -0.5 || starBox.bottom > innerHeight + 0.5) problems.push('stars off screen');
     for (const id of ['b-next', 'b-retry', 'b-win-levels']) {
       const el = document.getElementById(id);
       if (!el || el.style.display === 'none') { problems.push(id + ' hidden'); continue; }
