@@ -8,7 +8,7 @@ import { execSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const BASE = process.argv[2] || 'http://127.0.0.1:8772';
-const MAIN_REV = '94de085';
+const MAIN_REV = '3fd413e';
 const MAIN_PORT = 8774;
 const PORT = 9378;
 const mainRoot = '/tmp/vac-main-' + MAIN_REV;
