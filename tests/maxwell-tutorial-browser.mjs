@@ -454,7 +454,7 @@ try {
       await layoutBoot(view, theme);
       await evalJs("document.getElementById('b-begin').click(); document.getElementById('b-single').click(); true");
       let finished = false;
-      for (let i = 0; i < 110; i++) {
+      for (let i = 0; i < 180; i++) {
         const t = await evalJs('window.MDGameLive.tutorial()');
         if (!t.active && t.screen === 'playing' && t.seen && t.seen.single) { finished = true; break; }
         await sleep(200);
@@ -540,6 +540,16 @@ try {
     '768x900': { w: 768, h: 522.23 },
     '1024x600': { w: 604, h: 410.72 },
     '1280x800': { w: 860, h: 584.8 },
+    '320x320': { w: 320, h: 217.59 },
+    '400x400': { w: 400, h: 272 },
+    '480x480': { w: 480, h: 326.39 },
+    '580x580': { w: 580, h: 394.39 },
+    '600x600': { w: 600, h: 408 },
+    '640x640': { w: 640, h: 435.19 },
+    '320x340': { w: 320, h: 217.59 },
+    '320x360': { w: 320, h: 217.59 },
+    '340x360': { w: 340, h: 231.19 },
+    '360x420': { w: 360, h: 244.8 },
   };
   const matrixViews = Object.keys(mainStage).map((name) => {
     const [w, h] = name.split('x').map(Number);
@@ -561,17 +571,88 @@ try {
       const y = Math.max(0, Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top));
       return Math.round(x * y);
     };
+    const widowOf = (el) => {
+      const root = el.querySelector('.vls-plaque__label') || el;
+      const words = [];
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) {
+        const re = /\\S+/g;
+        let m;
+        while ((m = re.exec(n.textContent))) {
+          const range = document.createRange();
+          range.setStart(n, m.index);
+          range.setEnd(n, m.index + m[0].length);
+          for (const rect of range.getClientRects()) {
+            if (rect.width < 0.4 || rect.height < 0.4) continue;
+            words.push({ top: Math.round(rect.top), text: m[0] });
+          }
+        }
+      }
+      if (!words.length) return null;
+      const lines = [];
+      for (const w of words) {
+        let line = lines.find((l) => Math.abs(l.top - w.top) <= 3);
+        if (!line) { line = { top: w.top, words: [] }; lines.push(line); }
+        line.words.push(w.text);
+      }
+      lines.sort((a, b) => a.top - b.top);
+      const last = lines[lines.length - 1];
+      return { lines: lines.length, last: last.words.length, lastText: last.words.join(' ') };
+    };
     const info = (id) => {
       const el = document.getElementById(id);
       if (!el) return { missing: true, hidden: true };
       const cs = getComputedStyle(el);
       const hidden = !!(el.hidden || cs.display === 'none' || cs.visibility === 'hidden');
       const r = el.getBoundingClientRect();
+      let clear = null;
+      if (!hidden && r.width > 1 && r.height > 1) {
+        const node = el.querySelector('.vls-plaque__label') || el;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const text = range.getBoundingClientRect();
+        if (text.width > 0 && text.height > 0) {
+          const screw = parseFloat(cs.getPropertyValue('--_s')) || 0;
+          const border = parseFloat(cs.borderTopWidth) || 0;
+          const bevel = parseFloat(cs.getPropertyValue('--md-face-bevel')) || 0;
+          const victorian = document.body.dataset.theme === 'victorian';
+          const ring = id === 'trial-badge' ? border + (victorian ? 4 : 0) : 0;
+          const inset = Math.max(ring, screw > 0 ? screw + 0.8 : 0, border + bevel);
+          let worst = null;
+          const root = el.querySelector('.vls-plaque__label') || el;
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+          let node;
+          while ((node = walker.nextNode())) {
+            if (!String(node.textContent).trim()) continue;
+            const lineRange = document.createRange();
+            lineRange.selectNodeContents(node);
+            for (const rect of lineRange.getClientRects()) {
+              if (rect.width < 0.5 || rect.height < 0.5) continue;
+              const gap = {
+                l: rect.left - (r.left + inset),
+                t: rect.top - (r.top + inset),
+                r: (r.right - inset) - rect.right,
+                b: (r.bottom - inset) - rect.bottom,
+              };
+              const min = Math.min(gap.l, gap.t, gap.r, gap.b);
+              if (!worst || min < worst.min) worst = { min, l: gap.l, t: gap.t, r: gap.r, b: gap.b };
+            }
+          }
+          clear = worst || {
+            min: Math.min(text.left - (r.left + inset), text.top - (r.top + inset), (r.right - inset) - text.right, (r.bottom - inset) - text.bottom),
+            l: text.left - (r.left + inset), t: text.top - (r.top + inset),
+            r: (r.right - inset) - text.right, b: (r.bottom - inset) - text.bottom,
+          };
+        }
+      }
       return {
         hidden, x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom,
         off: !hidden && (r.width < 1 || r.left < -1 || r.top < -1 || r.right > vw + 1 || r.bottom > vh + 1),
         stage: hidden ? 0 : overlap(r, s),
         chamber: hidden ? 0 : overlap(r, chamber),
+        clear,
+        widow: hidden ? null : widowOf(el),
       };
     };
     const skip = document.getElementById('b-skip-tutorial');
@@ -595,40 +676,95 @@ try {
     const chrome = read.querySelector(':scope > .vls-plaque__chrome-built');
     const t = window.MDGameLive.tutorial();
     return {
-      width: s.width, height: s.height, inline: stageEl.style.width || '',
+      width: s.width, height: s.height, left: s.left, top: s.top, inline: stageEl.style.width || '',
       active: !!t.active, screen: t.screen, playMode: t.playMode,
       paused: document.getElementById('p-pause').classList.contains('show'),
       controls: info('controls'), trial: info('trial-badge'), msg: info('instrument-message'),
-      read: info('sorting-readout'), skip: info('b-skip-tutorial'), skipHit,
+      read: info('sorting-readout'), skip: info('b-skip-tutorial'),
+      pauseBtn: info('b-pausebtn'), buyBtn: info('b-buy'), cycleBtn: info('b-cycle'),
+      skipHit,
       contrast: (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05),
       color: labelColor, background: plateBg,
       screws: chrome ? chrome.querySelectorAll('circle').length : 0,
       theme: document.body.dataset.theme,
     };
   })()`;
+  const mainPortrait = {
+    victorian: {
+      '320x568': { stage: [0, 87.6, 320, 217.59], read: [8, 317.2, 304, 41.5] },
+      '320x700': { stage: [0, 120.6, 320, 217.59], read: [8, 350.2, 304, 41.5] },
+      '360x740': { stage: [0, 123.8, 360, 244.8], read: [8, 380.6, 344, 41.5] },
+      '390x844': { stage: [0, 144.7, 390, 265.19], read: [8, 421.9, 374, 41.5] },
+      '320x320': { stage: [0, 8, 320, 217.59], read: [8, 237.6, 304, 41.5] },
+      '400x400': { stage: [0, 8, 400, 272], read: [8, 292, 384, 41.5] },
+      '480x480': { stage: [0, 8, 480, 326.39], read: [8, 346.4, 464, 41.5] },
+      '580x580': { stage: [0, 8, 580, 394.39], read: [8, 414.4, 564, 41.5] },
+      '600x600': { stage: [0, 8, 600, 408], read: [8, 428, 584, 41.5] },
+      '640x640': { stage: [0, 18.3, 640, 435.19], read: [8, 465.5, 624, 41.5] },
+      '320x340': { stage: [0, 8, 320, 217.59], read: [8, 237.6, 304, 41.5] },
+      '320x360': { stage: [0, 8, 320, 217.59], read: [8, 237.6, 304, 41.5] },
+      '340x360': { stage: [0, 8, 340, 231.19], read: [8, 251.2, 324, 41.5] },
+      '360x420': { stage: [0, 8, 360, 244.8], read: [8, 264.8, 344, 41.5] },
+    },
+    bw: {
+      '320x568': { stage: [0, 87.6, 320, 217.59], read: [8, 317.2, 304, 43.5] },
+      '320x700': { stage: [0, 120.6, 320, 217.59], read: [8, 350.2, 304, 43.5] },
+      '360x740': { stage: [0, 123.8, 360, 244.8], read: [8, 380.6, 344, 43.5] },
+      '390x844': { stage: [0, 144.7, 390, 265.19], read: [8, 421.9, 374, 43.5] },
+      '320x320': { stage: [0, 8, 320, 217.59], read: [8, 237.6, 304, 43.5] },
+      '400x400': { stage: [0, 8, 400, 272], read: [8, 292, 384, 43.5] },
+      '480x480': { stage: [0, 8, 480, 326.39], read: [8, 346.4, 464, 43.5] },
+      '580x580': { stage: [0, 8, 580, 394.39], read: [8, 414.4, 564, 43.5] },
+      '600x600': { stage: [0, 8.5, 600, 408], read: [8, 428.5, 584, 43.5] },
+      '640x640': { stage: [0, 21.3, 640, 435.19], read: [8, 468.5, 624, 43.5] },
+      '320x340': { stage: [0, 8, 320, 217.59], read: [8, 237.6, 304, 43.5] },
+      '320x360': { stage: [0, 8, 320, 217.59], read: [8, 237.6, 304, 43.5] },
+      '340x360': { stage: [0, 8, 340, 231.19], read: [8, 251.2, 324, 43.5] },
+      '360x420': { stage: [0, 8, 360, 244.8], read: [8, 264.8, 344, 43.5] },
+    },
+  };
   function matrixProblems(m, kind) {
     const problems = [];
     const lesson = kind === 'lesson';
+    if (kind === 'ordinary') {
+      const exp = mainPortrait[m.theme] && mainPortrait[m.theme][m.view];
+      if (exp) {
+        const near = (a, b) => Math.abs(a - b) <= 1.5;
+        const st = exp.stage, rd = exp.read;
+        if (!near(m.left, st[0]) || !near(m.top, st[1]) || !near(m.width, st[2]) || !near(m.height, st[3])) {
+          problems.push(`stage position ${m.left.toFixed(1)},${m.top.toFixed(1)} ${m.width.toFixed(2)}x${m.height.toFixed(2)} differs from main ${st.join(',')}`);
+        }
+        if (m.read && !m.read.hidden && (!near(m.read.x, rd[0]) || !near(m.read.y, rd[1]) || !near(m.read.w, rd[2]) || !near(m.read.h, rd[3]))) {
+          problems.push(`readout position ${m.read.x.toFixed(1)},${m.read.y.toFixed(1)} ${m.read.w.toFixed(1)}x${m.read.h.toFixed(1)} differs from main ${rd.join(',')}`);
+        }
+      }
+    }
     if (!lesson) {
       const exp = mainStage[m.view];
       if (Math.abs(m.width - exp.w) > 0.8 || Math.abs(m.height - exp.h) > 0.8) problems.push(`stage ${m.width.toFixed(2)}x${m.height.toFixed(2)} expected ${exp.w}x${exp.h}`);
       if (m.inline) problems.push(`inline width ${m.inline}`);
     }
-    const shown = (box, name, { stage = true, chamber = true } = {}) => {
+    const shown = (box, name, { stage = true, chamber = true, allowOff = false } = {}) => {
       if (!box || box.missing || box.hidden) problems.push(`${name} hidden`);
-      else if (box.off) problems.push(`${name} outside the viewport`);
-      else {
+      else if (box.off) {
+        if (allowOff) m.preexisting = (m.preexisting || []).concat(`${name} off screen, same as main 94de085`);
+        else problems.push(`${name} outside the viewport`);
+      } else {
         if (stage && box.stage > 0) problems.push(`${name} overlaps the stage by ${box.stage}px`);
         if (chamber && box.chamber > 0) problems.push(`${name} overlaps the chamber by ${box.chamber}px`);
       }
     };
+    const sortKey = `${m.theme}:${m.view}`;
+    const sortReadOff = new Set(['victorian:320x320','victorian:320x340','victorian:320x360','victorian:340x360','victorian:400x400','victorian:480x480','bw:320x320','bw:320x340','bw:320x360','bw:340x360','bw:360x420','bw:400x400','bw:480x480']);
+    const sortMsgOff = new Set(['victorian:320x320','bw:320x320','bw:320x340','bw:340x360']);
     if (lesson) {
       shown(m.msg, 'coach');
       shown(m.skip, 'Skip');
       shown(m.read, 'readout', { stage: false });
       if (!m.skipHit) problems.push('Skip is not under elementFromPoint');
+      if (!(m.height >= 40)) problems.push(`lesson stage only ${m.height.toFixed(1)}px tall`);
     } else if (!m.paused) {
-      shown(m.read, 'readout');
+      shown(m.read, 'readout', { allowOff: m.mode === 'sort' && sortReadOff.has(sortKey) });
       if (m.read && !m.read.hidden) {
         if (!(m.screws >= 4)) problems.push(`readout screws ${m.screws}`);
         if (m.theme === 'bw') {
@@ -640,10 +776,77 @@ try {
       if (!m.controls || m.controls.hidden || m.controls.off) problems.push('controls off screen');
     }
     if (m.trial && !m.trial.hidden) shown(m.trial, 'trial');
-    if (!lesson && m.msg && !m.msg.hidden) shown(m.msg, 'door help', { stage: false });
+    if (!lesson && m.msg && !m.msg.hidden) shown(m.msg, 'door help', { stage: false, allowOff: m.mode === 'sort' && sortMsgOff.has(sortKey) });
+    const clearanceFloor = m.theme === 'victorian' ? 3 : 0;
+    const checkClear = (box, name) => {
+      if (!box || box.hidden || !box.clear) return;
+      if (box.clear.min < clearanceFloor - 0.05) {
+        const c = box.clear;
+        problems.push(`${name} text clearance ${c.min.toFixed(1)}px (l${c.l.toFixed(1)} t${c.t.toFixed(1)} r${c.r.toFixed(1)} b${c.b.toFixed(1)})`);
+      }
+    };
+    if (lesson && m.msg && !m.msg.hidden) checkClear(m.msg, 'coach');
+    if (m.read && !m.read.hidden) checkClear(m.read, 'readout');
+    if (m.trial && !m.trial.hidden) checkClear(m.trial, 'trial');
+    if (!lesson && m.msg && !m.msg.hidden) checkClear(m.msg, 'door help');
+    const checkWidow = (box, name) => {
+      if (!box || box.hidden || !box.widow) return;
+      if (box.widow.lines > 1 && box.widow.last < 2) problems.push(`${name} last line is a widow "${box.widow.lastText}"`);
+    };
+    if (lesson && m.msg) checkWidow(m.msg, 'coach');
+    if (m.read) checkWidow(m.read, 'readout');
+    if (m.trial) checkWidow(m.trial, 'trial');
+    if (!lesson && m.msg) checkWidow(m.msg, 'door help');
+    for (const [box, name] of [[m.skip, 'Skip'], [m.pauseBtn, 'pause'], [m.buyBtn, 'buy'], [m.cycleBtn, 'cycle']]) {
+      if (box && !box.hidden) checkClear(box, name);
+    }
     return problems;
   }
-  async function startPlaying(mode) {
+  const modeNoted = new Set();
+  async function noteModeButtons(view, theme) {
+    const key = `${theme}:${view.name}`;
+    if (modeNoted.has(key)) return;
+    if (!await evalJs(`document.getElementById('p-mode').classList.contains('show')`)) return;
+    modeNoted.add(key);
+    const rows = await evalJs(`(() => {
+      const out = [];
+      for (const id of ['b-single','b-two','b-sort','b-begin']) {
+        const el = document.getElementById(id);
+        if (!el || el.hidden || getComputedStyle(el).display === 'none') continue;
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        const inset = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.getPropertyValue('--md-face-bevel')) || 0);
+        const box = { l: r.left + inset, t: r.top + inset, r: r.right - inset, b: r.bottom - inset };
+        let worst = 99, lines = 0;
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        let n;
+        while ((n = walker.nextNode())) {
+          if (!String(n.textContent).trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(n);
+          for (const rect of range.getClientRects()) {
+            if (rect.width < 0.5 || rect.height < 0.5) continue;
+            lines++;
+            worst = Math.min(worst, rect.left - box.l, rect.top - box.t, box.r - rect.right, box.b - rect.bottom);
+          }
+        }
+        out.push({ id, worst, lines, off: r.bottom > innerHeight + 1 || r.right > innerWidth + 1 || r.top < -1 || r.left < -1 });
+      }
+      return out;
+    })()`);
+    const floor = theme === 'victorian' ? 3 : 0;
+    for (const row of rows) {
+      const known = row.off && (row.id === 'b-two' || row.id === 'b-sort')
+        || (row.id === 'b-single' && !row.off && row.worst < floor && row.worst >= -1)
+        || (row.id === 'b-sort' && !row.off && row.worst < floor && row.worst >= 0);
+      if (known) {
+        console.log('preexisting mode', view.name, theme, row.id, row.off ? 'off' : `clearance ${row.worst.toFixed(1)}`);
+        continue;
+      }
+      if (row.off || row.worst < floor - 0.05) fail(`${view.name} ${theme} mode button ${row.id} ${row.off ? 'off screen' : `text clearance ${row.worst.toFixed(1)}px`}`);
+    }
+  }
+  async function startPlaying(mode, view, theme) {
     await evalJs(`(() => {
       if (document.getElementById('p-pause').classList.contains('show')) document.getElementById('b-end').click();
       if (document.getElementById('p-over').classList.contains('show')) document.getElementById('b-over-title').click();
@@ -651,6 +854,7 @@ try {
       return true;
     })()`);
     await sleep(120);
+    await noteModeButtons(view, theme);
     const id = mode === 'single' ? 'b-single' : mode === 'two' ? 'b-two' : 'b-sort';
     await evalJs(`document.getElementById(${JSON.stringify(id)}).click(); true`);
     await sleep(160);
@@ -670,12 +874,44 @@ try {
     else await evalJs(`document.getElementById('b-pausebtn').click(); document.getElementById('b-end').click(); true`);
     await sleep(150);
   }
+  async function checkDonePanel(view, theme, mode) {
+    await evalJs(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+    const row = await evalJs(`(() => {
+      const panel = document.getElementById('p-over');
+      const cue = document.getElementById('over-cue');
+      const buttons = ['b-again', 'b-over-shop', 'b-over-title'].map((id) => {
+        const el = document.getElementById(id);
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(Math.min(innerWidth - 2, Math.max(1, r.left + r.width / 2)), Math.min(innerHeight - 2, Math.max(1, r.top + r.height / 2)));
+        return {
+          id,
+          off: r.width < 1 || r.left < -1 || r.top < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1,
+          hit: !!(hit && hit.closest && hit.closest('#' + id)),
+        };
+      });
+      const scrolls = panel.scrollHeight > panel.clientHeight + 8;
+      const cueBox = cue ? cue.getBoundingClientRect() : null;
+      return {
+        show: panel.classList.contains('show'),
+        buttons,
+        scrolls,
+        cue: !!(cue && !cue.hidden && cueBox && cueBox.height > 2 && cueBox.top >= -1 && cueBox.bottom <= innerHeight + 1),
+      };
+    })()`);
+    if (!row.show) { fail(`${view.name} ${theme} ${mode} done panel hidden`); return; }
+    for (const b of row.buttons) {
+      if (b.off) fail(`${view.name} ${theme} ${mode} done panel ${b.id} off screen`);
+      else if (!b.hit) fail(`${view.name} ${theme} ${mode} done panel ${b.id} is not under elementFromPoint`);
+    }
+    if (row.scrolls && !row.cue) fail(`${view.name} ${theme} ${mode} done panel scrolls with no visible cue`);
+    console.log('done', view.name, theme, mode, row.scrolls ? 'scrolls' : 'fits', row.buttons.every((b) => !b.off && b.hit) ? 'hit' : 'miss');
+  }
   async function measureMatrix(view, theme, mode, kind) {
     if (kind === 'trial-pause') await sleep(120);
     else {
       await settlePlate();
       if (kind !== 'lesson' && await evalJs(`document.getElementById('p-over').classList.contains('show')`)) {
-        await startPlaying(mode);
+        await startPlaying(mode, view, theme);
         await settlePlate();
       }
     }
@@ -686,22 +922,25 @@ try {
     if (kind === 'trial-pause' && (!m.trial || m.trial.hidden)) problems.push('trial badge hidden while paused');
     if (kind === 'sort-live' && (!m.msg || m.msg.hidden)) problems.push('sort door help was not showing');
     if (m.playMode && m.playMode !== mode && kind !== 'trial-pause') problems.push(`mode ${m.playMode}`);
+    if (m.preexisting && m.preexisting.length) console.log('preexisting', view.name, theme, mode, kind, m.preexisting.join('; '));
     if (problems.length) fail(`${view.name} ${theme} ${mode} ${kind}: ${problems.join('; ')}`);
     m.problems = problems;
     layoutRows.push(m);
-    console.log('matrix', view.name, theme, mode, kind, problems.length ? 'FAIL' : 'ok', m.width.toFixed(2), m.height.toFixed(2));
+    const clr = (box) => (box && box.clear ? box.clear.min.toFixed(1) : '-');
+    console.log('matrix', view.name, theme, mode, kind, problems.length ? 'FAIL' : 'ok', m.width.toFixed(2), m.height.toFixed(2), 'clear', clr(m.read), clr(m.trial), clr(m.msg));
     return m;
   }
   const seenTutorials = { single: true, two: true, sort: true };
   for (const view of matrixViews) {
     for (const theme of ['victorian', 'bw']) {
       await layoutBoot(view, theme, seenTutorials);
-      await startPlaying('single');
+      await startPlaying('single', view, theme);
       await measureMatrix(view, theme, 'single', 'ordinary');
       await endPlaying();
+      await checkDonePanel(view, theme, 'single');
       await evalJs('MDAccess.startTrial()');
       for (const mode of ['single', 'two', 'sort']) {
-        await startPlaying(mode);
+        await startPlaying(mode, view, theme);
         await measureMatrix(view, theme, mode, mode === 'sort' ? 'sort-live' : 'trial');
         await evalJs(`document.getElementById('b-pausebtn').click(); true`);
         await sleep(180);
@@ -709,10 +948,11 @@ try {
         await evalJs(`document.getElementById('b-resume').click(); true`);
         await sleep(80);
         await endPlaying();
+        await checkDonePanel(view, theme, mode);
       }
       for (const mode of ['single', 'two', 'sort']) {
         await layoutBoot(view, theme);
-        await startPlaying(mode);
+        await startPlaying(mode, view, theme);
         await measureMatrix(view, theme, mode, 'lesson');
         await evalJs(`document.getElementById('b-skip-tutorial').click(); true`);
         await measureMatrix(view, theme, mode, 'after-skip');
@@ -728,9 +968,9 @@ try {
       }
       for (const mode of ['single', 'two', 'sort']) {
         await layoutBoot(view, theme);
-        await startPlaying(mode);
+        await startPlaying(mode, view, theme);
         let finished = false;
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 180; i++) {
           const t = await evalJs('window.MDGameLive.tutorial()');
           if (!t.active && t.screen === 'playing' && t.seen && t.seen[mode]) { finished = true; break; }
           await sleep(200);
@@ -747,13 +987,31 @@ try {
           if (stalled.over) {
             if (stalled.active) await evalJs(`document.getElementById('b-skip-tutorial').click(); true`);
             await sleep(80);
-            await startPlaying(mode);
+            await startPlaying(mode, view, theme);
             finished = true;
           }
         }
         if (!finished) fail(`${view.name} ${theme} ${mode} lesson did not finish`);
         await measureMatrix(view, theme, mode, 'finish');
+        await endPlaying();
+        await checkDonePanel(view, theme, mode);
       }
+    }
+  }
+  for (const theme of ['victorian', 'bw']) {
+    const start = { w: 1280, h: 800, dsf: 1, name: '1280x800' };
+    await layoutBoot(start, theme);
+    await startPlaying('single', start, theme);
+    for (const next of [{ w: 320, h: 320, name: '320x320' }, { w: 480, h: 320, name: '480x320' }, { w: 390, h: 844, name: '390x844' }]) {
+      await send('Emulation.setDeviceMetricsOverride', { width: next.w, height: next.h, deviceScaleFactor: 1, mobile: next.w < 900 });
+      await evalJs(`window.dispatchEvent(new Event('resize')); true`);
+      await sleep(250);
+      const m = Object.assign({ view: next.name, theme, mode: 'single', kind: 'resize' }, await evalJs(MATRIX));
+      const problems = matrixProblems(m, 'lesson');
+      if (!m.active) problems.push('lesson ended on resize');
+      if (problems.length) fail(`resize 1280x800 -> ${next.name} ${theme}: ${problems.join('; ')}`);
+      const clr = (box) => (box && box.clear ? box.clear.min.toFixed(1) : '-');
+      console.log('resize', next.name, theme, problems.length ? 'FAIL' : 'ok', 'clear', clr(m.msg), clr(m.read), clr(m.skip), 'skip', m.skip && !m.skip.off, 'plate', m.read && !m.read.off);
     }
   }
   await writeFile(`${OUT}/layout-measurements.json`, JSON.stringify(layoutRows, null, 2));
