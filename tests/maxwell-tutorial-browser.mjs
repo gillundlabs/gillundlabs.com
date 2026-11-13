@@ -21,9 +21,11 @@ const OUT = '/tmp/maxwell-hold-shots';
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
 
 const server = createServer(async (req, res) => {
-  let path = normalize(decodeURIComponent(new URL(req.url, 'http://127.0.0.1').pathname)).replace(/^(\.\.(\/|\\|$))+/, '');
+  const reqUrl = new URL(req.url, 'http://127.0.0.1');
+  let path = normalize(decodeURIComponent(reqUrl.pathname)).replace(/^(\.\.(\/|\\|$))+/, '');
   if (path.endsWith('/')) path += 'index.html';
   let file = join(ROOT, path === '' ? 'index.html' : path);
+  if (reqUrl.searchParams.get('ref') === 'main' && path.endsWith('play/maxwells-demon/index.html')) file = '/tmp/main-maxwell.html';
   try {
     const st = await stat(file);
     if (st.isDirectory()) file = join(file, 'index.html');
@@ -229,14 +231,14 @@ try {
     { name: '1280x800', w: 1280, h: 800 },
   ];
   let layoutPreload = null;
-  async function layoutBoot(view, theme, tutorials) {
+  async function layoutBoot(view, theme, tutorials, ref) {
     await send('Emulation.setDeviceMetricsOverride', { width: view.w, height: view.h, deviceScaleFactor: 1, mobile: view.w < 900 });
     if (layoutPreload) { try { await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: layoutPreload }); } catch {} }
     const saved = { settings: { theme, tempScale2: true, wallHeat: 'preset' }, coins: 0, unlockedZ: 1, best: {}, tutorials: tutorials || { single: false, two: false, sort: false } };
     layoutPreload = (await send('Page.addScriptToEvaluateOnNewDocument', {
       source: `try{localStorage.removeItem('maxwells-demon.access');localStorage.setItem('maxwells-demon.v2', ${JSON.stringify(JSON.stringify(saved))});}catch(e){}`,
     })).identifier;
-    await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/play/maxwells-demon/?layout=${theme}-${view.name}` });
+    await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/play/maxwells-demon/?layout=${theme}-${view.name}${ref ? '&ref=' + ref : ''}` });
     for (let i = 0; i < 50; i++) {
       if (await evalJs('!!(window.MDGameLive && document.getElementById("b-begin"))')) return;
       await sleep(100);
@@ -646,6 +648,14 @@ try {
           };
         }
       }
+      const labelEl = [...el.querySelectorAll('.vls-plaque__label')].find((n) => !n.hidden && getComputedStyle(n).display !== 'none');
+      const clipNode = labelEl || el;
+      const clipped = !hidden && [el, clipNode].some((node) => {
+        const style = getComputedStyle(node);
+        const border = (parseFloat(style.borderLeftWidth) || 0) + (parseFloat(style.borderRightWidth) || 0);
+        return style.textOverflow === 'ellipsis' || node.scrollWidth > node.clientWidth + border + 0.5;
+      });
+      const ties = !hidden && (!!el.querySelector('.keep-pair') || /\\u00a0/.test(el.textContent || ''));
       return {
         hidden, x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom,
         off: !hidden && (r.width < 1 || r.left < -1 || r.top < -1 || r.right > vw + 1 || r.bottom > vh + 1),
@@ -653,6 +663,8 @@ try {
         chamber: hidden ? 0 : overlap(r, chamber),
         clear,
         widow: hidden ? null : widowOf(el),
+        clipped, ties,
+        clientW: clipNode.clientWidth,
       };
     };
     const skip = document.getElementById('b-skip-tutorial');
@@ -675,6 +687,18 @@ try {
     const L1 = lum(fg), L2 = lum(bgc.length ? bgc : [0, 0, 0]);
     const chrome = read.querySelector(':scope > .vls-plaque__chrome-built');
     const t = window.MDGameLive.tutorial();
+    const fontPx = (id) => {
+      const el = document.getElementById(id);
+      if (!el || el.hidden || getComputedStyle(el).display === 'none') return null;
+      const nodes = [...el.querySelectorAll('.read-name, .read-measure, .read-ledger, .vls-plaque__label, h2, .stat, .keep-pair')].filter((n) => !n.hidden && !n.classList.contains('vls-exp') && n.getClientRects().length);
+      const list = nodes.length ? nodes : [el];
+      let min = null;
+      for (const node of list) {
+        const px = parseFloat(getComputedStyle(node).fontSize);
+        if (Number.isFinite(px)) min = min == null ? px : Math.min(min, px);
+      }
+      return min == null ? null : Math.round(min * 10) / 10;
+    };
     return {
       width: s.width, height: s.height, left: s.left, top: s.top, inline: stageEl.style.width || '',
       active: !!t.active, screen: t.screen, playMode: t.playMode,
@@ -687,6 +711,13 @@ try {
       color: labelColor, background: plateBg,
       screws: chrome ? chrome.querySelectorAll('circle').length : 0,
       theme: document.body.dataset.theme,
+      fonts: {
+        coach: t.active ? fontPx('instrument-message') : null,
+        door: t.active ? null : fontPx('instrument-message'),
+        readout: fontPx('sorting-readout'),
+        trial: fontPx('trial-badge'),
+        skip: fontPx('b-skip-tutorial'),
+      },
     };
   })()`;
   const mainPortrait = {
@@ -763,6 +794,8 @@ try {
       shown(m.read, 'readout', { stage: false });
       if (!m.skipHit) problems.push('Skip is not under elementFromPoint');
       if (!(m.height >= 40)) problems.push(`lesson stage only ${m.height.toFixed(1)}px tall`);
+      const natural = mainStage[m.view];
+      if (natural && m.width < natural.w * 0.85 - 1) problems.push(`lesson stage ${m.width.toFixed(1)}px wide is under 85% of main ${natural.w}`);
     } else if (!m.paused) {
       shown(m.read, 'readout', { allowOff: m.mode === 'sort' && sortReadOff.has(sortKey) });
       if (m.read && !m.read.hidden) {
@@ -797,6 +830,9 @@ try {
     if (m.read) checkWidow(m.read, 'readout');
     if (m.trial) checkWidow(m.trial, 'trial');
     if (!lesson && m.msg) checkWidow(m.msg, 'door help');
+    if (m.msg && !m.msg.hidden && m.msg.clipped) problems.push('coach text is clipped');
+    if (m.read && !m.read.hidden && m.read.clipped) problems.push('readout text is clipped');
+    if (!lesson && m.read && !m.read.hidden && m.read.ties) problems.push('ordinary readout uses a widow tie');
     for (const [box, name] of [[m.skip, 'Skip'], [m.pauseBtn, 'pause'], [m.buyBtn, 'buy'], [m.cycleBtn, 'cycle']]) {
       if (box && !box.hidden) checkClear(box, name);
     }
@@ -889,23 +925,133 @@ try {
           hit: !!(hit && hit.closest && hit.closest('#' + id)),
         };
       });
-      const scrolls = panel.scrollHeight > panel.clientHeight + 8;
-      const cueBox = cue ? cue.getBoundingClientRect() : null;
-      return {
-        show: panel.classList.contains('show'),
-        buttons,
-        scrolls,
-        cue: !!(cue && !cue.hidden && cueBox && cueBox.height > 2 && cueBox.top >= -1 && cueBox.bottom <= innerHeight + 1),
-      };
+      const scrolls = panel.scrollHeight > panel.clientHeight + 2;
+      const cueText = cue && !cue.hidden ? (cue.textContent || '') : '';
+      const pr = panel.getBoundingClientRect();
+      const cut = [];
+      const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) {
+        if (!String(n.textContent).trim() || (n.parentElement && n.parentElement.hidden)) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        for (const r of range.getClientRects()) {
+          if (r.width < 0.4 || r.height < 0.4) continue;
+          const inside = r.top >= pr.top - 0.5 && r.bottom <= pr.bottom + 0.5 && r.left >= pr.left - 0.5 && r.right <= pr.right + 0.5;
+          const outside = r.bottom <= pr.top + 0.5 || r.top >= pr.bottom - 0.5;
+          if (!inside && !outside) cut.push(String(n.textContent).trim().slice(0, 42));
+        }
+      }
+      return { show: panel.classList.contains('show'), buttons, scrolls, cueText, cut };
     })()`);
     if (!row.show) { fail(`${view.name} ${theme} ${mode} done panel hidden`); return; }
     for (const b of row.buttons) {
       if (b.off) fail(`${view.name} ${theme} ${mode} done panel ${b.id} off screen`);
       else if (!b.hit) fail(`${view.name} ${theme} ${mode} done panel ${b.id} is not under elementFromPoint`);
     }
-    if (row.scrolls && !row.cue) fail(`${view.name} ${theme} ${mode} done panel scrolls with no visible cue`);
-    console.log('done', view.name, theme, mode, row.scrolls ? 'scrolls' : 'fits', row.buttons.every((b) => !b.off && b.hit) ? 'hit' : 'miss');
+    if (row.cueText) fail(`${view.name} ${theme} ${mode} done panel shows a scroll cue "${row.cueText.trim()}"`);
+    if (row.scrolls) fail(`${view.name} ${theme} ${mode} done panel scrolls`);
+    if (row.cut.length) fail(`${view.name} ${theme} ${mode} done panel cuts a line "${row.cut[0]}"`);
+    const doneFont = await evalJs(`(() => {
+      const el = document.querySelector('#p-over h2, #over-stats');
+      if (!el) return null;
+      return Math.round(parseFloat(getComputedStyle(el).fontSize) * 10) / 10;
+    })()`);
+    if (doneFont != null) {
+      fontMins.done = Math.min(fontMins.done == null ? doneFont : fontMins.done, doneFont);
+      if (doneFont < 10.95) fail(`${view.name} ${theme} ${mode} done panel font ${doneFont}px is below 11px`);
+    }
+    console.log('done', view.name, theme, mode, row.scrolls ? 'scrolls' : 'fits', row.buttons.every((b) => !b.off && b.hit) ? 'hit' : 'miss', 'font', doneFont);
   }
+  const AUDIT = `(() => {
+    const stageEl = document.getElementById('stage');
+    const stage = stageEl.getBoundingClientRect();
+    const canvas = document.getElementById('game').getBoundingClientRect();
+    const sx = canvas.width / 1000, sy = canvas.height / 680;
+    const sorting = document.body.classList.contains('sorting');
+    const faces = sorting
+      ? [{ n: 'Chamber A', x: 24, y: 10, w: 300, h: 118 }, { n: 'Net score', x: 340, y: 10, w: 320, h: 118 }, { n: 'Chamber B', x: 676, y: 10, w: 300, h: 118 }]
+      : [{ n: 'score', x: 16, y: 6, w: 312, h: 108 }, { n: 'gas', x: 344, y: 6, w: 312, h: 108 }, { n: 'purse', x: 672, y: 6, w: 312, h: 108 }];
+    const owner = (el) => {
+      if (!el) return 'none';
+      const host = el.closest('#b-pausebtn, #b-buy, #b-cycle, #b-skip-tutorial, #instrument-message, #sorting-readout, #trial-badge, #stage, canvas');
+      return (host && host.id) || el.tagName;
+    };
+    const hit = (x, y) => (x < 1 || y < 1 || x > innerWidth - 1 || y > innerHeight - 1) ? null : owner(document.elementFromPoint(x, y));
+    const hud = [];
+    const msgEl = document.getElementById('instrument-message');
+    const msgBox = msgEl && !msgEl.hidden && getComputedStyle(msgEl).display !== 'none' ? msgEl.getBoundingClientRect() : null;
+    for (const f of faces) {
+      const r = { left: canvas.left + f.x * sx, top: canvas.top + f.y * sy, right: canvas.left + (f.x + f.w) * sx, bottom: canvas.top + (f.y + f.h) * sy };
+      const overlap = msgBox && r.right > msgBox.left + 0.5 && r.left < msgBox.right - 0.5 && r.bottom > msgBox.top + 0.5 && r.top < msgBox.bottom - 0.5;
+      const pts = [[(r.left + r.right) / 2, (r.top + r.bottom) / 2], [r.left + 6, r.top + 6], [r.right - 6, r.top + 6], [r.left + 6, r.bottom - 6], [r.right - 6, r.bottom - 6]];
+      const bad = pts.map(([x, y]) => hit(x, y)).filter((id) => id && id !== 'game' && id !== 'stage');
+      if (overlap || bad.length) hud.push(f.n + (overlap ? ' overlaps the door hint' : ' hit ' + bad[0]));
+    }
+    const controls = [];
+    for (const id of ['b-pausebtn', 'b-buy', 'b-cycle', 'b-skip-tutorial']) {
+      const el = document.getElementById(id);
+      if (!el || el.hidden || getComputedStyle(el).display === 'none') continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      const inset = Math.min(8, r.width / 4, r.height / 4);
+      const pts = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + inset, r.top + inset], [r.right - inset, r.top + inset], [r.left + inset, r.bottom - inset], [r.right - inset, r.bottom - inset]];
+      const bad = pts.map(([x, y]) => hit(x, y)).filter((name) => name && name !== id);
+      if (bad.length) controls.push(id + ' hit ' + bad[0]);
+      if (id === 'b-pausebtn' && innerHeight >= innerWidth && document.body.classList.contains('tutorial')) {
+        const onStage = r.top < stage.bottom - 1 && r.bottom > stage.top + 1 && r.left < stage.right - 1 && r.right > stage.left - 1;
+        if (onStage) controls.push('pause sits on the board');
+      }
+    }
+    let coachCovered = false;
+    if (msgBox && document.body.classList.contains('tutorial')) {
+      const plates = ['sorting-readout', 'trial-badge'].map((id) => document.getElementById(id)).filter((el) => el && !el.hidden && getComputedStyle(el).display !== 'none');
+      const root = msgEl.querySelector('.vls-plaque__label') || msgEl;
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const rect of range.getClientRects()) {
+          for (const plate of plates) {
+            const p = plate.getBoundingClientRect();
+            if (rect.right > p.left + 0.5 && rect.left < p.right - 0.5 && rect.bottom > p.top + 0.5 && rect.top < p.bottom - 0.5) coachCovered = true;
+          }
+        }
+      }
+    }
+    const read = document.getElementById('sorting-readout');
+    const lines = [];
+    if (read && !read.hidden && getComputedStyle(read).display !== 'none') {
+      const root = read.querySelector('.vls-plaque__label') || read;
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const words = [];
+      let node;
+      while ((node = walker.nextNode())) {
+        const text = node.textContent;
+        let start = 0;
+        const parts = text.split(/\\s+/);
+        // walk words by matching non-space runs
+        const re = /\\S+/g;
+        let m;
+        while ((m = re.exec(text))) {
+          const range = document.createRange();
+          range.setStart(node, m.index);
+          range.setEnd(node, m.index + m[0].length);
+          const rect = range.getBoundingClientRect();
+          if (rect.width > 0.4) words.push({ top: Math.round(rect.top), t: m[0] });
+        }
+      }
+      const grouped = [];
+      for (const w of words) {
+        let line = grouped.find((l) => Math.abs(l.top - w.top) <= 3);
+        if (!line) { line = { top: w.top, words: [] }; grouped.push(line); }
+        line.words.push(w.t);
+      }
+      for (const line of grouped) lines.push(line.words.join(' '));
+    }
+    return { hud, controls, coachCovered, lines, top: stage.top, active: document.body.classList.contains('tutorial') };
+  })()`;
   async function measureMatrix(view, theme, mode, kind) {
     if (kind === 'trial-pause') await sleep(120);
     else {
@@ -917,12 +1063,36 @@ try {
     }
     const m = Object.assign({ view: view.name, theme, mode, kind }, await evalJs(MATRIX));
     const problems = matrixProblems(m, kind === 'lesson' ? 'lesson' : 'play');
+    if (kind !== 'trial-pause') {
+      const audit = await evalJs(AUDIT);
+      for (const item of audit.hud) problems.push('HUD ' + item);
+      for (const item of audit.controls) problems.push(item);
+      if (kind === 'lesson' && audit.coachCovered) problems.push('a plate covers coach text');
+      const splitNumber = (audit.lines || []).some((line) => /^[·×]/.test(line) || /^10\b/.test(line) || (/Pa/.test(line) && !/\d/.test(line)));
+      if (splitNumber) problems.push('pressure number breaks across lines "' + (audit.lines || []).join(' / ') + '"');
+      const sortTop = { '320x568': 74.9, '640x640': 8, '320x420': 8, '320x320': 8 };
+      if (mode === 'sort' && kind !== 'lesson' && sortTop[view.name] !== undefined && Math.abs(audit.top - sortTop[view.name]) > 2) {
+        problems.push(`stage top ${audit.top.toFixed(1)} differs from main ${sortTop[view.name]}`);
+      }
+    }
     if (kind !== 'lesson' && m.active) problems.push('lesson still active');
     if (kind === 'ordinary' && m.trial && !m.trial.hidden) problems.push('ordinary play showed a trial badge');
     if (kind === 'trial-pause' && (!m.trial || m.trial.hidden)) problems.push('trial badge hidden while paused');
     if (kind === 'sort-live' && (!m.msg || m.msg.hidden)) problems.push('sort door help was not showing');
     if (m.playMode && m.playMode !== mode && kind !== 'trial-pause') problems.push(`mode ${m.playMode}`);
     if (m.preexisting && m.preexisting.length) console.log('preexisting', view.name, theme, mode, kind, m.preexisting.join('; '));
+    const typeTight = view.h <= 300 || (Math.abs(view.w - view.h) <= 80 && Math.max(view.w, view.h) <= 480);
+    const mainFont = { coach: 13, door: 13, readout: 13 };
+    for (const [block, px] of Object.entries(m.fonts || {})) {
+      if (px == null) continue;
+      fontMins[block] = Math.min(fontMins[block] == null ? px : fontMins[block], px);
+      if (px < 10.95) problems.push(`${block} font ${px}px is below 11px`);
+      if (mainFont[block] && px + 0.05 < mainFont[block]) {
+        const reason = view.h <= 300 ? '300-tall; 13px did not fit' : 'tight square; 13px did not fit';
+        fontSmall.push({ block, px, main: mainFont[block], view: view.name, theme, mode, kind, reason: typeTight ? reason : 'below main outside a tight size' });
+        if (!typeTight) problems.push(`${block} font ${px}px is below main's ${mainFont[block]}px`);
+      }
+    }
     if (problems.length) fail(`${view.name} ${theme} ${mode} ${kind}: ${problems.join('; ')}`);
     m.problems = problems;
     layoutRows.push(m);
@@ -930,6 +1100,8 @@ try {
     console.log('matrix', view.name, theme, mode, kind, problems.length ? 'FAIL' : 'ok', m.width.toFixed(2), m.height.toFixed(2), 'clear', clr(m.read), clr(m.trial), clr(m.msg));
     return m;
   }
+  const fontMins = {};
+  const fontSmall = [];
   const seenTutorials = { single: true, two: true, sort: true };
   for (const view of matrixViews) {
     for (const theme of ['victorian', 'bw']) {
@@ -1014,7 +1186,255 @@ try {
       console.log('resize', next.name, theme, problems.length ? 'FAIL' : 'ok', 'clear', clr(m.msg), clr(m.read), clr(m.skip), 'skip', m.skip && !m.skip.off, 'plate', m.read && !m.read.off);
     }
   }
-  await writeFile(`${OUT}/layout-measurements.json`, JSON.stringify(layoutRows, null, 2));
+  if (await evalJs(`typeof window.fitOverPanel !== 'undefined' || typeof window.MDFitOver === 'function'`)) {
+    fail('a test hook is on window without the dev flag');
+  } else console.log('hooks', 'absent without the dev flag');
+  const widths = [];
+  for (let w = 320; w <= 440; w += 20) widths.push(w);
+  const heights = [];
+  for (let h = 300; h <= 900; h += 20) heights.push(h);
+  for (const h of [440, 450, 460, 640]) if (!heights.includes(h)) heights.push(h);
+  heights.sort((a, b) => a - b);
+  const GRID = `(() => {
+    const problems = [];
+    const wordsOf = (el) => {
+      const root = el.querySelector('.vls-plaque__label') || el;
+      const words = [];
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) {
+        if (n.parentElement && n.parentElement.hidden) continue;
+        const re = /\\S+/g; let m;
+        while ((m = re.exec(n.textContent))) {
+          const range = document.createRange();
+          range.setStart(n, m.index); range.setEnd(n, m.index + m[0].length);
+          for (const rect of range.getClientRects()) {
+            if (rect.width < 0.4 || rect.height < 0.4) continue;
+            words.push({ top: Math.round(rect.top), t: m[0], rect });
+          }
+        }
+      }
+      const lines = [];
+      for (const w of words) {
+        let line = lines.find((l) => Math.abs(l.top - w.top) <= 3);
+        if (!line) { line = { top: w.top, words: [], rects: [] }; lines.push(line); }
+        line.words.push(w.t); line.rects.push(w.rect);
+      }
+      return lines.sort((a, b) => a.top - b.top);
+    };
+    const notchGap = (rect, plate, notch) => {
+      if (!(notch > 0)) {
+        const corners = [[plate.left, plate.top], [plate.right, plate.top], [plate.left, plate.bottom], [plate.right, plate.bottom]];
+        let worst = 99;
+        for (const [x, y] of corners) {
+          const dx = rect.right < x ? x - rect.right : rect.left > x ? rect.left - x : 0;
+          const dy = rect.bottom < y ? y - rect.bottom : rect.top > y ? rect.top - y : 0;
+          worst = Math.min(worst, dx === 0 && dy === 0 ? 0 : Math.hypot(dx, dy));
+        }
+        return worst;
+      }
+      const zones = [
+        [plate.left, plate.top, plate.left + notch, plate.top + notch],
+        [plate.right - notch, plate.top, plate.right, plate.top + notch],
+        [plate.left, plate.bottom - notch, plate.left + notch, plate.bottom],
+        [plate.right - notch, plate.bottom - notch, plate.right, plate.bottom],
+      ];
+      let worst = 99;
+      for (const [l, t, r, b] of zones) {
+        const dx = rect.right < l ? l - rect.right : rect.left > r ? rect.left - r : 0;
+        const dy = rect.bottom < t ? t - rect.bottom : rect.top > b ? rect.top - b : 0;
+        const gap = dx === 0 && dy === 0 ? -Math.min(rect.right - l, r - rect.left, rect.bottom - t, b - rect.top) : Math.hypot(dx, dy);
+        worst = Math.min(worst, gap);
+      }
+      return worst;
+    };
+    const blocks = ['instrument-message', 'sorting-readout', 'p-over'].map((id) => document.getElementById(id)).filter((el) => el && !el.hidden && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 2);
+    for (const el of blocks) {
+      const lines = wordsOf(el);
+      if (lines.length > 1) {
+        for (const line of lines) if (line.words.length < 2) problems.push(el.id + ' widow "' + line.words.join(' ') + '"');
+      }
+      const plate = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const screw = parseFloat(cs.getPropertyValue('--_s')) || parseFloat(cs.getPropertyValue('--vls-plaque-screw')) || 0;
+      const border = parseFloat(cs.borderTopWidth) || 0;
+      const inset = Math.max(border, screw > 0 ? screw + 0.8 : border);
+      for (const line of lines) {
+        for (const rect of line.rects) {
+          const edge = Math.min(rect.left - (plate.left + inset), rect.top - (plate.top + inset), (plate.right - inset) - rect.right, (plate.bottom - inset) - rect.bottom);
+          const notch = notchGap(rect, plate, screw);
+          if (edge < 2.95 || notch < 2.95) problems.push(el.id + ' clearance ' + Math.min(edge, notch).toFixed(1));
+        }
+      }
+    }
+    const canvas = document.getElementById('game').getBoundingClientRect();
+    const sorting = document.body.classList.contains('sorting');
+    const faces = sorting
+      ? [{ x: 24, y: 10, w: 300, h: 118 }, { x: 340, y: 10, w: 320, h: 118 }, { x: 676, y: 10, w: 300, h: 118 }]
+      : [{ x: 16, y: 6, w: 312, h: 108 }, { x: 344, y: 6, w: 312, h: 108 }, { x: 672, y: 6, w: 312, h: 108 }];
+    const sx = canvas.width / 1000, sy = canvas.height / 680;
+    const msg = document.getElementById('instrument-message');
+    const msgBox = msg && !msg.hidden && getComputedStyle(msg).display !== 'none' ? msg.getBoundingClientRect() : null;
+    if (msgBox && canvas.width > 2) {
+      for (const f of faces) {
+        const r = { left: canvas.left + f.x * sx, top: canvas.top + f.y * sy, right: canvas.left + (f.x + f.w) * sx, bottom: canvas.top + (f.y + f.h) * sy };
+        if (r.right > msgBox.left + 0.5 && r.left < msgBox.right - 0.5 && r.bottom > msgBox.top + 0.5 && r.top < msgBox.bottom - 0.5) problems.push('door hint overlaps a HUD readout');
+        const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+        const el = document.elementFromPoint(cx, cy);
+        if (el && el.closest && el.closest('#instrument-message, #sorting-readout')) problems.push('HUD hit the plate');
+      }
+    }
+    if (document.getElementById('p-over').classList.contains('show')) {
+      const panel = document.getElementById('p-over').getBoundingClientRect();
+      for (const id of ['b-again', 'b-over-shop', 'b-over-title']) {
+        const b = document.getElementById(id).getBoundingClientRect();
+        const clipped = b.width < 2 || b.height < 2 || b.left < -0.5 || b.top < -0.5 || b.right > innerWidth + 0.5 || b.bottom > innerHeight + 0.5 || b.left < panel.left - 0.5 || b.top < panel.top - 0.5 || b.right > panel.right + 0.5 || b.bottom > panel.bottom + 0.5;
+        if (clipped) problems.push(id + ' is clipped');
+      }
+    }
+    const tight = innerHeight <= 300 || (Math.abs(innerWidth - innerHeight) <= 80 && Math.max(innerWidth, innerHeight) <= 480);
+    for (const id of ['instrument-message', 'sorting-readout', 'trial-badge', 'p-over']) {
+      const el = document.getElementById(id);
+      if (!el || el.hidden || getComputedStyle(el).display === 'none') continue;
+      const label = [...el.querySelectorAll('.vls-plaque__label')].find((n) => !n.hidden && getComputedStyle(n).display !== 'none') || el;
+      const spills = (node) => {
+        const style = getComputedStyle(node);
+        const border = (parseFloat(style.borderLeftWidth) || 0) + (parseFloat(style.borderRightWidth) || 0);
+        return style.textOverflow === 'ellipsis' || node.scrollWidth > node.clientWidth + border + 0.5;
+      };
+      if (spills(el) || spills(label)) problems.push(id + ' text is clipped');
+      const nodes = [...el.querySelectorAll('.read-name, .read-measure, .read-ledger, .vls-plaque__label, h2, .stat, .keep-pair')].filter((n) => !n.classList.contains('vls-exp') && n.getClientRects().length);
+      const list = nodes.length ? nodes : [el];
+      let px = Infinity;
+      for (const node of list) px = Math.min(px, parseFloat(getComputedStyle(node).fontSize) || px);
+      if (px < 10.95) problems.push(id + ' font ' + px.toFixed(1) + 'px');
+      else if (!tight && (id === 'instrument-message' || id === 'sorting-readout') && px < 12.95) problems.push(id + ' font ' + px.toFixed(1) + 'px is below main 13px');
+    }
+    const rangeRe = /\\d+(?:\\.\\d+)?[–—]\\d+(?:\\.\\d+)?/g;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let rn;
+    while ((rn = walker.nextNode())) {
+      if (!rn.parentElement || rn.parentElement.closest('script, style, .vls-date')) continue;
+      rangeRe.lastIndex = 0;
+      let rm;
+      while ((rm = rangeRe.exec(rn.textContent))) {
+        const range = document.createRange();
+        range.setStart(rn, rm.index); range.setEnd(rn, rm.index + rm[0].length);
+        const tops = [];
+        for (const rect of range.getClientRects()) {
+          if (rect.width < 0.4 || rect.height < 0.4) continue;
+          if (!tops.some((t) => Math.abs(t - rect.top) <= 2)) tops.push(rect.top);
+        }
+        if (tops.length > 1) problems.push('range ' + rm[0] + ' splits');
+      }
+    }
+    return problems;
+  })()`;
+  async function sweepGrid(label) {
+    let reported = 0;
+    for (const w of widths) {
+      for (const h of heights) {
+        await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: w < 900 });
+        await evalJs(`window.dispatchEvent(new Event('resize')); new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+        const problems = await evalJs(GRID);
+        if (problems.length && reported < 12) {
+          reported++;
+          fail(`grid ${label} ${w}x${h}: ${problems.slice(0, 4).join('; ')}`);
+        } else if (problems.length) fail(`grid ${label} ${w}x${h}: ${problems[0]}`);
+      }
+    }
+    console.log('grid', label, 'sizes', widths.length * heights.length);
+  }
+  for (const theme of ['victorian', 'bw']) {
+    await layoutBoot({ w: 1280, h: 800, dsf: 1, name: '1280x800' }, theme);
+    await startPlaying('single', { name: '1280x800' }, theme);
+    await sweepGrid(`${theme} lesson`);
+    await evalJs(`document.getElementById('b-skip-tutorial').click(); true`);
+    await sweepGrid(`${theme} after-skip`);
+    await endPlaying();
+    await sweepGrid(`${theme} done`);
+  }
+  for (const theme of ['victorian', 'bw']) {
+    await layoutBoot({ w: 1280, h: 800, dsf: 1, name: '1280x800' }, theme, { single: true, two: true, sort: true });
+    await evalJs(`document.getElementById('b-settings').click(); true`);
+    await sleep(80);
+    const fonts = await evalJs(`(() => {
+      const btn = document.getElementById('s-replay');
+      const label = document.querySelector('#p-settings label');
+      return { btn: parseFloat(getComputedStyle(btn).fontSize), label: parseFloat(getComputedStyle(label).fontSize) };
+    })()`);
+    if (Math.abs(fonts.btn - fonts.label) > 0.2) fail(`${theme} Replay tutorial is ${fonts.btn}px and the Settings plates are ${fonts.label}px`);
+    else console.log('settings-type', theme, fonts.btn);
+  }
+  const WRAP = `(() => {
+    const block = (id) => {
+      const el = document.getElementById(id);
+      if (!el || el.hidden || getComputedStyle(el).display === 'none' || el.getBoundingClientRect().height < 2) return null;
+      const root = el.querySelector('.vls-plaque__label') || el;
+      const lines = [];
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) {
+        const re = /\\S+/g; let m;
+        while ((m = re.exec(n.textContent))) {
+          const range = document.createRange();
+          range.setStart(n, m.index); range.setEnd(n, m.index + m[0].length);
+          for (const rect of range.getClientRects()) {
+            if (rect.width < 0.4 || rect.height < 0.4) continue;
+            let line = lines.find((l) => Math.abs(l.top - rect.top) <= 3);
+            if (!line) { line = { top: rect.top, right: rect.right, bottom: rect.bottom }; lines.push(line); }
+            line.right = Math.max(line.right, rect.right); line.bottom = Math.max(line.bottom, rect.bottom);
+          }
+        }
+      }
+      const box = root.getBoundingClientRect();
+      return { lines: lines.length, w: Math.round(box.width), h: Math.round(box.height), clientW: root.clientWidth, text: (el.textContent || '').replace(/\\d+(?:\\.\\d+)?/g, '#').replace(/\\s+/g, ' ').trim() };
+    };
+    const canvas = document.getElementById('game').getBoundingClientRect();
+    const sorting = document.body.classList.contains('sorting');
+    const faces = sorting
+      ? [{ x: 24, y: 10, w: 300, h: 118 }, { x: 340, y: 10, w: 320, h: 118 }, { x: 676, y: 10, w: 300, h: 118 }]
+      : [{ x: 16, y: 6, w: 312, h: 108 }, { x: 344, y: 6, w: 312, h: 108 }, { x: 672, y: 6, w: 312, h: 108 }];
+    const sx = canvas.width / 1000, sy = canvas.height / 680;
+    const hit = (id) => {
+      const el = document.getElementById(id);
+      if (!el || el.hidden) return false;
+      const b = el.getBoundingClientRect();
+      if (canvas.width < 2) return false;
+      return faces.some((f) => {
+        const r = { left: canvas.left + f.x * sx, top: canvas.top + f.y * sy, right: canvas.left + (f.x + f.w) * sx, bottom: canvas.top + (f.y + f.h) * sy };
+        return r.right > b.left + 0.5 && r.left < b.right - 0.5 && r.bottom > b.top + 0.5 && r.top < b.bottom - 0.5;
+      });
+    };
+    return { read: block('sorting-readout'), msg: block('instrument-message'), readOver: hit('sorting-readout'), msgOver: hit('instrument-message') };
+  })()`;
+  const wrapViews = [{ w: 320, h: 568, name: '320x568' }, { w: 1280, h: 800, name: '1280x800' }, { w: 480, h: 320, name: '480x320' }];
+  for (const theme of ['victorian', 'bw']) {
+    for (const view of wrapViews) {
+      const sample = async (ref) => {
+        await layoutBoot(view, theme, { single: true, two: true, sort: true }, ref);
+        await startPlaying('single', view, theme);
+        await sleep(200);
+        return evalJs(WRAP);
+      };
+      const ours = await sample('');
+      const main = await sample('main');
+      for (const key of ['read', 'msg']) {
+        const a = ours[key], b = main[key];
+        if (!a && !b) continue;
+        if (!a || !b) { fail(`${view.name} ${theme} ordinary ${key} presence differs from main`); continue; }
+        if (a.text === b.text && Math.abs(a.clientW - b.clientW) <= 8 && (a.lines !== b.lines || Math.abs(a.h - b.h) > 4 || Math.abs(a.w - b.w) > 4)) {
+          fail(`${view.name} ${theme} ordinary ${key} wraps ${a.lines} lines ${a.w}x${a.h} against main ${b.lines} lines ${b.w}x${b.h}`);
+        }
+      }
+      if (ours.readOver && !main.readOver) fail(`${view.name} ${theme} ordinary readout overlaps a nameplate that main leaves clear`);
+      if (ours.msgOver && !main.msgOver) fail(`${view.name} ${theme} ordinary door help overlaps a nameplate that main leaves clear`);
+      console.log('wrap', view.name, theme, 'read', ours.read && ours.read.lines, 'main', main.read && main.read.lines);
+    }
+  }
+  console.log('font-min', JSON.stringify(fontMins));
+  console.log('font-small', JSON.stringify(fontSmall));
+  await writeFile(`${OUT}/layout-measurements.json`, JSON.stringify({ fonts: fontMins, smaller: fontSmall, rows: layoutRows }, null, 2));
 } finally {
   try { ws && ws.close(); } catch {}
   chrome.kill('SIGKILL');
