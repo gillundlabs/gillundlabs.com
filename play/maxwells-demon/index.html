@@ -673,7 +673,7 @@
   }
   #instrument-message,
   #instrument-message .vls-plaque__label {
-    white-space: pre-line !important; overflow: visible !important; text-overflow: unset !important;
+    white-space: normal !important; overflow: visible !important; text-overflow: unset !important;
     line-height: 1.35 !important; overflow-wrap: normal !important; height: auto !important;
     font-size: 13px !important;
   }
@@ -1141,10 +1141,6 @@
   #instrument-dock.pressure-gutter #instrument-message { margin-bottom: 2px !important; }
   #over-stats [hidden], #over-note[hidden] { display: none !important; }
   #sorting-readout.ink-safe { padding-top: 16px !important; padding-bottom: 14px !important; }
-  body[data-theme="victorian"] #trial-badge {
-    padding-top: 12px !important;
-    padding-bottom: 11px !important;
-  }
   body[data-theme="victorian"] #trial-badge.gutter-badge {
     min-width: 0 !important; padding: 12px 8px !important;
     line-height: 1.15 !important; letter-spacing: 0 !important; text-align: center !important;
@@ -1817,6 +1813,13 @@
   @media (max-height: 420px) {
     #p-over .over-actions { flex-wrap: nowrap; }
     #p-over .over-actions button { flex: 1 1 0 !important; min-height: 36px; padding: 4px 6px; }
+  }
+  @media (max-height: 640px) {
+    #p-over.panel.show {
+      top: 4px !important; left: 8px !important; right: 8px !important; bottom: auto !important;
+      width: auto !important; max-height: calc(100% - 8px) !important;
+      transform: none !important; overflow: hidden !important; margin: 0 !important;
+    }
   }
   .panel.vls-plaque.scrollable {
     position: fixed;
@@ -3123,8 +3126,7 @@ if (typeof module === 'object' && module.exports) module.exports = root.MDScale;
       const maxW = Math.max(8, w - 2 * (s + rHead + 6));
       const maxH = Math.max(8, h - 2 * (s + R + 2));
       let size = parseFloat(cs.fontSize) || 18;
-      const tightType = innerHeight <= 300 || (Math.abs(innerWidth - innerHeight) <= 80 && Math.max(innerWidth, innerHeight) <= 480);
-      const floor = el.id === 'trial-badge' ? (tightType ? 11 : 13) : 7;
+      const floor = 7;
       label.style.fontSize = size + 'px';
       for (let guard = 0; guard < 80 && size > floor; guard++, size -= 0.5) {
         label.style.fontSize = size + 'px';
@@ -7634,6 +7636,7 @@ function layoutInstruments() {
   if (skip0) {
     skip0.style.position = '';
     skip0.style.left = '';
+    skip0.style.right = '';
     skip0.style.width = '';
     skip0.style.top = '';
     skip0.style.height = '';
@@ -7753,6 +7756,23 @@ function layoutInstruments() {
       dock.style.width = `${dockW}px`;
       dock.style.top = `${bandTop}px`;
       dock.style.maxHeight = `${Math.max(44, bottom - bandTop)}px`;
+      const skipEl = $('b-skip-tutorial');
+      const skipH = 36;
+      if (skipEl && !skipEl.hidden) {
+        skipEl.style.position = 'fixed';
+        skipEl.style.left = `${dockLeft}px`;
+        skipEl.style.width = `${dockW}px`;
+        skipEl.style.right = 'auto';
+        skipEl.style.margin = '0';
+        skipEl.style.zIndex = '6';
+        skipEl.style.top = `${bottom - skipH - 4}px`;
+        dock.style.maxHeight = `${Math.max(36, bottom - skipH - 8 - bandTop)}px`;
+        const coach = $('instrument-message');
+        if (coach && !coach.hidden) {
+          coach.style.maxHeight = `${Math.max(32, bottom - skipH - 8 - bandTop)}px`;
+          coach.style.overflow = 'hidden';
+        }
+      }
       const lessonRead = $('sorting-readout');
       if (lessonRead && !lessonRead.hidden) {
         lessonRead.classList.add('ink-safe');
@@ -7760,32 +7780,27 @@ function layoutInstruments() {
         lessonRead.style.margin = '0';
         lessonRead.style.right = `${safe('--sar') + 8}px`;
         lessonRead.style.left = 'auto';
-        const name = lessonRead.querySelector('.read-name, .read-measure');
-        const need = name ? Math.ceil(name.scrollWidth + 28) : 120;
-        const room = Math.max(88, innerWidth - (parseFloat(dock.style.left) || 8) - (parseFloat(dock.style.width) || 0) - safe('--sar') - 16);
-        lessonRead.style.width = `${Math.max(room, Math.min(need, innerWidth - 16))}px`;
-        lessonRead.style.top = `${Math.min(bottom - 40, bandTop + 56)}px`;
+        lessonRead.style.width = `${Math.max(72, ctrlW - 8)}px`;
+        lessonRead.style.top = `${Math.min(bottom - 44, bandTop + 52)}px`;
       }
       if (trial && !trial.hidden) {
         trial.classList.add('gutter-badge');
         trial.style.minWidth = '0';
-        trial.style.right = 'auto';
         trial.style.bottom = 'auto';
-        trial.style.left = `${dockLeft}px`;
-        trial.style.width = `${dockW}px`;
-        trial.style.maxWidth = `${dockW}px`;
-        trial.style.top = `${Math.min(bottom - 32, bandTop + Math.min(dock.scrollHeight, bottom - bandTop) + 4)}px`;
+        trial.style.left = 'auto';
+        trial.style.right = `${safe('--sar') + 8}px`;
+        trial.style.width = `${Math.max(72, ctrlW - 8)}px`;
+        trial.style.maxWidth = trial.style.width;
+        trial.style.top = `${Math.min(bottom - 32, bandTop + 100)}px`;
       }
+      dock.style.overflow = 'hidden';
     } else {
     controls.style.top = 'auto'; controls.style.bottom = `${safe('--sab') + 42}px`;
     controls.style.left = '50%'; controls.style.right = 'auto'; controls.style.transform = 'translateX(-50%)';
     dock.style.left = `${safe('--sal') + 8}px`; dock.style.width = `${innerWidth - safe('--sal') - safe('--sar') - 16}px`;
     dock.style.maxHeight = ''; dock.style.top = '0px';
     trial.style.left = dock.style.left; trial.style.right = 'auto'; trial.style.width = dock.style.width; trial.style.bottom = 'auto';
-    const measuredBadge = trial.hidden ? 0 : trial.getBoundingClientRect().height;
-    const badgeCss = trial.hidden ? null : getComputedStyle(trial);
-    const padDelta = (badgeCss ? Math.max(0, (parseFloat(badgeCss.paddingTop) || 0) - 8) + Math.max(0, (parseFloat(badgeCss.paddingBottom) || 0) - 8) : 0) + (measuredBadge ? 1.6 : 0);
-    const trialHeight = measuredBadge ? Math.max(0, measuredBadge - padDelta) + 8 : 0;
+    const trialHeight = trial.hidden ? 0 : trial.getBoundingClientRect().height + 8;
     const controlTop = controls.getBoundingClientRect().top;
     const desired = (dock.hidden ? 0 : dock.getBoundingClientRect().height + 12) + trialHeight;
     const dy = Math.min(0, Math.max(top - cr.top, controlTop - 12 - desired - cr.bottom));
@@ -7793,26 +7808,6 @@ function layoutInstruments() {
     trial.style.top = `${cr.bottom + 12}px`;
     dock.style.top = `${cr.bottom + 12 + trialHeight}px`;
     dock.style.maxHeight = `${Math.max(44, controlTop - 12 - cr.bottom - 12 - trialHeight)}px`;
-    const ctrlNow = controls.getBoundingClientRect();
-    const dockNow = dock.getBoundingClientRect();
-    const covers = dockNow.bottom > ctrlNow.top + 1 && dockNow.top < ctrlNow.bottom - 1 && dockNow.right > ctrlNow.left + 1 && dockNow.left < ctrlNow.right - 1;
-    if (covers) {
-      const gap = 6;
-      const rightRoom = innerWidth - safe('--sar') - 8 - (ctrlNow.right + gap);
-      const leftRoom = ctrlNow.left - gap - (safe('--sal') + 8);
-      if (Math.max(rightRoom, leftRoom) >= 96) {
-        const useRight = rightRoom >= leftRoom;
-        dock.style.left = `${useRight ? ctrlNow.right + gap : safe('--sal') + 8}px`;
-        dock.style.width = `${useRight ? rightRoom : leftRoom}px`;
-        dock.style.top = `${Math.max(cr.bottom + 4, ctrlNow.top)}px`;
-        dock.style.maxHeight = `${Math.max(36, bottom - parseFloat(dock.style.top))}px`;
-      } else {
-        const y = Math.max(cr.top + 4, ctrlNow.top - 48);
-        dock.style.top = `${y}px`;
-        dock.style.maxHeight = `${Math.max(32, ctrlNow.top - 4 - y)}px`;
-        dock.style.overflow = 'hidden';
-      }
-    }
     }
   } else {
     controls.style.top = `${top}px`; controls.style.bottom = 'auto'; controls.style.left = 'auto'; controls.style.right = `${safe('--sar') + 8}px`; controls.style.transform = 'none';
@@ -8135,7 +8130,7 @@ function startSort(watch) {
   beginModeTutorial('sort');
   const doorHelp = settings.sortDoorControl === 'toggle' ? 'Tap / Enter: door open/shut. Space pauses.' : 'Hold / Enter: open door. Release: shut. Space pauses.';
   const pv = settings.sortPreview !== false && (settings.sortDifficulty === 'apprentice' || settings.sortDifficulty === 'demon') && sortMag() <= 1;
-  const ringHelp = `${settings.theme === 'bw' ? 'Solid + ring' : 'Green ring'}: worth more than door cost.`;
+  const ringHelp = `${settings.theme === 'bw' ? 'Solid + ring' : 'Green ring'}: worth more than door\u00a0cost.`;
   toast(pv ? doorHelp + '\n' + ringHelp : doorHelp);
   showPanel(null);
 }
@@ -8903,10 +8898,21 @@ function fitOverPanel() {
   if (fits()) return;
   panel.classList.add('over-tight');
   const cells = [...panel.querySelectorAll('#over-stats span')];
-  for (let i = cells.length - 1; i >= 0 && !fits(); i--) {
+  const buttonsIn = () => ['b-again', 'b-over-shop', 'b-over-title'].every((id) => {
+    const b = $(id).getBoundingClientRect();
+    const pr = panel.getBoundingClientRect();
+    return b.height > 8 && b.top >= -1 && b.left >= -1 && b.right <= innerWidth + 1 && b.bottom <= innerHeight + 1
+      && b.top >= pr.top - 1 && b.bottom <= pr.bottom + 1 && b.left >= pr.left - 1 && b.right <= pr.right + 1;
+  });
+  for (let i = cells.length - 1; i >= 0 && !(fits() && buttonsIn()); i--) {
     cells[i].hidden = true;
     const value = cells[i].nextElementSibling;
     if (value && value.tagName === 'B') value.hidden = true;
+  }
+  if (!(fits() && buttonsIn())) {
+    const heading = panel.querySelector('h2');
+    if (heading) heading.hidden = true;
+    if (note) note.hidden = true;
   }
 }
 function showPanel(name) {

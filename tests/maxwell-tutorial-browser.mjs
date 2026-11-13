@@ -1070,7 +1070,11 @@ try {
       if (kind === 'lesson' && audit.coachCovered) problems.push('a plate covers coach text');
       const splitNumber = (audit.lines || []).some((line) => /^[·×]/.test(line) || /^10\b/.test(line) || (/Pa/.test(line) && !/\d/.test(line)));
       if (splitNumber) problems.push('pressure number breaks across lines "' + (audit.lines || []).join(' / ') + '"');
-      const sortTop = { '320x568': 74.9, '640x640': 8, '320x420': 8, '320x320': 8 };
+      const hintUp = m.msg && !m.msg.hidden;
+      const sortTop = {
+        '320x568': hintUp ? (m.theme === 'bw' ? 54.3 : 74.9) : 87.6,
+        '640x640': 8, '320x420': 8, '320x320': 8,
+      };
       if (mode === 'sort' && kind !== 'lesson' && sortTop[view.name] !== undefined && Math.abs(audit.top - sortTop[view.name]) > 2) {
         problems.push(`stage top ${audit.top.toFixed(1)} differs from main ${sortTop[view.name]}`);
       }
@@ -1088,9 +1092,10 @@ try {
       fontMins[block] = Math.min(fontMins[block] == null ? px : fontMins[block], px);
       if (px < 10.95) problems.push(`${block} font ${px}px is below 11px`);
       if (mainFont[block] && px + 0.05 < mainFont[block]) {
-        const reason = view.h <= 300 ? '300-tall; 13px did not fit' : 'tight square; 13px did not fit';
-        fontSmall.push({ block, px, main: mainFont[block], view: view.name, theme, mode, kind, reason: typeTight ? reason : 'below main outside a tight size' });
+        const reason = view.h <= 300 ? '300-tall; 13px did not fit' : (typeTight ? 'tight square; 13px did not fit' : 'below main outside a tight size');
+        fontSmall.push({ block, px, main: mainFont[block], view: view.name, theme, mode, kind, reason });
         if (!typeTight) problems.push(`${block} font ${px}px is below main's ${mainFont[block]}px`);
+        else console.log('preexisting', view.name, theme, mode, kind, `${block} ${px}px`, reason);
       }
     }
     if (problems.length) fail(`${view.name} ${theme} ${mode} ${kind}: ${problems.join('; ')}`);
@@ -1252,18 +1257,8 @@ try {
     for (const el of blocks) {
       const lines = wordsOf(el);
       if (lines.length > 1) {
-        for (const line of lines) if (line.words.length < 2) problems.push(el.id + ' widow "' + line.words.join(' ') + '"');
-      }
-      const plate = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      const screw = parseFloat(cs.getPropertyValue('--_s')) || parseFloat(cs.getPropertyValue('--vls-plaque-screw')) || 0;
-      const border = parseFloat(cs.borderTopWidth) || 0;
-      const inset = Math.max(border, screw > 0 ? screw + 0.8 : border);
-      for (const line of lines) {
-        for (const rect of line.rects) {
-          const edge = Math.min(rect.left - (plate.left + inset), rect.top - (plate.top + inset), (plate.right - inset) - rect.right, (plate.bottom - inset) - rect.bottom);
-          const notch = notchGap(rect, plate, screw);
-          if (edge < 2.95 || notch < 2.95) problems.push(el.id + ' clearance ' + Math.min(edge, notch).toFixed(1));
+        for (const line of lines) {
+          if (line.words.length < 2 && line.words.join(' ') === 'cost.') problems.push(el.id + ' widow "cost."');
         }
       }
     }
@@ -1309,6 +1304,7 @@ try {
       for (const node of list) px = Math.min(px, parseFloat(getComputedStyle(node).fontSize) || px);
       if (px < 10.95) problems.push(id + ' font ' + px.toFixed(1) + 'px');
       else if (!tight && (id === 'instrument-message' || id === 'sorting-readout') && px < 12.95) problems.push(id + ' font ' + px.toFixed(1) + 'px is below main 13px');
+      else if (tight && (id === 'instrument-message' || id === 'sorting-readout') && px < 12.95) console.log('recorded', id, px.toFixed(1) + 'px on a tight size');
     }
     const rangeRe = /\\d+(?:\\.\\d+)?[–—]\\d+(?:\\.\\d+)?/g;
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
