@@ -238,12 +238,14 @@ try {
     layoutPreload = (await send('Page.addScriptToEvaluateOnNewDocument', {
       source: `try{localStorage.removeItem('maxwells-demon.access');localStorage.setItem('maxwells-demon.v2', ${JSON.stringify(JSON.stringify(saved))});}catch(e){}`,
     })).identifier;
-    await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/play/maxwells-demon/?layout=${theme}-${view.name}${ref ? '&ref=' + ref : ''}` });
-    for (let i = 0; i < 50; i++) {
-      if (await evalJs('!!(window.MDGameLive && document.getElementById("b-begin"))')) return;
-      await sleep(100);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/play/maxwells-demon/?layout=${theme}-${view.name}${ref ? '&ref=' + ref : ''}&try=${attempt}` });
+      for (let i = 0; i < 120; i++) {
+        if (await evalJs('!!(window.MDGameLive && document.getElementById("b-begin"))')) return;
+        await sleep(100);
+      }
     }
-    throw new Error(`layout game did not start ${theme} ${view.name}`);
+    throw new Error(`layout game did not start ${theme} ${view.name}${ref ? ' ' + ref : ''}`);
   }
   async function waitLayoutStep(n) {
     for (let i = 0; i < 70; i++) {
