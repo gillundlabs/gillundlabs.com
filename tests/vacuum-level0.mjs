@@ -4,7 +4,7 @@
    Run: node tests/vacuum-level0.mjs [baseUrl] */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const BASE = process.argv[2] || 'http://127.0.0.1:8772';
@@ -83,6 +83,12 @@ let mainHtml = execSync('git show ' + MAIN_REV + ':play/vacuum-maze/index.html',
 if (!mainHtml.includes(mainAnchor)) throw new Error('main geometry anchor missing');
 writeFileSync(mainRoot + '/play/vacuum-maze/index.html', mainHtml.replace(mainAnchor, mainAnchor + mainInject));
 const mainServer = spawn('python3', ['-m', 'http.server', String(MAIN_PORT), '--bind', '127.0.0.1'], { cwd: mainRoot, stdio: 'ignore' });
+const ORIGIN_PORT = 8776;
+const originRoot = '/tmp/vac-origin-main';
+rmSync(originRoot, { recursive: true, force: true });
+mkdirSync(originRoot + '/play/vacuum-maze', { recursive: true });
+writeFileSync(originRoot + '/play/vacuum-maze/index.html', execSync('git show origin/main:play/vacuum-maze/index.html', { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
+const originServer = spawn('python3', ['-m', 'http.server', String(ORIGIN_PORT), '--bind', '127.0.0.1'], { cwd: originRoot, stdio: 'ignore' });
 const failures = [];
 function fail(msg) { failures.push(msg); console.error('FAIL', msg); }
 
@@ -129,7 +135,7 @@ try {
     await sleep(120);
   }
   await sleep(400);
-  const exposed = await ev(`['VMHoldWorld','VMShowPracticeDone','VMTutorialLayout','VMSettlePlay','VMShowHint','VMPlayGeometry','VMFreezeFrame','VMCanvasSig','VMSetLesson','VMHudInk','VMCaptionInk'].filter((k) => window[k] != null)`);
+  const exposed = await ev(`['VMHoldWorld','VMShowPracticeDone','VMTutorialLayout','VMSettlePlay','VMShowHint','VMPlayGeometry','VMFreezeFrame','VMCanvasSig','VMSetLesson','VMHudInk','VMCaptionInk','VMShowFinish','VMStartLevel','VMLookPump','VMStageLabels','VMPlateLeak'].filter((k) => window[k] != null)`);
   if (exposed && exposed.length) fail('production exposes ' + exposed.join(' '));
   else console.log('dev hooks hidden');
 
@@ -654,7 +660,11 @@ try {
   function sameGeom(branch, main, where) {
     if (!branch || !main) { fail(where + ' geometry missing'); return; }
     if (branch.framing) fail(where + ' lesson framing still on');
-    for (const key of ['tube', 'atom', 'pump', 'gauge', 'hud', 'rotate', 'hint']) {
+    // Victorian portrait draws the rotate line on an engraved plate, so its box is not main's plain line.
+    const keys = where.startsWith('victorian')
+      ? ['tube', 'atom', 'pump', 'gauge', 'hud', 'hint']
+      : ['tube', 'atom', 'pump', 'gauge', 'hud', 'rotate', 'hint'];
+    for (const key of keys) {
       const a = JSON.stringify(round(branch[key])), b = JSON.stringify(round(main[key]));
       if (a !== b) fail(where + ' ' + key + ' branch ' + a + ' main ' + b);
     }
@@ -800,7 +810,8 @@ try {
     const rot = document.getElementById('rotate-hint');
     if (rot && getComputedStyle(rot).display !== 'none') {
       const rr = rot.getBoundingClientRect();
-      const g = gap(inkOf(rot), { l: rr.left, t: rr.top, r: rr.right, b: rr.bottom }, engraved(rot));
+      const rotInk = rot.querySelector('.vls-plaque__label') || rot;
+      const g = gap(inkOf(rotInk), { l: rr.left, t: rr.top, r: rr.right, b: rr.bottom }, engraved(rot));
       if (g < 3) problems.push('rotate text ' + g.toFixed(2));
     }
     const over = (a, b) => !!(a && b && a.r > b.l + 1 && a.l < b.r - 1 && a.b > b.t + 1 && a.t < b.b - 1);
@@ -834,7 +845,8 @@ try {
       lines.push(s.slice(start));
       return lines.map((l) => l.replace(/\u00a0/g, ' ').trim()).filter(Boolean);
     };
-    for (const el of [plate.querySelector('.tutor-line'), plate.querySelector('.tutor-sensor'), document.getElementById('rotate-hint')]) {
+    const rotEl = document.getElementById('rotate-hint');
+    for (const el of [plate.querySelector('.tutor-line'), plate.querySelector('.tutor-sensor'), (rotEl && rotEl.querySelector('.vls-plaque__label')) || rotEl]) {
       const lines = lineWords(el);
       if (lines.length > 1 && lines[lines.length - 1].split(/\\s+/).filter(Boolean).length < 2) problems.push('widow ' + lines[lines.length - 1]);
     }
@@ -1202,7 +1214,7 @@ try {
     const hint = document.getElementById('hint-plaque');
     if (shown(hint)) check('sensor', hint, hint.querySelector('.vls-plaque__label') || hint);
     const rot = document.getElementById('rotate-hint');
-    if (shown(rot)) check('rotate', rot, rot);
+    if (shown(rot)) check('rotate', rot, rot.querySelector('.vls-plaque__label') || rot);
     const skip = document.getElementById('b-skip-tutorial');
     const hudEl = document.getElementById('tutorial-hud');
     if (shown(skip) && hudEl && getComputedStyle(hudEl).display !== 'none') check('skip', skip, skip.querySelector('.vm-button-face') || skip);
@@ -1475,7 +1487,7 @@ try {
       await fit(w, h);
       for (const p of await ev(panelCover)) fail(label + ' ' + w + 'x' + h + ' ' + p);
       const ink = await ev(`window.VMHudPanelInk()`);
-      if (!ink || ink.painted || (ink.n > 40 && ink.ink === 0)) fail(label + ' ' + w + 'x' + h + ' hud ink ' + JSON.stringify(ink));
+      if (!ink || ink.painted || !(ink.reference > 0)) fail(label + ' ' + w + 'x' + h + ' hud ink ' + JSON.stringify(ink));
     }
     console.log('cover', label, textSizes.length);
   }
@@ -1603,8 +1615,238 @@ try {
       const where = theme + ' ' + w + 'x' + h + ' ordinary portrait';
       sameGeom(branchSig.geo, mainSig.geo, where);
       if (theme !== 'bw' && (!mainSig.sig || !branchSig.sig || mainSig.sig.caption !== branchSig.sig.caption)) fail(where + ' caption pixels differ');
+      if (theme === 'bw' && w === 390 && h === 844) {
+        const rot = await ev(`(() => {
+          const el = document.getElementById('rotate-hint');
+          const cs = getComputedStyle(el);
+          return { ivory: el.classList.contains('vls-ivory'), bg: cs.backgroundColor, cls: el.className };
+        })()`);
+        if (!rot || rot.ivory || rot.cls) fail(where + ' rotate hint class ' + JSON.stringify(rot));
+        if (!rot || rot.bg !== 'rgba(0, 0, 0, 0)') fail(where + ' rotate hint background ' + (rot && rot.bg));
+      }
       console.log('portrait', where);
     }
+  }
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: 'portraitPrimary', angle: 0 } });
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await boot({ settings: { theme: 'victorian' }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: true } });
+  await ev(`window.VMHoldWorld(true); document.getElementById('b-begin').click(); true`);
+  for (let i = 0; i < 30 && !await ev(`!!document.querySelector('#level-list button[data-lv="0"]')`); i++) await sleep(60);
+  await ev(`window.VMHoldWorld(true); document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+  await sleep(200);
+  const setTheme = async (theme) => {
+    await ev(`document.getElementById('s-theme').value = ${JSON.stringify(theme)}; document.getElementById('s-theme').dispatchEvent(new Event('input', { bubbles: true })); true`);
+    await sleep(300);
+  };
+  const rotateState = `(() => {
+    const el = document.getElementById('rotate-hint');
+    const cs = getComputedStyle(el);
+    return { ivory: el.classList.contains('vls-ivory'), plaque: el.classList.contains('vls-plaque'), bg: cs.backgroundColor, cls: el.className, chrome: !!el.querySelector('svg.vls-plaque__chrome') };
+  })()`;
+  await setTheme('bw');
+  const bwRot = await ev(rotateState);
+  if (!bwRot || bwRot.ivory || bwRot.cls || bwRot.plaque) fail('theme switch bw rotate hint class ' + JSON.stringify(bwRot));
+  if (!bwRot || bwRot.bg !== 'rgba(0, 0, 0, 0)') fail('theme switch bw rotate hint background ' + (bwRot && bwRot.bg));
+  await setTheme('victorian');
+  const vicRot = await ev(rotateState);
+  if (!vicRot || !vicRot.plaque || !vicRot.chrome) fail('theme switch victorian plate did not return ' + JSON.stringify(vicRot));
+  console.log('theme switch rotate', JSON.stringify({ bw: bwRot, vic: vicRot }));
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: 'portraitPrimary', angle: 0 } });
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  const seenBw = { settings: { theme: 'bw' }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: true } };
+  const playOrdinary = async () => {
+    await ev(`window.VMHoldWorld(true); document.getElementById('b-begin').click(); true`);
+    for (let i = 0; i < 30 && !await ev(`!!document.querySelector('#level-list button[data-lv="0"]')`); i++) await sleep(60);
+    await ev(`window.VMHoldWorld(true); document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+    await sleep(150);
+    await ev(`window.VMFreezeFrame(); window.VMShowHint(); true`);
+    await sleep(300);
+  };
+  const snapPng = async (path) => { writeFileSync(path, Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64')); };
+  await boot(seenBw);
+  await playOrdinary();
+  await snapPng('/tmp/vac-bw-390-branch.png');
+  await boot(seenBw, 'http://127.0.0.1:' + ORIGIN_PORT);
+  await playOrdinary();
+  await snapPng('/tmp/vac-bw-390-main.png');
+  const raw = (png) => execFileSync('ffmpeg', ['-i', png, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-v', 'error', 'pipe:1'], { maxBuffer: 8 * 1024 * 1024 });
+  const branchPx = raw('/tmp/vac-bw-390-branch.png'), mainPx = raw('/tmp/vac-bw-390-main.png');
+  const bandY0 = 810, bandY1 = 826, bandW = 390;
+  if (branchPx.length !== mainPx.length || branchPx.length !== bandW * 844 * 3) fail('bw 390x844 screenshot size ' + branchPx.length + ' ' + mainPx.length);
+  else {
+    let diff = 0;
+    const row = bandW * 3;
+    for (let y = bandY0; y < bandY1; y++) {
+      const off = y * row;
+      for (let x = 0; x < row; x += 3) {
+        if (branchPx[off + x] !== mainPx[off + x] || branchPx[off + x + 1] !== mainPx[off + x + 1] || branchPx[off + x + 2] !== mainPx[off + x + 2]) diff++;
+      }
+    }
+    if (diff) fail('bw 390x844 rotate band differs from main by ' + diff + ' px');
+    else console.log('bw 390x844 rotate band matches main');
+  }
+  const polishSizes = [[320, 300], [320, 568], [360, 640], [384, 854], [393, 873], [412, 915], [480, 320], [568, 320], [640, 360], [800, 600], [1024, 768], [1280, 800], [1280, 900]];
+  const winAudit = `(() => {
+    const problems = [];
+    const panel = document.getElementById('p-win');
+    if (!panel.classList.contains('show')) return ['win hidden'];
+    const pr = panel.getBoundingClientRect();
+    const edge = parseFloat(getComputedStyle(panel).borderTopWidth) || 0;
+    const textNode = (el) => {
+      const face = el.querySelector && el.querySelector('.vm-button-face');
+      const host = face || el;
+      return [...host.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim());
+    };
+    for (const el of panel.querySelectorAll('h2, .big-stars, .stat span, .stat b, #win-note, .row button')) {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      const px = parseFloat(cs.fontSize);
+      if (!(px >= 11)) problems.push((el.id || el.tagName) + ' font ' + px);
+      const node = textNode(el);
+      if (!node) continue;
+      const s = node.textContent;
+      const lines = [];
+      let start = 0, top = null;
+      for (let i = 0; i <= s.length; i++) {
+        if (i === s.length) { lines.push(s.slice(start)); break; }
+        const range = document.createRange();
+        range.setStart(node, i); range.setEnd(node, i + 1);
+        const rect = range.getClientRects()[0];
+        if (!rect || rect.width < 0.2) continue;
+        if (top === null) { top = rect.top; start = i; }
+        else if (Math.abs(rect.top - top) > 2) { lines.push(s.slice(start, i)); start = i; top = rect.top; }
+      }
+      const clean = lines.map((l) => l.replace(/\\u00a0/g, ' ').trim()).filter(Boolean);
+      if (clean.length > 1 && clean[clean.length - 1].split(/\\s+/).filter(Boolean).length < 2) problems.push('widow ' + clean[clean.length - 1]);
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const ink = range.getBoundingClientRect();
+      const g = Math.min(ink.left - pr.left - edge, ink.top - pr.top - edge, pr.right - edge - ink.right, pr.bottom - edge - ink.bottom);
+      if (g < 3) problems.push('clear ' + g.toFixed(2) + ' ' + clean[0]);
+    }
+    return problems;
+  })()`;
+  const gapOfJs = `function gapOf(a, b) {
+    const xOver = Math.min(a.r, b.r) - Math.max(a.l, b.l);
+    const yOver = Math.min(a.b, b.b) - Math.max(a.t, b.t);
+    if (xOver > 0 && yOver > 0) return -Math.min(xOver, yOver);
+    if (xOver > 0) return Math.max(a.t, b.t) - Math.min(a.b, b.b);
+    if (yOver > 0) return Math.max(a.l, b.l) - Math.min(a.r, b.r);
+    return 99;
+  }`;
+  for (const theme of ['victorian', 'bw']) {
+    await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 700, deviceScaleFactor: 1, mobile: true });
+    await boot({ settings: { theme }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: true } });
+    for (const [w, h] of polishSizes) {
+      const portrait = h >= w;
+      await send('Emulation.setDeviceMetricsOverride', {
+        width: w, height: h, deviceScaleFactor: 1, mobile: Math.min(w, h) < 900,
+        screenOrientation: { type: portrait ? 'portraitPrimary' : 'landscapePrimary', angle: portrait ? 0 : 90 },
+      });
+      await ev(`window.dispatchEvent(new Event('resize')); true`);
+      await sleep(80);
+      const where = theme + ' polish ' + w + 'x' + h;
+      if (!await ev(`window.VMStartLevel(100)`)) { fail(where + ' L100 did not start'); continue; }
+      await sleep(40);
+      const leak = await ev(`window.VMPlateLeak()`);
+      if (!(leak <= 2)) fail(where + ' par leak ' + leak);
+      if (!await ev(`window.VMStartLevel(1)`)) { fail(where + ' L1 did not start'); continue; }
+      if (w === 320 && h === 568) {
+        await sleep(200);
+        const plate = await ev(`(() => {
+          const el = document.getElementById('rotate-hint');
+          const cs = getComputedStyle(el);
+          return { display: cs.display, chrome: !!el.querySelector('svg.vls-plaque__chrome'), bg: cs.backgroundColor, font: cs.fontFamily };
+        })()`);
+        if (theme === 'victorian') {
+          if (plate.display === 'none' || !plate.chrome) fail(where + ' rotate plate missing ' + JSON.stringify(plate));
+          if (!/236, 223/.test(plate.bg)) fail(where + ' rotate plate is not ivory ' + plate.bg);
+        } else if (plate.chrome) fail(where + ' B&W rotate drew a plate');
+      }
+      const looked = await ev(`(() => { ${gapOfJs} const info = window.VMLookPump(); if (!info || !info.cap || !info.cap.box) return ['no caption']; const problems = []; for (const lab of info.labels) { const g = gapOf(info.cap.box, lab); if (g < 4) problems.push(lab.text + ' ' + g.toFixed(2)); } return problems; })()`);
+      for (const p of looked || []) fail(where + ' caption ' + p);
+      const playing = await ev(`window.VMClearLook(); window.VMStageLabels().length`);
+      if (!(playing > 0)) fail(where + ' stage labels missing in play');
+      if (!await ev(`window.VMShowFinish()`)) { fail(where + ' finish did not open'); continue; }
+      await sleep(40);
+      const hidden = await ev(`window.VMStageLabels()`);
+      if (hidden && hidden.length) fail(where + ' labels under the win panel ' + hidden.map((l) => l.text).join(', '));
+      for (const p of await ev(winAudit)) fail(where + ' win ' + p);
+      console.log('polish', where);
+    }
+  }
+  const rotateInk = `(() => {
+    const problems = [];
+    const el = document.getElementById('rotate-hint');
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || !el.getClientRects().length) return ['rotate plate hidden'];
+    const lab = el.querySelector('.vls-plaque__label') || el;
+    const px = parseFloat(getComputedStyle(lab).fontSize);
+    if (!(px >= 11)) problems.push('font ' + px);
+    const nodes = [...lab.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim());
+    if (nodes.length !== 2) problems.push('lines ' + nodes.length);
+    const want = ['Turn the phone upright', 'to tip the apparatus.'];
+    nodes.forEach((node, i) => {
+      const shown = node.textContent.replace(/\\u00a0/g, ' ');
+      if (shown !== want[i]) problems.push('line ' + i + ' ' + shown);
+    });
+    if (!nodes[1] || !nodes[1].textContent.includes('\\u00a0')) problems.push('tie missing');
+    const s = parseFloat(cs.getPropertyValue('--_s'));
+    const R = parseFloat(cs.getPropertyValue('--_R'));
+    const rule = el.querySelector('.vls-plaque__chrome path');
+    const stroke = rule ? (parseFloat(rule.getAttribute('stroke-width')) || 1.55) : 1.55;
+    const edge = (Number.isFinite(s) ? s : 0) + stroke / 2;
+    const face = el.getBoundingClientRect();
+    const faceMid = (face.left + face.right) / 2;
+    const svg = el.querySelector('svg.vls-plaque__chrome');
+    for (const node of nodes) {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      if (Math.abs((r.left + r.right) / 2 - faceMid) > 1) problems.push('off centre');
+      const g = Math.min(r.left - face.left - edge, r.top - face.top - edge, face.right - edge - r.right, face.bottom - edge - r.bottom);
+      if (g < 3) problems.push('border ' + g.toFixed(2));
+      if (!svg || !svg.viewBox || !Number.isFinite(s) || !Number.isFinite(R)) { problems.push('notch missing'); continue; }
+      const vb = svg.viewBox.baseVal, sr = svg.getBoundingClientRect();
+      const map = (x, y) => [sr.left + (x / vb.width) * sr.width, sr.top + (y / vb.height) * sr.height];
+      const screws = [[s, s], [vb.width - s, s], [s, vb.height - s], [vb.width - s, vb.height - s]];
+      const pts = [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom]];
+      let worst = 99;
+      for (const [sx, sy] of screws) {
+        const c = map(sx, sy);
+        const inwardX = sx < vb.width / 2 ? 1 : -1, inwardY = sy < vb.height / 2 ? 1 : -1;
+        const e2 = map(sx + inwardX * R * Math.SQRT1_2, sy + inwardY * R * Math.SQRT1_2);
+        const rad = Math.hypot(e2[0] - c[0], e2[1] - c[1]) + 0.775;
+        for (const [x, y] of pts) worst = Math.min(worst, Math.hypot(x - c[0], y - c[1]) - rad);
+      }
+      if (worst < 3) problems.push('notch ' + worst.toFixed(2));
+      let tops = 0, top = null;
+      const text = node.textContent;
+      for (let i = 0; i < text.length; i++) {
+        const rr = document.createRange();
+        rr.setStart(node, i); rr.setEnd(node, Math.min(text.length, i + 1));
+        const rect = rr.getClientRects()[0];
+        if (!rect || rect.width < 0.2) continue;
+        if (top === null) { top = rect.top; tops = 1; }
+        else if (Math.abs(rect.top - top) > 2) tops++;
+      }
+      if (tops > 1) problems.push('wrapped ' + text.replace(/\\u00a0/g, ' '));
+    }
+    return problems;
+  })()`;
+  const rotateSizes = [[320, 568], [340, 600], [360, 640], [375, 667], [390, 844], [412, 915], [300, 560]];
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: 'portraitPrimary', angle: 0 } });
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await boot({ settings: { theme: 'victorian' }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: true } });
+  if (!await ev(`window.VMStartLevel(1)`)) fail('victorian rotate plate did not start');
+  await sleep(200);
+  for (const [w, h] of rotateSizes) {
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: 'portraitPrimary', angle: 0 } });
+    await ev(`window.dispatchEvent(new Event('resize')); true`);
+    await sleep(150);
+    const where = 'victorian rotate ' + w + 'x' + h;
+    for (const p of await ev(rotateInk)) fail(where + ' ' + p);
+    console.log('rotate ink', where);
   }
 } catch (err) {
   fail(err && err.stack ? err.stack.split('\n').slice(0, 4).join(' ') : String(err));
@@ -1612,6 +1854,7 @@ try {
   if (ws) ws.close();
   chrome.kill();
   mainServer.kill();
+  originServer.kill();
 }
 if (failures.length) {
   console.error(failures.length + ' failure(s)');

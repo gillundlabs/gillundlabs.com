@@ -320,6 +320,27 @@
   /* Lesson, trial practice and pause only, and only when the screen is tall enough to spare a band above the gauge. */
   @media (min-height: 421px) {
     body.lesson-frame #rotate-hint { left: 16px; right: 56px; bottom: calc(var(--sab) + 112px); }
+    body[data-theme="victorian"].lesson-frame #rotate-hint { left: 16px; right: 56px; width: auto; transform: none; bottom: calc(var(--sab) + 112px); }
+  }
+  /* Victorian rotate line: the same ivory plate, inset rule, notches and screws as the other plates. */
+  body[data-theme="victorian"] #rotate-hint {
+    left: 50%; right: auto; width: max-content; max-width: min(520px, calc(100vw - 24px));
+    transform: translateX(-50%);
+    opacity: 1; text-align: center;
+    color: var(--vls-engraving);
+    font: 500 11px/1.2 var(--vls-font-ivory);
+    background-color: #f1ecdf; background-image: none;
+    border: 2px solid var(--vls-brass-dark); border-radius: var(--vls-plaque-screw, 10px);
+    box-shadow:
+      0 0 0 2px var(--vls-wood),
+      0 0 0 3px var(--vls-wood-deep),
+      var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color);
+    padding: 16px 26px;
+  }
+  body[data-theme="victorian"] #rotate-hint,
+  body[data-theme="victorian"] #rotate-hint .vls-plaque__label {
+    font: 500 11px/1.2 var(--vls-font-ivory); color: var(--vls-engraving); letter-spacing: .02em;
+    white-space: normal; overflow: visible; text-overflow: clip; height: auto;
   }
   @media (max-height: 520px), (max-width: 520px) {
     .panel { padding: 10px 14px; }
@@ -359,6 +380,7 @@
   .stat { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; margin: 10px auto; max-width: 420px; }
   .stat span { white-space: nowrap; }
   .stat b { text-align: right; white-space: nowrap; }
+  #p-win .stat span, #p-win .stat b { white-space: normal; }
   .muted { opacity: .7; }
 
   /* ---- Victorian apparatus (period plates: lacquered brass + ivory enamel on dark wood; no soft-gold pills) ---- */
@@ -819,7 +841,7 @@
   }
   /* 300px: the two button rows were about 5px past the fold. Tighten everything above them; leave the 11px face padding so the engraving still clears the ink by 3px. */
   @media (max-height: 320px) {
-    #p-win { max-height: calc(var(--vh) - 4px); padding: 3px 8px; }
+    #p-win { max-height: calc(var(--vh) - 4px); padding: 6px 10px; }
     #p-win h2 { font-size: 14px; margin: 0; line-height: 1.05; }
     body[data-theme="victorian"] #p-win h2 { padding-bottom: 2px; }
     #p-win .big-stars { font-size: 13px; letter-spacing: 1px; margin: 0; line-height: 1; }
@@ -921,7 +943,7 @@
   }
   body[data-theme="victorian"] .packs div { background: var(--vls-paper-light); border: 1px solid var(--vls-paper-edge); border-radius: 0; font-family: var(--vls-font-ivory); }
   body[data-theme="victorian"] #pc-canvas { border: 2px solid var(--vls-brass-mid); box-sizing: border-box; border-radius: 0; }
-  body[data-theme="victorian"] #rotate-hint { color: var(--vls-paper-light); }
+  body[data-theme="victorian"] #rotate-hint:not(.vls-plaque) { color: var(--vls-paper-light); }
   /* Kit procedural ivory (DECISIONS a521b25): cream #f1ecdf is loading fallback only; VLS.ivory paints via data-vls-ivory. No Vac-local grain.
      Store links are unlit brass (not ivory faces); hint is a kit plaque with its own cream fallback. */
 
@@ -3600,6 +3622,10 @@
         const wx = x + r * (c * lx - s * ly), wy = y + r * (s * lx + c * ly), side = wx >= x ? 1 : -1, tx = x + side * r * 1.25, ty = wy;
         ctx.strokeStyle = k.bw ? '#fff' : 'rgba(243,213,138,0.75)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(wx, wy, 2, 0, 7); ctx.moveTo(wx, wy); ctx.lineTo(tx, ty); ctx.stroke();
         ctx.fillStyle = k.bw ? '#fff' : pal('brassText') || '#f3d58a'; ctx.textAlign = side > 0 ? 'left' : 'right'; ctx.fillText(text, tx + side * 4, ty);
+        if (typeof o.onLabel === 'function') {
+          const size = parseFloat(ctx.font) || 10;
+          o.onLabel({ text, x: tx + side * 4, y: ty, side, width: ctx.measureText(text).width, size });
+        }
       }
       ctx.restore();
     }
@@ -8103,6 +8129,47 @@ function placeSensorHint() {
   el.dataset.hintPlace = sig;
   return true;
 }
+function restoreRotateHint(el) {
+  const attrs = [...el.attributes].map((a) => a.name);
+  const clean = attrs.length === 1 && attrs[0] === 'id' && !el.className && el.childNodes.length === 1 && el.firstChild.nodeType === 3 && el.textContent === 'Turn the phone upright to tip the\u00a0apparatus.';
+  if (clean) return;
+  // Replacing the node drops the ivory watcher. Removing the class alone leaves vls-ivory, and a later resize paints it back because the element id still counts as a plate.
+  const neu = document.createElement('div');
+  neu.id = 'rotate-hint';
+  neu.textContent = 'Turn the phone upright to tip the\u00a0apparatus.';
+  el.replaceWith(neu);
+}
+function mountRotatePlaque() {
+  const el = $('rotate-hint');
+  if (!el || !VLS.plaqueChrome) return;
+  if (document.body.dataset.theme !== 'victorian') {
+    restoreRotateHint(el);
+    return;
+  }
+  el.classList.add('vls-plaque', 'vls-plaque--ivory');
+  if (!el.getAttribute('data-vls-ivory')) el.setAttribute('data-vls-ivory', 'vm/rotate-hint');
+  if (!el.querySelector(':scope > .vls-plaque__label')) {
+    const lab = document.createElement('span');
+    lab.className = 'vls-plaque__label';
+    while (el.firstChild) lab.appendChild(el.firstChild);
+    el.appendChild(lab);
+  }
+  const lab = el.querySelector(':scope > .vls-plaque__label');
+  if (lab) {
+    lab.style.whiteSpace = 'normal'; lab.style.overflow = 'visible'; lab.style.height = 'auto'; lab.style.textOverflow = 'clip';
+    if (!lab.querySelector('br')) {
+      lab.replaceChildren(document.createTextNode('Turn the phone upright'), document.createElement('br'), document.createTextNode('to tip the\u00a0apparatus.'));
+    }
+  }
+  if (getComputedStyle(el).display === 'none' || !el.getClientRects().length) return;
+  const r = el.getBoundingClientRect();
+  const sig = Math.round(r.width) + 'x' + Math.round(r.height) + '@' + Math.round(r.left) + ',' + Math.round(r.top);
+  if (el.dataset.rotateSig === sig && el.querySelector(':scope > .vls-plaque__chrome-built')) return;
+  const old = el.querySelector(':scope > .vls-plaque__chrome-built');
+  if (old) old.remove();
+  el.dataset.rotateSig = sig;
+  VLS.plaqueChrome(el);
+}
 function mountHintPlaque() {
   const el = $('hint-plaque'); if (!el || !VLS.plaqueChrome) return;
   placeSensorHint();
@@ -8215,6 +8282,7 @@ function frame(now) {
   if (hintT > 0 && (hintT -= dt) <= 0) $('hint-plaque').classList.remove('show');
   if (state.unlockFlash > 0) state.unlockFlash -= dt;
   syncLessonChrome();
+  mountRotatePlaque();
   camera(dt);
   render();
   if ($('p-pump').classList.contains('show')) drawPumpCard();
@@ -8485,23 +8553,23 @@ function showWin() {
   const r = state.lastResult, L = state.level, b = E.BODIES[r.body];
   ensureWinPump();
   if (r.custom) {
-    $('win-title').textContent = `${L.name}: atom extracted!`;
+    $('win-title').textContent = keepPair(`${L.name}: atom extracted!`);
     $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
     const rows = [['Time', `${r.t.toFixed(1)} s`], ['Par (★★★)', `${r.par} s (${L.pathCells} cells, ${b.name})`], ['Wall contacts', r.contacts], ['Pump', pumpName(r.exit.pump)],
       ['Coins', 'none: mazes you build never pay coins'], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, captured at ${formatT(state.world.atom.T)}`]];
-    $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
-    $('win-note').textContent = 'An editor-made maze.';
+    $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${keepPair(k)}</span><b>${keepPair(String(v))}</b>`).join('');
+    $('win-note').textContent = keepPair('An editor-made maze.');
     $('b-next').style.display = ''; $('b-next').textContent = state.custom && state.custom.from === 'mymazes' ? 'My mazes ◂' : 'Back to the editor ◂';
     showPanel('win'); return;
   }
-  $('win-title').textContent = `${L.name}: atom extracted!`;
+  $('win-title').textContent = keepPair(`${L.name}: atom extracted!`);
   $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
   const rows = [['Time on this screen', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par (★★★)', `${r.par} s (${L.pathCells} cells, ${b.name})`], ['Wall contacts', r.contacts],
     [`Best on ${b.name}`, `${store.best[S.bestKey(L.id, r.body)].time.toFixed(1)} s`], ['Pump', pumpName(r.exit.pump) + (r.exit.bonus ? ' (bonus ×1.5)' : '')],
     ['Coins', `+${r.coins} (${store.coins} in the purse)`], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, captured at ${formatT(state.world.atom.T)}`]];
-  $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
+  $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${keepPair(k)}</span><b>${keepPair(String(v))}</b>`).join('');
   const paceNote = Math.abs((r.tRef / Math.max(r.t, 1e-9)) - 1) > 0.02 ? ' Record pace adds each moment at the screen width then showing, the reference where the tube fills the width.' : '';
-  $('win-note').textContent = (r.rec && r.prev ? `New best! (was ${r.prev.time.toFixed(1)} s)` : r.rec ? 'First escape from this apparatus on this world.' : '') + paceNote;
+  $('win-note').textContent = keepPair((r.rec && r.prev ? `New best! (was ${r.prev.time.toFixed(1)} s)` : r.rec ? 'First escape from this apparatus on this world.' : '') + paceNote);
   const nxt = state.levelIdx + 1;
   $('b-next').style.display = nxt < RELEASED ? '' : 'none';
   $('b-next').textContent = nxt < RELEASED && !isLevelUnlocked(nxt) ? 'Next apparatus 🔒' : 'Next apparatus ▸';
@@ -8712,6 +8780,58 @@ function tutorialLayout() {
 }
 function publishDevHooks() {
   if (!devHooks.on) return;
+  window.VMShowFinish = function () {
+    const L = state.level, w = state.world;
+    if (!L || !w) return false;
+    const exit = L.exits[0];
+    const body = bodyFor(L);
+    state.lastResult = { t: 12.4, tRef: 9.8, pace: 1, stars: 2, par: 8, rec: true, prev: { time: 14.2 }, contacts: 6, coins: 3, exit, body, newPump: false, custom: !!L.custom };
+    if (!store.best[S.bestKey(L.id, body)]) store.best[S.bestKey(L.id, body)] = { time: 12.4, stars: 2 };
+    showWin();
+    render();
+    return true;
+  };
+  window.VMStartLevel = function (id) {
+    const i = M.LEVELS.findIndex((l) => l.id === id);
+    if (i < 0) return false;
+    startLevel(i, false, true);
+    inputMode = 'manual'; inputReason = 'none';
+    window.VMFreezeFrame();
+    render();
+    return true;
+  };
+  window.VMLookPump = function () {
+    const L = state.level;
+    if (!L || !L.exits || !L.exits.length) return null;
+    const e = L.exits.find((ex) => ex.pump === 'rotary') || L.exits[0];
+    const p = M.pumpLayout(M.exitPlane(L, e));
+    const wp = M.pumpPoint(p, -0.55, -0.45);
+    const side = wp.x >= p.x ? 1 : -1;
+    const tx = p.x + side * p.r * 1.25 + side * 4, ty = wp.y;
+    const k = E.viewZoom(vw, vh);
+    const targetX = safe.l + 150, targetY = vh - safe.b - 56;
+    state.camLock = { k, x: tx - (targetX - vw / 2) / k, y: ty - (targetY - vh / 2) / k };
+    state.cam.x = state.camLock.x; state.cam.y = state.camLock.y; state.cam.k = state.camLock.k;
+    render();
+    return { cap: window.VMCaptionInk, labels: state.stageLabels || [] };
+  };
+  window.VMClearLook = function () { state.camLock = null; };
+  window.VMStageLabels = function () { return (state.stageLabels || []).map((l) => ({ text: l.text, l: l.l, t: l.t, r: l.r, b: l.b })); };
+  window.VMPlateLeak = function () {
+    const plate = window.VMHudInk && window.VMHudInk.plate;
+    if (!plate || !ctx) return -1;
+    const y0 = Math.max(0, Math.floor(plate.b * dpr));
+    const x0 = Math.max(0, Math.floor(plate.l * dpr));
+    const w = Math.max(1, Math.min(canvas.width - x0, Math.ceil((plate.r - plate.l) * dpr)));
+    const h = Math.max(1, Math.min(canvas.height - y0, Math.ceil(5 * dpr)));
+    const img = ctx.getImageData(x0, y0, w, h).data;
+    let gold = 0;
+    for (let i = 0; i < img.length; i += 4) {
+      const r = img[i], g = img[i + 1], b = img[i + 2];
+      if (r > 110 && g > 75 && b < 80 && r > b + 30) gold++;
+    }
+    return gold;
+  };
   window.VMTutorialLayout = tutorialLayout;
   window.VMHoldWorld = (on) => { state.holdWorld = !!on; };
 window.VMSettlePlay = function () {
@@ -8802,46 +8922,55 @@ window.VMShowPracticeDone = function () {
   };
   window.VMHudPanelInk = function () {
     const panel = document.querySelector('.panel.show');
-    if (!panel) return { n: 0, same: true, painted: false };
+    if (!panel) return { n: 0, same: true, painted: false, reference: 0 };
     const pr = panel.getBoundingClientRect();
     const clip = { l: pr.left - 4, t: pr.top - 4, r: pr.right + 4, b: pr.bottom + 4 };
     const plate = readoutBox();
     const cap = captionBox();
-    const zones = [plate, cap];
-    const samples = () => {
-      const bitmap = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const take = (bitmap, z, clipTo) => {
       const pix = [];
-      let n = 0;
-      for (const z of zones) {
-        const l = Math.max(0, Math.floor(Math.max(z.l, clip.l)));
-        const t = Math.max(0, Math.floor(Math.max(z.t, clip.t)));
-        const r = Math.min(vw, Math.ceil(Math.min(z.r, clip.r)));
-        const b = Math.min(vh, Math.ceil(Math.min(z.b, clip.b)));
-        for (let y = t; y < b; y += 3) {
-          for (let x = l; x < r; x += 3) {
-            const i = (Math.round(y * dpr) * canvas.width + Math.round(x * dpr)) * 4;
-            pix.push((bitmap[i] << 16) | (bitmap[i + 1] << 8) | bitmap[i + 2]);
-            n++;
-          }
+      let l = Math.max(0, Math.floor(z.l)), t = Math.max(0, Math.floor(z.t));
+      let r = Math.min(vw, Math.ceil(z.r)), b = Math.min(vh, Math.ceil(z.b));
+      if (clipTo) {
+        l = Math.max(l, Math.floor(clipTo.l));
+        t = Math.max(t, Math.floor(clipTo.t));
+        r = Math.min(r, Math.ceil(clipTo.r));
+        b = Math.min(b, Math.ceil(clipTo.b));
+      }
+      for (let y = t; y < b; y += 3) {
+        for (let x = l; x < r; x += 3) {
+          const i = (Math.round(y * dpr) * canvas.width + Math.round(x * dpr)) * 4;
+          pix.push((bitmap[i] << 16) | (bitmap[i + 1] << 8) | bitmap[i + 2]);
         }
       }
-      return { pix, n };
+      return pix;
+    };
+    const grab = () => {
+      const bitmap = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      const pix = [], ref = [];
+      for (const z of [plate, cap]) {
+        pix.push(...take(bitmap, z, clip));
+        ref.push(...take(bitmap, z, null));
+      }
+      return { pix, ref };
     };
     state.paintHud = true;
     render();
-    const loud = samples();
+    const loud = grab();
     state.paintHud = false;
     render();
-    const quiet = samples();
+    const quiet = grab();
     render();
-    const live = samples();
-    let ink = 0, leaked = 0;
+    const live = grab();
+    let ink = 0, leaked = 0, reference = 0;
     for (let i = 0; i < quiet.pix.length; i++) {
       if (loud.pix[i] === quiet.pix[i]) continue;
       ink++;
       if (live.pix[i] !== quiet.pix[i]) leaked++;
     }
-    return { n: quiet.n, ink, leaked, painted: leaked > 0 };
+    // The panel overlap can be uniform black in B&W (the plate fill matches the backdrop). The full plate still changes when the HUD is painted, so that difference is the check that the probe can see ink.
+    for (let i = 0; i < quiet.ref.length; i++) if (loud.ref[i] !== quiet.ref[i]) reference++;
+    return { n: quiet.pix.length, ink, leaked, painted: leaked > 0, reference };
   };
   window.VMLessonRects = function () {
     const box = (el) => {
@@ -8908,6 +9037,11 @@ function practiceClearRects() {
   return out;
 }
 function camera(dt) {
+  if (state.camLock) {
+    state.cam.x = state.camLock.x; state.cam.y = state.camLock.y; state.cam.k = state.camLock.k;
+    state.cam.lx = 0; state.cam.ly = 0;
+    return;
+  }
   if (!state.world) return;
   const a = state.world.atom, short = Math.min(vw, vh), metrics = viewMetrics();
   const inset = metrics.inset, viewH = metrics.viewH;
@@ -8978,6 +9112,7 @@ function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawWalnutBackdrop(ctx, vw, vh, theme);   // screen-space paneling (B&W → black inside backdrop)
   if (!state.world) return;
+  state.stageLabels = [];
   const c = state.cam, L = state.level;
   ctx.save();
   const { inset, viewH } = viewMetrics();
@@ -9001,10 +9136,12 @@ function render() {
   if (state.world.won) drawExtractionAtom(ctx, E.extractionPose(state.world), theme);
   else {
     A.drawAtoms(ctx, [{ x: a.x, y: a.y, model: state.model, stuck: a.stuck }], theme, state.clock);
-    const Tk = a.stuck ? a.T : E.kinT(a, state.world.scale);
-    ctx.font = bw ? `9px ${face(true)}` : `italic 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : PAL.brass; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-    const tl = `${a.el.sym} ${formatT(Tk)}`;   // dark outline first, so the label stays readable where it crosses a (white/brass) pipe
-    clampedText(tl, a.x + a.r * 0.7, a.y - a.r * 0.7, 0, bw ? '#000' : 'rgba(26,14,6,0.85)');   // kept on screen like the world labels
+    if (!stageQuiet()) {
+      const Tk = a.stuck ? a.T : E.kinT(a, state.world.scale);
+      ctx.font = bw ? `9px ${face(true)}` : `italic 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : PAL.brass; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      const tl = `${a.el.sym} ${formatT(Tk)}`;   // dark outline first, so the label stays readable where it crosses a (white/brass) pipe
+      clampedText(tl, a.x + a.r * 0.7, a.y - a.r * 0.7, 0, bw ? '#000' : 'rgba(26,14,6,0.85)');   // kept on screen like the world labels
+    }
   }
   ctx.restore();
   const vg = ctx.createRadialGradient(vw / 2, vh / 2, Math.min(vw, vh) * (bw ? 0.45 : 0.42), vw / 2, vh / 2, Math.max(vw, vh) * 0.62);
@@ -9091,6 +9228,7 @@ function drawThermal(cell, bw) {
   // a faint glow inside the bore so the player can see the walls are different
   if (!bw) { ctx.fillStyle = cell.kind === 'cold' ? 'rgba(120,190,255,0.07)' : 'rgba(255,140,60,0.07)'; ctx.fillRect(-H, -L0, 2 * H, 2 * L0); }
   ctx.restore();
+  if (stageQuiet()) return;
   ctx.save(); ctx.font = bw ? `9px ${face(true)}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : cell.kind === 'cold' ? TK.cold.label : TK.hot.label;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const lab = cell.kind === 'cold' ? 'COLD TRAP · 0.26 × WALL TEMP' : 'BAKE-OUT TAPE · 1.5 × WALL TEMP';
@@ -9116,17 +9254,22 @@ function drawPlates(cell, bw) {
     ctx.restore();
     const lampX = cell.cx + (g.vert ? H + WALL_T + 40 : 0), lampY = cell.cy + (g.vert ? 0 : H + WALL_T + 40);
     ctx.save(); ctx.beginPath(); ctx.arc(lampX, lampY, 7, 0, 7); ctx.fillStyle = bw ? (shut ? '#fff' : '#000') : shut ? '#d23a2a' : '#3ad26a'; ctx.fill(); ctx.strokeStyle = bw ? '#fff' : '#2a1803'; ctx.stroke();
-    ctx.font = bw ? `9px ${face(true)}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    clampedText(g.type === 'fast' ? 'FAST VALVE' : 'GATE VALVE', lampX, lampY + 10); ctx.restore();
+    if (!stageQuiet()) {
+      ctx.font = bw ? `9px ${face(true)}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      clampedText(g.type === 'fast' ? 'FAST VALVE' : 'GATE VALVE', lampX, lampY + 10);
+    }
+    ctx.restore();
   }
   if (cell.plate) {
     const p = cell.plate, T2 = M.PLATE_T / 2, a = p.hole / 2;
     ctx.save(); ctx.translate(cell.cx, cell.cy); if (!p.vert) ctx.rotate(Math.PI / 2);
     for (const [u0, u1] of [[-H, -a], [a, H]]) { ctx.fillStyle = bw ? '#fff' : HW.stainlessFill(ctx, 0, -T2, 0, T2); ctx.fillRect(u0, -T2, u1 - u0, 2 * T2); }
     ctx.restore();
-    const mm = p.hole * state.world.scale * 1000;
-    ctx.save(); ctx.font = bw ? `9px ${face(true)}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    clampedText(`APERTURE ⌀ ${mm.toFixed(0)} mm`, cell.cx + (p.vert ? 0 : -H - WALL_T - 40), cell.cy + (p.vert ? -H - WALL_T - 6 + 0 : 0) + (p.vert ? 0 : 0)); ctx.restore();
+    if (!stageQuiet()) {
+      const mm = p.hole * state.world.scale * 1000;
+      ctx.save(); ctx.font = bw ? `9px ${face(true)}` : `italic 700 10px ${TK.font.italic}`; ctx.fillStyle = bw ? '#fff' : TK.ink.victorian; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      clampedText(`APERTURE ⌀ ${mm.toFixed(0)} mm`, cell.cx + (p.vert ? 0 : -H - WALL_T - 40), cell.cy + (p.vert ? -H - WALL_T - 6 + 0 : 0) + (p.vert ? 0 : 0)); ctx.restore();
+    }
   }
 }
 function laserLook(b) {
@@ -9137,6 +9280,7 @@ function laserLook(b) {
 function drawLaser(b, bw) {
   const lk = laserLook(b);
   HW.laserBeam(ctx, b.x0, b.y0, b.x1, b.y1, { color: lk.color, visible: lk.visible, waist: b.waist * 0.5, t: state.clock, theme: settings.theme });
+  if (stageQuiet()) return;
   // label the beam where the camera can see it: two short lines (line + wavelength, then intensity / band), placed at the
   // point on the beam nearest the view centre but slid along the beam so the whole label stays on screen, shrunk if needed
   const c = state.cam, halfW = vw / c.k / 2, halfH = vh / c.k / 2, vert = Math.abs(b.uy) > 0.7;
@@ -9168,15 +9312,21 @@ function drawExitStub(L, e, bw) {
     ctx.fillStyle = bw ? '#fff' : PAL.paperLight; ctx.beginPath(); ctx.moveTo(u + 4, 0); ctx.lineTo(u - 3, -5); ctx.lineTo(u - 3, 5); ctx.closePath(); ctx.fill(); }
   ctx.globalAlpha = 1; ctx.restore();
   if (M.flangePlan(L).draw.has(`X${e.i},${e.j},${e.side}`)) HW.conflatFlange(ctx, ep.x, ep.y, ep.ax, ep.ay, H, { theme: settings.theme, wall: WALL_T, over: 26 });
-  if (e.bonus) {
+  if (e.bonus && !stageQuiet()) {
     ctx.save(); ctx.font = bw ? `11px ${face(true)}` : `700 12px ${TK.font.serif}`; ctx.fillStyle = bw ? '#fff' : PAL.paperLight; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     clampedText('BONUS PUMP ×1.5', ep.x + ep.ax * 30 + nx * (H + WALL_T + 14), ep.y + ep.ay * 30 + ny * (H + WALL_T + 14)); ctx.restore();
   }
 }
 function drawPump(L, e, bw) {
   const p = M.pumpLayout(M.exitPlane(L, e));
-  if (e.pump === 'piston') { drawPiston(p.x, p.y, p.r, p.ax, p.ay, bw); return; }
-  HW.pumpCutaway(ctx, e.pump, p.x, p.y, p.r, { ax: p.ax, ay: p.ay, t: state.clock, theme: settings.theme, labels: !state.world.won && !lessonFraming() });
+  if (e.pump === 'piston') { drawPiston(p.x, p.y, p.r, p.ax, p.ay, bw, ctx, !stageQuiet()); return; }
+  const quiet = stageQuiet();
+  HW.pumpCutaway(ctx, e.pump, p.x, p.y, p.r, {
+    ax: p.ax, ay: p.ay, t: state.clock, theme: settings.theme,
+    labels: !state.world.won && !lessonFraming() && !quiet,
+    plate: !quiet,
+    onLabel: (lab) => noteStageLabel(lab),
+  });
 }
 let extractionGlyph = null, extractionGlyphStamp = null;
 function drawExtractionAtom(g, pose, theme) {
@@ -9237,7 +9387,7 @@ function drawStart(L, bw) {
   ctx.fillStyle = bw ? '#fff' : PAL.paperEdge;
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
   // During the practice the source name sits on the tube. The lesson plate already names the run.
-  if (!lessonFraming()) ctx.fillText(bw ? 'SOURCE' : 'atom source', sx, Math.max(inset.top + 18, steelTop - 18));
+  if (!lessonFraming() && !stageQuiet()) ctx.fillText(bw ? 'SOURCE' : 'atom source', sx, Math.max(inset.top + 18, steelTop - 18));
   ctx.restore();
 }
 
@@ -9259,6 +9409,14 @@ function clampedText(t, x, y, rot = 0, outline = null) {   // outline: stroke co
     const sl = (x + dx + mnx - c.x) * k + vw / 2, sr = (x + dx + mxx - c.x) * k + vw / 2;
     const yb = Math.min(Y1 - HUD_B / k, mm && sr > mm.l - 6 && sl < mm.r + 6 ? c.y + (mm.t - vh / 2) / k - m : Infinity);
     if (y + mny < Y0) dy = Y0 - (y + mny); else if (y + mxy > yb) dy = Math.max(yb - (y + mxy), Y0 - (y + mny));
+    // A label tucked under the readout (the atom's line on a short L100) reads as a second par line. Keep it below the plate.
+    const plate = readoutBox();
+    const topS = (y + dy + mny - c.y) * k + vh / 2;
+    const botS = (y + dy + mxy - c.y) * k + vh / 2;
+    const leftS = (x + dx + mnx - c.x) * k + vw / 2;
+    const rightS = (x + dx + mxx - c.x) * k + vw / 2;
+    // The sliver under the plate reads as a second par line. Drop the label rather than tuck it there.
+    if (rightS > plate.l && leftS < plate.r && botS > plate.t && topS < plate.b + 1) return { dx, dy, hidden: true };
   }
   if (outline) { ctx.save(); ctx.lineJoin = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = outline; if (rot) { ctx.translate(x + dx, y + dy); ctx.rotate(rot); ctx.strokeText(t, 0, 0); } else ctx.strokeText(t, x + dx, y + dy); ctx.restore(); }
   if (rot) { ctx.save(); ctx.translate(x + dx, y + dy); ctx.rotate(rot); ctx.fillText(t, 0, 0); ctx.restore(); } else ctx.fillText(t, x + dx, y + dy);
@@ -9267,13 +9425,50 @@ function clampedText(t, x, y, rot = 0, outline = null) {   // outline: stroke co
 }
 // the kit's dead-end label, drawn here (same font, colour and reach as HW.deadEndPart) so it can be clamped to the screen
 const DE_REACH = { blank: 0.7, bellows: 2.1, viewport: 0.7, valve: 2.5, ionGauge: 2.5, pirani: 2.0, capacitance: 2.1 };
+function stageQuiet() { return !!curPanel(); }
+function labelGap(a, b) {
+  const xOver = Math.min(a.r, b.r) - Math.max(a.l, b.l);
+  const yOver = Math.min(a.b, b.b) - Math.max(a.t, b.t);
+  if (xOver > 0 && yOver > 0) return -Math.min(xOver, yOver);
+  if (xOver > 0) return Math.max(a.t, b.t) - Math.min(a.b, b.b);
+  if (yOver > 0) return Math.max(a.l, b.l) - Math.min(a.r, b.r);
+  return Math.hypot(Math.max(a.l, b.l) - Math.min(a.r, b.r), Math.max(a.t, b.t) - Math.min(a.b, b.b));
+}
+function nudgeCaption(box) {
+  const labels = state.stageLabels || [];
+  let dx = 0, dy = 0;
+  if (!labels.length) return { dx, dy };
+  const worst = () => {
+    const moved = { l: box.l + dx, t: box.t + dy, r: box.r + dx, b: box.b + dy };
+    let g = 99;
+    for (const lab of labels) g = Math.min(g, labelGap(moved, lab));
+    return g;
+  };
+  if (worst() >= 4) return { dx, dy };
+  for (let i = 0; i < 80 && worst() < 4; i++) dy -= 1;
+  if (worst() >= 4) return { dx, dy };
+  dy = 0;
+  for (let i = 0; i < 120 && worst() < 4; i++) dx += 1;
+  return { dx, dy };
+}
+function noteStageLabel(lab) {
+  if (!state.stageLabels) state.stageLabels = [];
+  const k = state.cam ? state.cam.k : 1;
+  const sc = worldToScreen(lab.x, lab.y);
+  const sw = lab.width * k, sh = (lab.size || 11) * k;
+  const left = lab.side > 0 ? sc.x : lab.side < 0 ? sc.x - sw : sc.x - sw / 2;
+  state.stageLabels.push({ text: lab.text, l: left, t: sc.y - sh / 2, r: left + sw, b: sc.y + sh / 2 });
+}
 function deadEndLabel(part, x, y, ax, ay, h, bw) {
-  if (lessonFraming()) return;
+  if (lessonFraming() || stageQuiet()) return;
   const info = HW.DEAD_END_INFO[part]; if (!info || !DE_REACH[part]) return;
   const reach = DE_REACH[part] * h + 14;
   ctx.save(); ctx.font = bw ? `9px ${face(true)}` : `italic 700 11px ${FONTS.serif}`; ctx.fillStyle = bw ? '#fff' : PAL.paperLight;
   ctx.textAlign = Math.abs(ax) > 0.5 ? (ax > 0 ? 'left' : 'right') : 'center'; ctx.textBaseline = Math.abs(ay) > 0.5 ? (ay > 0 ? 'top' : 'bottom') : 'middle';
-  clampedText(info.name.toUpperCase(), x + ax * reach, y + ay * reach); ctx.restore();
+  const text = info.name.toUpperCase(), lx = x + ax * reach, ly = y + ay * reach;
+  clampedText(text, lx, ly);
+  noteStageLabel({ text, x: lx, y: ly, side: Math.abs(ax) > 0.5 ? Math.sign(ax) : 0, width: ctx.measureText(text).width, size: parseFloat(ctx.font) || 11 });
+  ctx.restore();
 }
 // ------------------------------------------------------------------ HUD (screen space)
 function hud(theme) {
@@ -9304,6 +9499,11 @@ function hud(theme) {
   }
   if (!bw) AP.plaque(ctx, left, top, width, h, 3, compact ? { s: 2, r: 1 } : undefined);
   else { ctx.fillStyle = '#000'; ctx.fillRect(left, top, width, h); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(left, top, width, h); }
+  // The par line can wrap a second copy just under this plate. Clip the readout to the plate.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, top, width, h);
+  ctx.clip();
   const x0 = left + inset, inner = width - inset * 2, colGap = narrow ? 8 : 6;
   const fr = narrow ? [0.24, 0.28, 0.48] : [0.28, 0.30, 0.42];
   const usable = inner - colGap * 2;
@@ -9363,6 +9563,7 @@ function hud(theme) {
     });
     if (words && words.bounds) hudInk.push(...words.bounds);
   }
+  ctx.restore();
   if (devHooks.on) window.VMHudInk = { plate: { l: left, t: top, r: left + width, b: top + h }, s: screw, lines: hudInk };
   // spirit level: in-plane gravity g·sin θ
   const gm = Math.hypot(state.tilt.x, state.tilt.y), ang = T.angleOf(state.tilt);
@@ -9372,8 +9573,19 @@ function hud(theme) {
   const capX = safe.l + 100, capY1 = vh - safe.b - 64, capY2 = vh - safe.b - 48;
   const cap1 = `tipped ${ang.toFixed(0)}° · g∥ ${(gm * g).toFixed(2)} m/s²`;
   const cap2 = `${state.tiltSource || ''}${inputMode === 'manual' ? ' (no tilt sensor)' : ''}`;
-  outlined(cap1, capX, capY1, bw); outlined(cap2, capX, capY2, bw);
-  if (devHooks.on) window.VMCaptionInk = { x: capX, y1: capY1, y2: capY2, w1: ctx.measureText(cap1).width, w2: ctx.measureText(cap2).width };
+  const m1 = ctx.measureText(cap1), m2 = ctx.measureText(cap2);
+  const capBox = {
+    l: capX,
+    t: Math.min(capY1 - m1.actualBoundingBoxAscent, capY2 - m2.actualBoundingBoxAscent),
+    r: capX + Math.max(m1.width, m2.width),
+    b: Math.max(capY1 + m1.actualBoundingBoxDescent, capY2 + m2.actualBoundingBoxDescent),
+  };
+  const nudge = nudgeCaption(capBox);
+  outlined(cap1, capX + nudge.dx, capY1 + nudge.dy, bw); outlined(cap2, capX + nudge.dx, capY2 + nudge.dy, bw);
+  if (devHooks.on) window.VMCaptionInk = {
+    x: capX + nudge.dx, y1: capY1 + nudge.dy, y2: capY2 + nudge.dy, w1: m1.width, w2: m2.width, dx: nudge.dx, dy: nudge.dy,
+    box: { l: capBox.l + nudge.dx, t: capBox.t + nudge.dy, r: capBox.r + nudge.dx, b: capBox.b + nudge.dy },
+  };
   ctx.restore();
   if (settings.minimap) minimap(bw);
   if (settings.showAngleHistogram) HIST.drawHistogram(ctx, vw / 2 - 140, vh - safe.b - 130, 280, 100, w.hist, theme, { title: `θ about local normal · n=${w.hist.reduce((x, y) => x + y, 0)}` });
