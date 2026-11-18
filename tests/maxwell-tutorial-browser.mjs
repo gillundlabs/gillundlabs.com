@@ -1551,6 +1551,23 @@ try {
         worst = Math.min(worst, rect.left - (box.left + inset), (box.right - inset) - rect.right);
       }
       if (worst < 2.95) problems.push('Play again ink clearance ' + worst.toFixed(1) + 'px');
+      const title = document.getElementById('b-over-title');
+      const tcs = getComputedStyle(title);
+      const bevel = parseFloat(tcs.getPropertyValue('--md-face-bevel')) || 0;
+      const insetL = (parseFloat(tcs.borderLeftWidth) || 0) + bevel;
+      const insetR = (parseFloat(tcs.borderRightWidth) || 0) + bevel;
+      const tbox = title.getBoundingClientRect();
+      let tLeft = 99;
+      let tRight = 99;
+      const trange = document.createRange();
+      trange.selectNodeContents(title);
+      for (const rect of trange.getClientRects()) {
+        if (rect.width < 0.4 || rect.height < 0.4) continue;
+        tLeft = Math.min(tLeft, rect.left - (tbox.left + insetL));
+        tRight = Math.min(tRight, (tbox.right - insetR) - rect.right);
+      }
+      if (tLeft < 2.95) problems.push('Title left ink clearance ' + tLeft.toFixed(1) + 'px');
+      if (tRight < 2.95) problems.push('Title right ink clearance ' + tRight.toFixed(1) + 'px');
     }
     return problems;
   })()`;

@@ -9016,6 +9016,11 @@ function fitOverPanel() {
         button.textContent = 'Play again ▸';
         const actions = button.closest('.over-actions');
         if (actions) actions.style.gridTemplateColumns = '';
+        const titleBtn = $('b-over-title');
+        if (titleBtn) {
+          titleBtn.style.paddingLeft = '';
+          titleBtn.style.paddingRight = '';
+        }
       }
       const sideClear = () => {
         const cs = getComputedStyle(button);
@@ -9095,6 +9100,30 @@ function fitOverPanel() {
         button.style.fontSize = '11px';
         button.style.letterSpacing = `${track}em`;
       }
+    }
+    const titleBtn = $('b-over-title');
+    const actions = titleBtn && titleBtn.closest('.over-actions');
+    if (titleBtn && actions && actions.style.gridTemplateColumns.includes('max-content')) {
+      const cs = getComputedStyle(titleBtn);
+      const bevel = parseFloat(cs.getPropertyValue('--md-face-bevel')) || 0;
+      const box = titleBtn.getBoundingClientRect();
+      const insetL = (parseFloat(cs.borderLeftWidth) || 0) + bevel;
+      const insetR = (parseFloat(cs.borderRightWidth) || 0) + bevel;
+      let left = 99;
+      let right = 99;
+      const range = document.createRange();
+      range.selectNodeContents(titleBtn);
+      for (const rect of range.getClientRects()) {
+        if (rect.width < 0.4 || rect.height < 0.4) continue;
+        left = Math.min(left, rect.left - (box.left + insetL));
+        right = Math.min(right, (box.right - insetR) - rect.right);
+      }
+      const padL = parseFloat(cs.paddingLeft) || 0;
+      const padR = parseFloat(cs.paddingRight) || 0;
+      // Painted ink starts about 0.5px outside the layout box, so a 4px layout gap keeps the visible ink 3px inside the gold rule.
+      const bump = (gap) => (gap < 3.5 ? 4 - gap : 0);
+      if (bump(left)) titleBtn.style.paddingLeft = `${padL + bump(left)}px`;
+      if (bump(right)) titleBtn.style.paddingRight = `${padR + bump(right)}px`;
     }
   };
   fitDoneWords();
