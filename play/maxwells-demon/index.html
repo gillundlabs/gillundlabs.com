@@ -1817,8 +1817,11 @@
     hyphens: none !important;
   }
   @media (max-height: 420px) {
-    #p-over .over-actions { flex-wrap: wrap; }
-    #p-over .over-actions button { flex: 1 1 100% !important; min-height: 32px; padding: 4px 8px; }
+    #p-over .over-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex-wrap: unset; }
+    #p-over .over-actions button { flex: unset !important; min-height: 28px; min-width: 0; padding: 3px 6px; }
+    #p-over #b-again { grid-column: 1; grid-row: 1; }
+    #p-over #b-over-title { grid-column: 2; grid-row: 1; }
+    #p-over #b-over-shop { grid-column: 1 / -1; grid-row: 2; }
   }
   #p-over .over-actions { max-width: 100%; box-sizing: border-box; }
   #p-over .over-actions button { box-sizing: border-box; max-width: 100%; }
@@ -9022,6 +9025,12 @@ function fitOverPanel() {
   if (panel.clientHeight <= 40) return;
   if (note) note.hidden = false;
   panel.classList.remove('over-compact', 'over-tight');
+  panel.style.removeProperty('padding');
+  const heading0 = panel.querySelector('h2');
+  if (heading0) { heading0.style.margin = ''; heading0.style.fontSize = ''; heading0.style.lineHeight = ''; }
+  const stats0 = panel.querySelector('#over-stats');
+  if (stats0) stats0.style.margin = '';
+  for (const value of panel.querySelectorAll('#over-stats b')) value.style.marginBottom = '';
   for (const el of panel.querySelectorAll('#over-stats span, #over-stats b, h2')) el.hidden = false;
   const fits = () => panel.scrollHeight <= panel.clientHeight + 1 && buttonsIn();
   fitDoneWords();
@@ -9034,15 +9043,21 @@ function fitOverPanel() {
   if (fits()) return;
   panel.classList.add('over-tight');
   fitDoneWords();
-  const cells = [...panel.querySelectorAll('#over-stats span')];
+  const keepStat = (text) => /^(Element|Gas mixture|Gas|Final score \(best T\)|Net score|Score)$/.test(String(text || '').replace(/\s+/g, ' ').trim());
+  const cells = [...panel.querySelectorAll('#over-stats span')].filter((el) => !keepStat(el.textContent));
   for (let i = cells.length - 1; i >= 0 && !fits(); i--) {
     cells[i].hidden = true;
     const value = cells[i].nextElementSibling;
     if (value && value.tagName === 'B') value.hidden = true;
   }
   if (!fits()) {
+    panel.style.setProperty('padding', '4px 8px', 'important');
     const heading = panel.querySelector('h2');
-    if (heading) heading.hidden = true;
+    if (heading) { heading.style.margin = '0'; heading.style.fontSize = '15px'; heading.style.lineHeight = '1.15'; }
+    const stats = panel.querySelector('#over-stats');
+    if (stats) stats.style.margin = '2px 0';
+    for (const value of panel.querySelectorAll('#over-stats b')) value.style.marginBottom = '2px';
+    fitDoneWords();
   }
 }
 function showPanel(name) {

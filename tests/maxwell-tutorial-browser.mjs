@@ -1389,11 +1389,13 @@ try {
     { name: '340x340', w: 340, h: 340 }, { name: '360x340', w: 360, h: 340 },
     { name: '400x320', w: 400, h: 320 }, { name: '480x300', w: 480, h: 300 },
     { name: '480x320', w: 480, h: 320 }, { name: '568x320', w: 568, h: 320 },
+    { name: '390x300', w: 390, h: 300 }, { name: '300x300', w: 300, h: 300 },
   ];
+  const resultViews = new Set(['340x340', '360x340', '400x320', '480x320', '480x300', '390x300', '300x300']);
   const doneWords = `(() => {
     const bad = [];
     const off = [];
-    for (const id of ['b-again', 'b-over-shop', 'b-over-title']) {
+    const buttons = ['b-again', 'b-over-shop', 'b-over-title'].map((id) => {
       const el = document.getElementById(id);
       const box = el.getBoundingClientRect();
       if (box.width < 2 || box.top < -1 || box.left < -1 || box.right > innerWidth + 1 || box.bottom > innerHeight + 1) off.push(id);
@@ -1412,9 +1414,53 @@ try {
           if (tops.length > 1) bad.push(id + ' ' + m[0]);
         }
       }
-    }
+      const hit = (x, y) => {
+        const node = document.elementFromPoint(x, y);
+        return !!(node && node.closest && node.closest('#' + id));
+      };
+      const inset = 2;
+      return {
+        id,
+        center: hit(box.left + box.width / 2, box.top + box.height / 2),
+        corners: [[box.left + inset, box.top + inset], [box.right - inset, box.top + inset], [box.left + inset, box.bottom - inset], [box.right - inset, box.bottom - inset]].every(([x, y]) => hit(x, y)),
+        top: box.top,
+      };
+    });
     const px = Math.min(...['b-again', 'b-over-shop', 'b-over-title'].map((id) => parseFloat(getComputedStyle(document.getElementById(id)).fontSize)));
-    return { bad, off, px: Math.round(px * 10) / 10 };
+    const panel = document.getElementById('p-over').getBoundingClientRect();
+    const buttonTop = Math.min(...buttons.map((b) => b.top));
+    const norm = (s) => String(s || '').replace(/\\s+/g, ' ').trim();
+    const line = (label) => {
+      const span = [...document.querySelectorAll('#over-stats span')].find((el) => norm(el.textContent) === label);
+      if (!span || span.hidden) return { label, missing: true };
+      const value = span.nextElementSibling;
+      const nodes = [span, value].filter(Boolean);
+      let clipped = false;
+      let below = false;
+      for (const node of nodes) {
+        if (node.hidden) { clipped = true; continue; }
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const rect of range.getClientRects()) {
+          if (rect.width < 0.4 || rect.height < 0.4) continue;
+          if (rect.top < panel.top - 0.5 || rect.bottom > panel.bottom + 0.5 || rect.left < panel.left - 0.5 || rect.right > panel.right + 0.5) clipped = true;
+          if (rect.bottom > buttonTop + 0.5) below = true;
+        }
+      }
+      return { label, clipped, below };
+    };
+    const title = document.getElementById('over-title');
+    const titleRange = document.createRange();
+    titleRange.selectNodeContents(title);
+    let titleClipped = !!title.hidden;
+    let titleBelow = false;
+    for (const rect of titleRange.getClientRects()) {
+      if (rect.width < 0.4 || rect.height < 0.4) continue;
+      if (rect.top < panel.top - 0.5 || rect.bottom > panel.bottom + 0.5 || rect.left < panel.left - 0.5 || rect.right > panel.right + 0.5) titleClipped = true;
+      if (rect.bottom > buttonTop + 0.5) titleBelow = true;
+    }
+    const element = [...document.querySelectorAll('#over-stats span')].some((el) => norm(el.textContent) === 'Element') ? line('Element') : line('Gas mixture');
+    return { bad, off, px: Math.round(px * 10) / 10, buttons, titleClipped, titleBelow, element, score: line('Final score (best T)') };
   })()`;
   for (const view of doneWordViews) {
     for (const theme of ['victorian', 'bw']) {
@@ -1426,7 +1472,16 @@ try {
       if (words.off.length) fail(`${view.name} ${theme} done label off screen ${words.off.join(',')}`);
       if (words.bad.length) fail(`${view.name} ${theme} done label breaks mid-word ${words.bad.join(',')}`);
       if (words.px < 10.95) fail(`${view.name} ${theme} done label font ${words.px}px is below 11px`);
-      else console.log('done-words', view.name, theme, 'ok', words.px);
+      if (resultViews.has(view.name)) {
+        for (const b of words.buttons) {
+          if (!b.center || !b.corners) fail(`${view.name} ${theme} done button ${b.id} is not tappable at its center or corners`);
+        }
+        if (words.titleClipped || words.titleBelow) fail(`${view.name} ${theme} done title is clipped or not above the buttons`);
+        for (const row of [words.element, words.score]) {
+          if (!row || row.missing || row.clipped || row.below) fail(`${view.name} ${theme} done ${row ? row.label : 'line'} is missing, clipped, or not above the buttons`);
+        }
+      }
+      if (!words.off.length && !words.bad.length && words.px >= 10.95) console.log('done-words', view.name, theme, 'ok', words.px);
     }
   }
   const board568 = { name: '568x300', w: 568, h: 300 };
