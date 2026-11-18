@@ -1484,6 +1484,73 @@ try {
       if (!words.off.length && !words.bad.length && words.px >= 10.95) console.log('done-words', view.name, theme, 'ok', words.px);
     }
   }
+  const narrowDone = `(() => {
+    const problems = [];
+    const panel = document.getElementById('p-over').getBoundingClientRect();
+    const oneLine = (el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const tops = [];
+      for (const rect of range.getClientRects()) {
+        if (rect.width < 0.4 || rect.height < 0.4) continue;
+        if (!tops.some((t) => Math.abs(t - rect.top) <= 1)) tops.push(rect.top);
+      }
+      return tops.length <= 1;
+    };
+    for (const id of ['b-again', 'b-over-shop', 'b-over-title']) {
+      const el = document.getElementById(id);
+      const box = el.getBoundingClientRect();
+      const limit = Math.min(panel.bottom, innerHeight);
+      if (box.top < panel.top - 0.5 || box.left < panel.left - 0.5 || box.right > panel.right + 0.5 || box.bottom > limit - 0.5) problems.push(id + ' outside the plate');
+      const hit = (x, y) => {
+        const node = document.elementFromPoint(x, y);
+        return !!(node && node.closest && node.closest('#' + id));
+      };
+      const inset = 2;
+      const center = hit(box.left + box.width / 2, box.top + box.height / 2);
+      const corners = [[box.left + inset, box.top + inset], [box.right - inset, box.top + inset], [box.left + inset, box.bottom - inset], [box.right - inset, box.bottom - inset]].every(([x, y]) => hit(x, y));
+      if (!center || !corners) problems.push(id + ' missed a hit');
+      if (parseFloat(getComputedStyle(el).fontSize) < 10.95) problems.push(id + ' font below 11px');
+      if (!oneLine(el)) problems.push(id + ' wraps');
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) {
+        const re = /\\S+/g; let m;
+        while ((m = re.exec(n.textContent))) {
+          const range = document.createRange();
+          range.setStart(n, m.index); range.setEnd(n, m.index + m[0].length);
+          const tops = [];
+          for (const rect of range.getClientRects()) {
+            if (rect.width < 0.4 || rect.height < 0.4) continue;
+            if (!tops.some((t) => Math.abs(t - rect.top) <= 1)) tops.push(rect.top);
+          }
+          if (tops.length > 1) problems.push(id + ' breaks ' + m[0]);
+        }
+      }
+    }
+    const gas = [...document.querySelectorAll('#over-stats span')].find((el) => String(el.textContent || '').replace(/\\s+/g, ' ').trim() === 'Gas' && !el.hidden);
+    const value = gas && gas.nextElementSibling;
+    if (value && value.tagName === 'B' && !value.hidden) {
+      if (!oneLine(value)) problems.push('Gas line wraps');
+      if (parseFloat(getComputedStyle(value).fontSize) < 10.95) problems.push('Gas font below 11px');
+    }
+    return problems;
+  })()`;
+  for (const view of [{ name: '300x300', w: 300, h: 300 }, { name: '300x568', w: 300, h: 568 }]) {
+    for (const theme of ['victorian', 'bw']) {
+      for (const mode of ['single', 'two', 'sort']) {
+        for (const ended of [true, false]) {
+          await layoutBoot(view, theme, ended ? { single: true, two: true, sort: true } : { single: false, two: false, sort: false });
+          await startPlaying(mode, view, theme);
+          await endPlaying();
+          await evalJs(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+          const problems = await evalJs(narrowDone);
+          if (problems.length) fail(`${view.name} ${theme} ${mode} ${ended ? 'ended' : 'abandoned'}: ${problems.join('; ')}`);
+          else console.log('narrow-done', view.name, theme, mode, ended ? 'ended' : 'abandoned', 'ok');
+        }
+      }
+    }
+  }
   const board568 = { name: '568x300', w: 568, h: 300 };
   const stageBox = `(() => { const r = document.getElementById('stage').getBoundingClientRect(); return { w: r.width, t: r.top }; })()`;
   await layoutBoot(board568, 'victorian', { single: true, two: true, sort: true }, 'main');

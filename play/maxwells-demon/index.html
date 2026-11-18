@@ -8984,10 +8984,33 @@ function fitOverPanel() {
   };
   proof(panel);
   const fitDoneWords = () => {
+    const oneLine = (el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const tops = [];
+      for (const rect of range.getClientRects()) {
+        if (rect.width < 0.4 || rect.height < 0.4) continue;
+        if (!tops.some((t) => Math.abs(t - rect.top) <= 1)) tops.push(rect.top);
+      }
+      return tops.length <= 1;
+    };
+    const gas = [...panel.querySelectorAll('#over-stats span')].find((el) => String(el.textContent || '').replace(/\s+/g, ' ').trim() === 'Gas');
+    const gasValue = gas && gas.nextElementSibling;
+    if (gasValue && gasValue.tagName === 'B' && !gasValue.hidden) {
+      gasValue.style.fontSize = '';
+      gasValue.style.letterSpacing = '';
+      let gasPx = parseFloat(getComputedStyle(gasValue).fontSize) || 13;
+      while (gasPx > 11 && !oneLine(gasValue)) {
+        gasPx = Math.max(11, gasPx - 0.5);
+        gasValue.style.fontSize = `${gasPx}px`;
+      }
+      if (!oneLine(gasValue)) gasValue.style.letterSpacing = '-0.04em';
+    }
     for (const id of ['b-again', 'b-over-shop', 'b-over-title']) {
       const button = $(id);
       if (!button) continue;
       button.style.fontSize = '';
+      button.style.letterSpacing = '';
       const whole = () => {
         const edge = button.getBoundingClientRect().right;
         const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
@@ -9006,12 +9029,19 @@ function fitOverPanel() {
             if (tops.length > 1) return false;
           }
         }
-        return true;
+        return oneLine(button);
       };
       let px = parseFloat(getComputedStyle(button).fontSize) || 16;
       while (px > 11 && !whole()) {
         px = Math.max(11, px - 0.5);
         button.style.fontSize = `${px}px`;
+        button.style.letterSpacing = '0';
+      }
+      let track = 0;
+      while (!whole() && track > -0.14) {
+        track = Math.round((track - 0.02) * 100) / 100;
+        button.style.fontSize = '11px';
+        button.style.letterSpacing = `${track}em`;
       }
     }
   };
@@ -9019,8 +9049,9 @@ function fitOverPanel() {
   const buttonsIn = () => ['b-again', 'b-over-shop', 'b-over-title'].every((id) => {
     const b = $(id).getBoundingClientRect();
     const pr = panel.getBoundingClientRect();
-    return b.height > 8 && b.top >= -1 && b.left >= -1 && b.right <= innerWidth + 1 && b.bottom <= innerHeight + 1
-      && b.top >= pr.top - 1 && b.bottom <= pr.bottom + 1 && b.left >= pr.left - 1 && b.right <= pr.right + 1;
+    const limit = Math.min(pr.bottom, innerHeight);
+    return b.height > 8 && b.top >= pr.top - 1 && b.left >= pr.left - 1 && b.right <= pr.right + 1
+      && b.bottom <= limit - 2 && b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1;
   });
   if (panel.clientHeight <= 40) return;
   if (note) note.hidden = false;
