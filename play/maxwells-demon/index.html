@@ -2001,7 +2001,7 @@
     <div class="stat" id="over-stats"></div>
     <p class="sub" id="over-note"></p>
     <div class="row" id="over-watch-row" hidden><button id="b-watch-again">Watch again ▸</button></div>
-    <div class="row over-actions"><div class="scroll-cue" id="over-cue" hidden>More above</div><button id="b-again">Play again ▸</button><button id="b-over-shop">Element shop</button><button id="b-over-title">Title</button></div>
+    <div class="row over-actions"><div class="scroll-cue" id="over-cue" hidden>More above</div><button id="b-again" aria-label="Play again ▸">Play again ▸</button><button id="b-over-shop">Element shop</button><button id="b-over-title">Title</button></div>
   </div>
 </div>
 <div id="ach-note" class="ach-note vls-plaque vls-plaque--ivory" data-vls-ivory="md/ach-note" hidden role="dialog" aria-live="polite"></div>
@@ -9011,6 +9011,30 @@ function fitOverPanel() {
       if (!button) continue;
       button.style.fontSize = '';
       button.style.letterSpacing = '';
+      if (id === 'b-again') {
+        button.setAttribute('aria-label', 'Play again ▸');
+        button.textContent = 'Play again ▸';
+        const actions = button.closest('.over-actions');
+        if (actions) actions.style.gridTemplateColumns = '';
+      }
+      const sideClear = () => {
+        const cs = getComputedStyle(button);
+        const inset = (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.getPropertyValue('--md-face-bevel')) || 0);
+        const box = button.getBoundingClientRect();
+        let worst = 99;
+        const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
+        let n;
+        while ((n = walker.nextNode())) {
+          if (!String(n.textContent).trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(n);
+          for (const rect of range.getClientRects()) {
+            if (rect.width < 0.4 || rect.height < 0.4) continue;
+            worst = Math.min(worst, rect.left - (box.left + inset), (box.right - inset) - rect.right);
+          }
+        }
+        return worst;
+      };
       const whole = () => {
         const edge = button.getBoundingClientRect().right;
         const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
@@ -9031,7 +9055,35 @@ function fitOverPanel() {
         }
         return oneLine(button);
       };
+      const comfortable = () => whole() && sideClear() >= 3;
       let px = parseFloat(getComputedStyle(button).fontSize) || 16;
+      if (id === 'b-again') {
+        while (px > 11 && !comfortable()) {
+          px = Math.max(11, px - 0.5);
+          button.style.fontSize = `${px}px`;
+        }
+        if (!comfortable()) {
+          button.textContent = 'Play again';
+          button.style.letterSpacing = '';
+          button.style.fontSize = '';
+          px = parseFloat(getComputedStyle(button).fontSize) || 16;
+          while (px > 11 && !comfortable()) {
+            px = Math.max(11, px - 0.5);
+            button.style.fontSize = `${px}px`;
+          }
+          if (!oneLine(button)) {
+            const actions = button.closest('.over-actions');
+            if (actions) actions.style.gridTemplateColumns = 'minmax(0, 1fr) max-content';
+            button.style.fontSize = '';
+            px = parseFloat(getComputedStyle(button).fontSize) || 16;
+            while (px > 11 && !comfortable()) {
+              px = Math.max(11, px - 0.5);
+              button.style.fontSize = `${px}px`;
+            }
+          }
+        }
+        continue;
+      }
       while (px > 11 && !whole()) {
         px = Math.max(11, px - 0.5);
         button.style.fontSize = `${px}px`;

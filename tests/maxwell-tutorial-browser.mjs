@@ -1534,6 +1534,24 @@ try {
       if (!oneLine(value)) problems.push('Gas line wraps');
       if (parseFloat(getComputedStyle(value).fontSize) < 10.95) problems.push('Gas font below 11px');
     }
+    if (innerWidth === 300 && innerHeight === 300) {
+      const again = document.getElementById('b-again');
+      const cs = getComputedStyle(again);
+      const ls = cs.letterSpacing === 'normal' ? 0 : parseFloat(cs.letterSpacing);
+      if (!(ls >= -0.01)) problems.push('Play again letter-spacing ' + cs.letterSpacing);
+      if (parseFloat(cs.fontSize) < 10.95) problems.push('Play again font below 11px');
+      if (!oneLine(again)) problems.push('Play again wraps');
+      const inset = (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.getPropertyValue('--md-face-bevel')) || 0);
+      const box = again.getBoundingClientRect();
+      let worst = 99;
+      const range = document.createRange();
+      range.selectNodeContents(again);
+      for (const rect of range.getClientRects()) {
+        if (rect.width < 0.4 || rect.height < 0.4) continue;
+        worst = Math.min(worst, rect.left - (box.left + inset), (box.right - inset) - rect.right);
+      }
+      if (worst < 2.95) problems.push('Play again ink clearance ' + worst.toFixed(1) + 'px');
+    }
     return problems;
   })()`;
   for (const view of [{ name: '300x300', w: 300, h: 300 }, { name: '300x568', w: 300, h: 568 }]) {
