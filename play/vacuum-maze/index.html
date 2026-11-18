@@ -8130,20 +8130,16 @@ function placeSensorHint() {
   return true;
 }
 function restoreRotateHint(el) {
-  const chrome = el.querySelector(':scope > .vls-plaque__chrome-built');
-  if (chrome) chrome.remove();
   const lab = el.querySelector(':scope > .vls-plaque__label');
-  if (lab) {
-    while (lab.firstChild) el.insertBefore(lab.firstChild, lab);
-    lab.remove();
-  }
-  el.classList.remove('vls-plaque', 'vls-plaque--ivory');
-  el.removeAttribute('data-vls-ivory');
-  el.style.removeProperty('--_s');
-  el.style.removeProperty('--_r');
-  el.style.removeProperty('--_R');
-  el.style.removeProperty('--_d');
-  delete el.dataset.rotateSig;
+  const text = (lab ? lab.textContent : el.textContent) || 'Turn the phone upright to tip the\u00a0apparatus.';
+  const attrs = [...el.attributes].map((a) => a.name);
+  const clean = attrs.length === 1 && attrs[0] === 'id' && !el.className && el.childNodes.length === 1 && el.firstChild.nodeType === 3;
+  if (clean) return;
+  // Replacing the node drops the ivory watcher. Removing the class alone leaves vls-ivory, and a later resize paints it back because the element id still counts as a plate.
+  const neu = document.createElement('div');
+  neu.id = 'rotate-hint';
+  neu.textContent = text;
+  el.replaceWith(neu);
 }
 function mountRotatePlaque() {
   const el = $('rotate-hint');

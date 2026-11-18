@@ -4,7 +4,7 @@
    Run: node tests/vacuum-level0.mjs [baseUrl] */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const BASE = process.argv[2] || 'http://127.0.0.1:8772';
@@ -83,6 +83,12 @@ let mainHtml = execSync('git show ' + MAIN_REV + ':play/vacuum-maze/index.html',
 if (!mainHtml.includes(mainAnchor)) throw new Error('main geometry anchor missing');
 writeFileSync(mainRoot + '/play/vacuum-maze/index.html', mainHtml.replace(mainAnchor, mainAnchor + mainInject));
 const mainServer = spawn('python3', ['-m', 'http.server', String(MAIN_PORT), '--bind', '127.0.0.1'], { cwd: mainRoot, stdio: 'ignore' });
+const ORIGIN_PORT = 8776;
+const originRoot = '/tmp/vac-origin-main';
+rmSync(originRoot, { recursive: true, force: true });
+mkdirSync(originRoot + '/play/vacuum-maze', { recursive: true });
+writeFileSync(originRoot + '/play/vacuum-maze/index.html', execSync('git show origin/main:play/vacuum-maze/index.html', { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
+const originServer = spawn('python3', ['-m', 'http.server', String(ORIGIN_PORT), '--bind', '127.0.0.1'], { cwd: originRoot, stdio: 'ignore' });
 const failures = [];
 function fail(msg) { failures.push(msg); console.error('FAIL', msg); }
 
@@ -1609,8 +1615,75 @@ try {
       const where = theme + ' ' + w + 'x' + h + ' ordinary portrait';
       sameGeom(branchSig.geo, mainSig.geo, where);
       if (theme !== 'bw' && (!mainSig.sig || !branchSig.sig || mainSig.sig.caption !== branchSig.sig.caption)) fail(where + ' caption pixels differ');
+      if (theme === 'bw' && w === 390 && h === 844) {
+        const rot = await ev(`(() => {
+          const el = document.getElementById('rotate-hint');
+          const cs = getComputedStyle(el);
+          return { ivory: el.classList.contains('vls-ivory'), bg: cs.backgroundColor, cls: el.className };
+        })()`);
+        if (!rot || rot.ivory || rot.cls) fail(where + ' rotate hint class ' + JSON.stringify(rot));
+        if (!rot || rot.bg !== 'rgba(0, 0, 0, 0)') fail(where + ' rotate hint background ' + (rot && rot.bg));
+      }
       console.log('portrait', where);
     }
+  }
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: 'portraitPrimary', angle: 0 } });
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await boot({ settings: { theme: 'victorian' }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: true } });
+  await ev(`window.VMHoldWorld(true); document.getElementById('b-begin').click(); true`);
+  for (let i = 0; i < 30 && !await ev(`!!document.querySelector('#level-list button[data-lv="0"]')`); i++) await sleep(60);
+  await ev(`window.VMHoldWorld(true); document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+  await sleep(200);
+  const setTheme = async (theme) => {
+    await ev(`document.getElementById('s-theme').value = ${JSON.stringify(theme)}; document.getElementById('s-theme').dispatchEvent(new Event('input', { bubbles: true })); true`);
+    await sleep(300);
+  };
+  const rotateState = `(() => {
+    const el = document.getElementById('rotate-hint');
+    const cs = getComputedStyle(el);
+    return { ivory: el.classList.contains('vls-ivory'), plaque: el.classList.contains('vls-plaque'), bg: cs.backgroundColor, cls: el.className, chrome: !!el.querySelector('svg.vls-plaque__chrome') };
+  })()`;
+  await setTheme('bw');
+  const bwRot = await ev(rotateState);
+  if (!bwRot || bwRot.ivory || bwRot.cls || bwRot.plaque) fail('theme switch bw rotate hint class ' + JSON.stringify(bwRot));
+  if (!bwRot || bwRot.bg !== 'rgba(0, 0, 0, 0)') fail('theme switch bw rotate hint background ' + (bwRot && bwRot.bg));
+  await setTheme('victorian');
+  const vicRot = await ev(rotateState);
+  if (!vicRot || !vicRot.plaque || !vicRot.chrome) fail('theme switch victorian plate did not return ' + JSON.stringify(vicRot));
+  console.log('theme switch rotate', JSON.stringify({ bw: bwRot, vic: vicRot }));
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: 'portraitPrimary', angle: 0 } });
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  const seenBw = { settings: { theme: 'bw' }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: true } };
+  const playOrdinary = async () => {
+    await ev(`window.VMHoldWorld(true); document.getElementById('b-begin').click(); true`);
+    for (let i = 0; i < 30 && !await ev(`!!document.querySelector('#level-list button[data-lv="0"]')`); i++) await sleep(60);
+    await ev(`window.VMHoldWorld(true); document.querySelector('#level-list button[data-lv="0"]').click(); true`);
+    await sleep(150);
+    await ev(`window.VMFreezeFrame(); window.VMShowHint(); true`);
+    await sleep(300);
+  };
+  const snapPng = async (path) => { writeFileSync(path, Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64')); };
+  await boot(seenBw);
+  await playOrdinary();
+  await snapPng('/tmp/vac-bw-390-branch.png');
+  await boot(seenBw, 'http://127.0.0.1:' + ORIGIN_PORT);
+  await playOrdinary();
+  await snapPng('/tmp/vac-bw-390-main.png');
+  const raw = (png) => execFileSync('ffmpeg', ['-i', png, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-v', 'error', 'pipe:1'], { maxBuffer: 8 * 1024 * 1024 });
+  const branchPx = raw('/tmp/vac-bw-390-branch.png'), mainPx = raw('/tmp/vac-bw-390-main.png');
+  const bandY0 = 810, bandY1 = 826, bandW = 390;
+  if (branchPx.length !== mainPx.length || branchPx.length !== bandW * 844 * 3) fail('bw 390x844 screenshot size ' + branchPx.length + ' ' + mainPx.length);
+  else {
+    let diff = 0;
+    const row = bandW * 3;
+    for (let y = bandY0; y < bandY1; y++) {
+      const off = y * row;
+      for (let x = 0; x < row; x += 3) {
+        if (branchPx[off + x] !== mainPx[off + x] || branchPx[off + x + 1] !== mainPx[off + x + 1] || branchPx[off + x + 2] !== mainPx[off + x + 2]) diff++;
+      }
+    }
+    if (diff) fail('bw 390x844 rotate band differs from main by ' + diff + ' px');
+    else console.log('bw 390x844 rotate band matches main');
   }
   const polishSizes = [[320, 300], [320, 568], [360, 640], [384, 854], [393, 873], [412, 915], [480, 320], [568, 320], [640, 360], [800, 600], [1024, 768], [1280, 800], [1280, 900]];
   const winAudit = `(() => {
@@ -1708,6 +1781,7 @@ try {
   if (ws) ws.close();
   chrome.kill();
   mainServer.kill();
+  originServer.kill();
 }
 if (failures.length) {
   console.error(failures.length + ' failure(s)');
