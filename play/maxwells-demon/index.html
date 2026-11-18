@@ -1811,9 +1811,14 @@
   @media (max-width: 520px), (max-height: 520px) {
     #p-over .over-actions button { flex: 1 1 100%; }
   }
+  body[data-theme] #p-over .over-actions button {
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
   @media (max-height: 420px) {
-    #p-over .over-actions { flex-wrap: nowrap; }
-    #p-over .over-actions button { flex: 1 1 0 !important; min-height: 36px; padding: 4px 6px; }
+    #p-over .over-actions { flex-wrap: wrap; }
+    #p-over .over-actions button { flex: 1 1 100% !important; min-height: 32px; padding: 4px 8px; }
   }
   #p-over .over-actions { max-width: 100%; box-sizing: border-box; }
   #p-over .over-actions button { box-sizing: border-box; max-width: 100%; }
@@ -7824,6 +7829,19 @@ function layoutInstruments() {
         trial.style.top = `${Math.min(bottom - 32, bandTop + 100)}px`;
       }
       dock.style.overflow = shortLesson ? 'visible' : 'hidden';
+      if (!shortLesson && skipEl && !skipEl.hidden && lessonRead && !lessonRead.hidden) {
+        const a = skipEl.getBoundingClientRect();
+        const b = lessonRead.getBoundingClientRect();
+        const overlaps = a.right > b.left + 0.5 && a.left < b.right - 0.5 && a.bottom > b.top + 0.5 && a.top < b.bottom - 0.5;
+        if (overlaps) {
+          dock.style.maxHeight = `${Math.max(44, bottom - bandTop)}px`;
+          skipEl.style.left = 'auto';
+          skipEl.style.right = `${safe('--sar') + 8}px`;
+          skipEl.style.width = `${ctrlW}px`;
+          const belowControls = controls.getBoundingClientRect().bottom + 4;
+          skipEl.style.top = `${Math.min(bottom - skipH - 4, Math.max(bandTop, belowControls))}px`;
+        }
+      }
     } else {
     controls.style.top = 'auto'; controls.style.bottom = `${safe('--sab') + 42}px`;
     controls.style.left = '50%'; controls.style.right = 'auto'; controls.style.transform = 'translateX(-50%)';
@@ -7880,7 +7898,7 @@ function layoutInstruments() {
       // room by narrowing the board, never below 85% of its natural width.
       dock.classList.add('lesson-dock');
       const naturalW = cr.width;
-      const floorW = Math.max(120, Math.floor(naturalW * 0.85));
+      const floorW = Math.max(120, Math.ceil(naturalW * 0.85 - 0.01));
       const lessonRead = $('sorting-readout');
       const skipEl = $('b-skip-tutorial');
       const lessonMsg = $('instrument-message');
@@ -7991,6 +8009,25 @@ function layoutInstruments() {
   if (tightRead && tightRead.style.fontSize === '11px') {
     for (const node of tightRead.querySelectorAll('.read-name, .read-measure, .read-ledger, .vls-plaque__label')) {
       node.style.setProperty('font-size', '11px', 'important');
+    }
+  }
+  const skipOff = $('b-skip-tutorial');
+  if (document.body.classList.contains('tutorial') && skipOff && !skipOff.hidden && tightRead && !tightRead.hidden) {
+    const hitsRead = () => {
+      const a = skipOff.getBoundingClientRect();
+      const b = tightRead.getBoundingClientRect();
+      return a.right > b.left + 0.5 && a.left < b.right - 0.5 && a.bottom > b.top + 0.5 && a.top < b.bottom - 0.5;
+    };
+    if (hitsRead()) {
+      skipOff.style.position = 'fixed';
+      skipOff.style.margin = '0';
+      skipOff.style.left = 'auto';
+      skipOff.style.right = `${safe('--sar') + 8}px`;
+      skipOff.style.width = '84px';
+      skipOff.style.height = '';
+      const skipH = 40;
+      const below = controls.getBoundingClientRect().bottom + 4;
+      skipOff.style.top = `${Math.min(bottom - skipH, Math.max(top, below))}px`;
     }
   }
   if (state.screen === 'playing') {
@@ -8943,6 +8980,39 @@ function fitOverPanel() {
     }
   };
   proof(panel);
+  const fitDoneWords = () => {
+    for (const id of ['b-again', 'b-over-shop', 'b-over-title']) {
+      const button = $(id);
+      if (!button) continue;
+      button.style.fontSize = '';
+      const whole = () => {
+        const edge = button.getBoundingClientRect().right;
+        const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
+        let n;
+        while ((n = walker.nextNode())) {
+          const re = /\S+/g; let m;
+          while ((m = re.exec(n.textContent))) {
+            const range = document.createRange();
+            range.setStart(n, m.index); range.setEnd(n, m.index + m[0].length);
+            const tops = [];
+            for (const rect of range.getClientRects()) {
+              if (rect.width < 0.4 || rect.height < 0.4) continue;
+              if (rect.right > edge + 0.5) return false;
+              if (!tops.some((t) => Math.abs(t - rect.top) <= 1)) tops.push(rect.top);
+            }
+            if (tops.length > 1) return false;
+          }
+        }
+        return true;
+      };
+      let px = parseFloat(getComputedStyle(button).fontSize) || 16;
+      while (px > 11 && !whole()) {
+        px = Math.max(11, px - 0.5);
+        button.style.fontSize = `${px}px`;
+      }
+    }
+  };
+  fitDoneWords();
   const buttonsIn = () => ['b-again', 'b-over-shop', 'b-over-title'].every((id) => {
     const b = $(id).getBoundingClientRect();
     const pr = panel.getBoundingClientRect();
@@ -8954,12 +9024,16 @@ function fitOverPanel() {
   panel.classList.remove('over-compact', 'over-tight');
   for (const el of panel.querySelectorAll('#over-stats span, #over-stats b, h2')) el.hidden = false;
   const fits = () => panel.scrollHeight <= panel.clientHeight + 1 && buttonsIn();
+  fitDoneWords();
   if (fits()) return;
   panel.classList.add('over-compact');
+  fitDoneWords();
   if (fits()) return;
   if (note) note.hidden = true;
+  fitDoneWords();
   if (fits()) return;
   panel.classList.add('over-tight');
+  fitDoneWords();
   const cells = [...panel.querySelectorAll('#over-stats span')];
   for (let i = cells.length - 1; i >= 0 && !fits(); i--) {
     cells[i].hidden = true;

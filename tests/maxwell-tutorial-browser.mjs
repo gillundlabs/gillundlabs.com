@@ -671,10 +671,16 @@ try {
     };
     const skip = document.getElementById('b-skip-tutorial');
     let skipHit = false;
+    let skipCorners = true;
     if (skip && !skip.hidden) {
       const r = skip.getBoundingClientRect();
-      const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      skipHit = !!(el && el.closest && el.closest('#b-skip-tutorial'));
+      const hit = (x, y) => {
+        const el = document.elementFromPoint(x, y);
+        return !!(el && el.closest && el.closest('#b-skip-tutorial'));
+      };
+      skipHit = hit(r.left + r.width / 2, r.top + r.height / 2);
+      const inset = 2;
+      skipCorners = [[r.left + inset, r.top + inset], [r.right - inset, r.top + inset], [r.left + inset, r.bottom - inset], [r.right - inset, r.bottom - inset]].every(([x, y]) => hit(x, y));
     }
     const read = document.getElementById('sorting-readout');
     const label = read.querySelector('.vls-plaque__label') || read;
@@ -708,7 +714,7 @@ try {
       controls: info('controls'), trial: info('trial-badge'), msg: info('instrument-message'),
       read: info('sorting-readout'), skip: info('b-skip-tutorial'),
       pauseBtn: info('b-pausebtn'), buyBtn: info('b-buy'), cycleBtn: info('b-cycle'),
-      skipHit,
+      skipHit, skipCorners,
       contrast: (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05),
       color: labelColor, background: plateBg,
       screws: chrome ? chrome.querySelectorAll('circle').length : 0,
@@ -795,6 +801,11 @@ try {
       shown(m.skip, 'Skip');
       shown(m.read, 'readout', { stage: false });
       if (!m.skipHit) problems.push('Skip is not under elementFromPoint');
+      if (m.skipCorners === false) problems.push('Skip corner is not under elementFromPoint');
+      if (m.skip && m.read && !m.skip.hidden && !m.read.hidden) {
+        const overlaps = m.skip.right > m.read.x + 0.5 && m.skip.x < m.read.x + m.read.w - 0.5 && m.skip.bottom > m.read.y + 0.5 && m.skip.y < m.read.y + m.read.h - 0.5;
+        if (overlaps) problems.push('Skip overlaps the pressure plate');
+      }
       if (!(m.height >= 40)) problems.push(`lesson stage only ${m.height.toFixed(1)}px tall`);
       const natural = mainStage[m.view];
       if (natural && m.width < natural.w * 0.85 - 1) problems.push(`lesson stage ${m.width.toFixed(1)}px wide is under 85% of main ${natural.w}`);
@@ -1373,6 +1384,68 @@ try {
     if (Math.abs(fonts.btn - fonts.label) > 0.2) fail(`${theme} Replay tutorial is ${fonts.btn}px and the Settings plates are ${fonts.label}px`);
     else console.log('settings-type', theme, fonts.btn);
   }
+  const doneWordViews = [
+    { name: '320x300', w: 320, h: 300 }, { name: '320x320', w: 320, h: 320 },
+    { name: '340x340', w: 340, h: 340 }, { name: '360x340', w: 360, h: 340 },
+    { name: '400x320', w: 400, h: 320 }, { name: '480x300', w: 480, h: 300 },
+    { name: '480x320', w: 480, h: 320 }, { name: '568x320', w: 568, h: 320 },
+  ];
+  const doneWords = `(() => {
+    const bad = [];
+    const off = [];
+    for (const id of ['b-again', 'b-over-shop', 'b-over-title']) {
+      const el = document.getElementById(id);
+      const box = el.getBoundingClientRect();
+      if (box.width < 2 || box.top < -1 || box.left < -1 || box.right > innerWidth + 1 || box.bottom > innerHeight + 1) off.push(id);
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) {
+        const re = /\\S+/g; let m;
+        while ((m = re.exec(n.textContent))) {
+          const range = document.createRange();
+          range.setStart(n, m.index); range.setEnd(n, m.index + m[0].length);
+          const tops = [];
+          for (const rect of range.getClientRects()) {
+            if (rect.width < 0.4 || rect.height < 0.4) continue;
+            if (!tops.some((t) => Math.abs(t - rect.top) <= 1)) tops.push(rect.top);
+          }
+          if (tops.length > 1) bad.push(id + ' ' + m[0]);
+        }
+      }
+    }
+    const px = Math.min(...['b-again', 'b-over-shop', 'b-over-title'].map((id) => parseFloat(getComputedStyle(document.getElementById(id)).fontSize)));
+    return { bad, off, px: Math.round(px * 10) / 10 };
+  })()`;
+  for (const view of doneWordViews) {
+    for (const theme of ['victorian', 'bw']) {
+      await layoutBoot(view, theme, { single: true, two: true, sort: true });
+      await startPlaying('single', view, theme);
+      await endPlaying();
+      await evalJs(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+      const words = await evalJs(doneWords);
+      if (words.off.length) fail(`${view.name} ${theme} done label off screen ${words.off.join(',')}`);
+      if (words.bad.length) fail(`${view.name} ${theme} done label breaks mid-word ${words.bad.join(',')}`);
+      if (words.px < 10.95) fail(`${view.name} ${theme} done label font ${words.px}px is below 11px`);
+      else console.log('done-words', view.name, theme, 'ok', words.px);
+    }
+  }
+  const board568 = { name: '568x300', w: 568, h: 300 };
+  const stageBox = `(() => { const r = document.getElementById('stage').getBoundingClientRect(); return { w: r.width, t: r.top }; })()`;
+  await layoutBoot(board568, 'victorian', { single: true, two: true, sort: true }, 'main');
+  await evalJs(`document.getElementById('b-begin').click(); document.getElementById('b-single').click(); true`);
+  await sleep(400);
+  const mainBoard = await evalJs(stageBox);
+  await layoutBoot(board568, 'victorian', { single: true, two: true, sort: true });
+  await startPlaying('single', board568, 'victorian');
+  await sleep(400);
+  const ordinaryBoard = await evalJs(stageBox);
+  if (Math.abs(ordinaryBoard.w - mainBoard.w) > 0.8 || Math.abs(ordinaryBoard.t - mainBoard.t) > 0.8) fail(`568x300 victorian ordinary stage ${ordinaryBoard.w.toFixed(2)}@${ordinaryBoard.t.toFixed(1)} differs from main ${mainBoard.w.toFixed(2)}@${mainBoard.t.toFixed(1)}`);
+  await layoutBoot(board568, 'victorian');
+  await startPlaying('single', board568, 'victorian');
+  await sleep(400);
+  const lessonBoard = await evalJs(stageBox);
+  if (lessonBoard.w < mainBoard.w * 0.85 - 0.5) fail(`568x300 victorian lesson stage ${lessonBoard.w.toFixed(2)} is ${(100 * lessonBoard.w / mainBoard.w).toFixed(1)}% of main ${mainBoard.w.toFixed(2)}`);
+  else console.log('board', '568x300 victorian lesson', lessonBoard.w.toFixed(2), 'of', mainBoard.w.toFixed(2), (100 * lessonBoard.w / mainBoard.w).toFixed(1) + '%');
   const WRAP = `(() => {
     const block = (id) => {
       const el = document.getElementById(id);
