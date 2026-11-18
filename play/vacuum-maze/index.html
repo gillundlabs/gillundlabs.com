@@ -313,14 +313,13 @@
   .stepper { display: inline-flex; align-items: center; gap: 6px; }
   .stepper b { min-width: 1.4em; text-align: center; }
   .stepper button { min-width: 44px; padding: 0 !important; font-size: 18px !important; }
-  #rotate-hint { display: none; position: fixed; left: 0; right: 0; bottom: calc(var(--sab) + 18px); text-align: center; font-size: 13px; line-height: 1.25; opacity: .8; color: var(--vls-paper-light); pointer-events: none; white-space: normal; }
-  #rotate-hint, #rotate-hint .vls-plaque__label { white-space: normal !important; overflow-wrap: normal; }
+  #rotate-hint { display: none; position: fixed; left: 0; right: 0; bottom: calc(var(--sab) + 18px); text-align: center; font-size: 13px; line-height: 1.25; opacity: .8; color: var(--vls-paper-light); pointer-events: none; }
   body.lesson-frame #rotate-hint { padding: 3px 4px; box-sizing: border-box; }
   body[data-theme="bw"] #rotate-hint { color: #fff; }
   @media (orientation: portrait) and (max-width: 820px) { #rotate-hint { display: block; } }
   /* Lesson, trial practice and pause only, and only when the screen is tall enough to spare a band above the gauge. */
   @media (min-height: 421px) {
-    body.lesson-frame #rotate-hint,
+    body.lesson-frame #rotate-hint { left: 16px; right: 56px; bottom: calc(var(--sab) + 112px); }
     body[data-theme="victorian"].lesson-frame #rotate-hint { left: 16px; right: 56px; width: auto; transform: none; bottom: calc(var(--sab) + 112px); }
   }
   /* Victorian rotate line: the same ivory plate, inset rule, notches and screws as the other plates. */
@@ -343,12 +342,6 @@
     font: 500 11px/1.2 var(--vls-font-ivory); color: var(--vls-engraving); letter-spacing: .02em;
     white-space: normal; overflow: visible; text-overflow: clip; height: auto;
   }
-  body[data-theme="bw"] #rotate-hint {
-    background: none !important; background-image: none !important; border: none !important;
-    box-shadow: none !important; border-radius: 0; opacity: .8;
-    color: #fff; font-family: var(--vls-font-sans) !important; font-style: normal !important;
-  }
-  body[data-theme="bw"] #rotate-hint .vls-plaque__chrome-built { display: none !important; }
   @media (max-height: 520px), (max-width: 520px) {
     .panel { padding: 10px 14px; }
     .panel h1 { font-size: 28px; } .panel h2 { font-size: 20px; margin-bottom: 4px; }
@@ -950,7 +943,7 @@
   }
   body[data-theme="victorian"] .packs div { background: var(--vls-paper-light); border: 1px solid var(--vls-paper-edge); border-radius: 0; font-family: var(--vls-font-ivory); }
   body[data-theme="victorian"] #pc-canvas { border: 2px solid var(--vls-brass-mid); box-sizing: border-box; border-radius: 0; }
-  body[data-theme="victorian"] #rotate-hint { color: var(--vls-paper-light); }
+  body[data-theme="victorian"] #rotate-hint:not(.vls-plaque) { color: var(--vls-paper-light); }
   /* Kit procedural ivory (DECISIONS a521b25): cream #f1ecdf is loading fallback only; VLS.ivory paints via data-vls-ivory. No Vac-local grain.
      Store links are unlit brass (not ivory faces); hint is a kit plaque with its own cream fallback. */
 
@@ -8136,15 +8129,27 @@ function placeSensorHint() {
   el.dataset.hintPlace = sig;
   return true;
 }
+function restoreRotateHint(el) {
+  const chrome = el.querySelector(':scope > .vls-plaque__chrome-built');
+  if (chrome) chrome.remove();
+  const lab = el.querySelector(':scope > .vls-plaque__label');
+  if (lab) {
+    while (lab.firstChild) el.insertBefore(lab.firstChild, lab);
+    lab.remove();
+  }
+  el.classList.remove('vls-plaque', 'vls-plaque--ivory');
+  el.removeAttribute('data-vls-ivory');
+  el.style.removeProperty('--_s');
+  el.style.removeProperty('--_r');
+  el.style.removeProperty('--_R');
+  el.style.removeProperty('--_d');
+  delete el.dataset.rotateSig;
+}
 function mountRotatePlaque() {
   const el = $('rotate-hint');
   if (!el || !VLS.plaqueChrome) return;
-  const victorian = document.body.dataset.theme !== 'bw';
-  if (!victorian) {
-    const old = el.querySelector(':scope > .vls-plaque__chrome-built');
-    if (old) old.remove();
-    el.classList.remove('vls-plaque', 'vls-plaque--ivory');
-    delete el.dataset.rotateSig;
+  if (document.body.dataset.theme !== 'victorian') {
+    restoreRotateHint(el);
     return;
   }
   el.classList.add('vls-plaque', 'vls-plaque--ivory');
@@ -8918,46 +8923,55 @@ window.VMShowPracticeDone = function () {
   };
   window.VMHudPanelInk = function () {
     const panel = document.querySelector('.panel.show');
-    if (!panel) return { n: 0, same: true, painted: false };
+    if (!panel) return { n: 0, same: true, painted: false, reference: 0 };
     const pr = panel.getBoundingClientRect();
     const clip = { l: pr.left - 4, t: pr.top - 4, r: pr.right + 4, b: pr.bottom + 4 };
     const plate = readoutBox();
     const cap = captionBox();
-    const zones = [plate, cap];
-    const samples = () => {
-      const bitmap = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const take = (bitmap, z, clipTo) => {
       const pix = [];
-      let n = 0;
-      for (const z of zones) {
-        const l = Math.max(0, Math.floor(Math.max(z.l, clip.l)));
-        const t = Math.max(0, Math.floor(Math.max(z.t, clip.t)));
-        const r = Math.min(vw, Math.ceil(Math.min(z.r, clip.r)));
-        const b = Math.min(vh, Math.ceil(Math.min(z.b, clip.b)));
-        for (let y = t; y < b; y += 3) {
-          for (let x = l; x < r; x += 3) {
-            const i = (Math.round(y * dpr) * canvas.width + Math.round(x * dpr)) * 4;
-            pix.push((bitmap[i] << 16) | (bitmap[i + 1] << 8) | bitmap[i + 2]);
-            n++;
-          }
+      let l = Math.max(0, Math.floor(z.l)), t = Math.max(0, Math.floor(z.t));
+      let r = Math.min(vw, Math.ceil(z.r)), b = Math.min(vh, Math.ceil(z.b));
+      if (clipTo) {
+        l = Math.max(l, Math.floor(clipTo.l));
+        t = Math.max(t, Math.floor(clipTo.t));
+        r = Math.min(r, Math.ceil(clipTo.r));
+        b = Math.min(b, Math.ceil(clipTo.b));
+      }
+      for (let y = t; y < b; y += 3) {
+        for (let x = l; x < r; x += 3) {
+          const i = (Math.round(y * dpr) * canvas.width + Math.round(x * dpr)) * 4;
+          pix.push((bitmap[i] << 16) | (bitmap[i + 1] << 8) | bitmap[i + 2]);
         }
       }
-      return { pix, n };
+      return pix;
+    };
+    const grab = () => {
+      const bitmap = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      const pix = [], ref = [];
+      for (const z of [plate, cap]) {
+        pix.push(...take(bitmap, z, clip));
+        ref.push(...take(bitmap, z, null));
+      }
+      return { pix, ref };
     };
     state.paintHud = true;
     render();
-    const loud = samples();
+    const loud = grab();
     state.paintHud = false;
     render();
-    const quiet = samples();
+    const quiet = grab();
     render();
-    const live = samples();
-    let ink = 0, leaked = 0;
+    const live = grab();
+    let ink = 0, leaked = 0, reference = 0;
     for (let i = 0; i < quiet.pix.length; i++) {
       if (loud.pix[i] === quiet.pix[i]) continue;
       ink++;
       if (live.pix[i] !== quiet.pix[i]) leaked++;
     }
-    return { n: quiet.n, ink, leaked, painted: leaked > 0 };
+    // The panel overlap can be uniform black in B&W (the plate fill matches the backdrop). The full plate still changes when the HUD is painted, so that difference is the check that the probe can see ink.
+    for (let i = 0; i < quiet.ref.length; i++) if (loud.ref[i] !== quiet.ref[i]) reference++;
+    return { n: quiet.pix.length, ink, leaked, painted: leaked > 0, reference };
   };
   window.VMLessonRects = function () {
     const box = (el) => {

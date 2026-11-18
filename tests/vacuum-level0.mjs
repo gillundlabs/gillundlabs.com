@@ -1481,7 +1481,7 @@ try {
       await fit(w, h);
       for (const p of await ev(panelCover)) fail(label + ' ' + w + 'x' + h + ' ' + p);
       const ink = await ev(`window.VMHudPanelInk()`);
-      if (!ink || ink.painted || (ink.n > 40 && ink.ink === 0)) fail(label + ' ' + w + 'x' + h + ' hud ink ' + JSON.stringify(ink));
+      if (!ink || ink.painted || !(ink.reference > 0)) fail(label + ' ' + w + 'x' + h + ' hud ink ' + JSON.stringify(ink));
     }
     console.log('cover', label, textSizes.length);
   }
