@@ -335,7 +335,7 @@
       0 0 0 2px var(--vls-wood),
       0 0 0 3px var(--vls-wood-deep),
       var(--vls-plaque-shadow-x) var(--vls-plaque-shadow-y) var(--vls-plaque-shadow-blur) var(--vls-plaque-shadow-color);
-    padding: 11px 14px;
+    padding: 16px 26px;
   }
   body[data-theme="victorian"] #rotate-hint,
   body[data-theme="victorian"] #rotate-hint .vls-plaque__label {
@@ -8130,15 +8130,13 @@ function placeSensorHint() {
   return true;
 }
 function restoreRotateHint(el) {
-  const lab = el.querySelector(':scope > .vls-plaque__label');
-  const text = (lab ? lab.textContent : el.textContent) || 'Turn the phone upright to tip the\u00a0apparatus.';
   const attrs = [...el.attributes].map((a) => a.name);
-  const clean = attrs.length === 1 && attrs[0] === 'id' && !el.className && el.childNodes.length === 1 && el.firstChild.nodeType === 3;
+  const clean = attrs.length === 1 && attrs[0] === 'id' && !el.className && el.childNodes.length === 1 && el.firstChild.nodeType === 3 && el.textContent === 'Turn the phone upright to tip the\u00a0apparatus.';
   if (clean) return;
   // Replacing the node drops the ivory watcher. Removing the class alone leaves vls-ivory, and a later resize paints it back because the element id still counts as a plate.
   const neu = document.createElement('div');
   neu.id = 'rotate-hint';
-  neu.textContent = text;
+  neu.textContent = 'Turn the phone upright to tip the\u00a0apparatus.';
   el.replaceWith(neu);
 }
 function mountRotatePlaque() {
@@ -8156,6 +8154,13 @@ function mountRotatePlaque() {
     while (el.firstChild) lab.appendChild(el.firstChild);
     el.appendChild(lab);
   }
+  const lab = el.querySelector(':scope > .vls-plaque__label');
+  if (lab) {
+    lab.style.whiteSpace = 'normal'; lab.style.overflow = 'visible'; lab.style.height = 'auto'; lab.style.textOverflow = 'clip';
+    if (!lab.querySelector('br')) {
+      lab.replaceChildren(document.createTextNode('Turn the phone upright'), document.createElement('br'), document.createTextNode('to tip the\u00a0apparatus.'));
+    }
+  }
   if (getComputedStyle(el).display === 'none' || !el.getClientRects().length) return;
   const r = el.getBoundingClientRect();
   const sig = Math.round(r.width) + 'x' + Math.round(r.height) + '@' + Math.round(r.left) + ',' + Math.round(r.top);
@@ -8164,8 +8169,6 @@ function mountRotatePlaque() {
   if (old) old.remove();
   el.dataset.rotateSig = sig;
   VLS.plaqueChrome(el);
-  const lab = el.querySelector(':scope > .vls-plaque__label');
-  if (lab) { lab.style.whiteSpace = 'normal'; lab.style.overflow = 'visible'; lab.style.height = 'auto'; lab.style.textOverflow = 'clip'; }
 }
 function mountHintPlaque() {
   const el = $('hint-plaque'); if (!el || !VLS.plaqueChrome) return;

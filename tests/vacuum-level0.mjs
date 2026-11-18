@@ -1775,6 +1775,79 @@ try {
       console.log('polish', where);
     }
   }
+  const rotateInk = `(() => {
+    const problems = [];
+    const el = document.getElementById('rotate-hint');
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || !el.getClientRects().length) return ['rotate plate hidden'];
+    const lab = el.querySelector('.vls-plaque__label') || el;
+    const px = parseFloat(getComputedStyle(lab).fontSize);
+    if (!(px >= 11)) problems.push('font ' + px);
+    const nodes = [...lab.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim());
+    if (nodes.length !== 2) problems.push('lines ' + nodes.length);
+    const want = ['Turn the phone upright', 'to tip the apparatus.'];
+    nodes.forEach((node, i) => {
+      const shown = node.textContent.replace(/\\u00a0/g, ' ');
+      if (shown !== want[i]) problems.push('line ' + i + ' ' + shown);
+    });
+    if (!nodes[1] || !nodes[1].textContent.includes('\\u00a0')) problems.push('tie missing');
+    const s = parseFloat(cs.getPropertyValue('--_s'));
+    const R = parseFloat(cs.getPropertyValue('--_R'));
+    const rule = el.querySelector('.vls-plaque__chrome path');
+    const stroke = rule ? (parseFloat(rule.getAttribute('stroke-width')) || 1.55) : 1.55;
+    const edge = (Number.isFinite(s) ? s : 0) + stroke / 2;
+    const face = el.getBoundingClientRect();
+    const faceMid = (face.left + face.right) / 2;
+    const svg = el.querySelector('svg.vls-plaque__chrome');
+    for (const node of nodes) {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      if (Math.abs((r.left + r.right) / 2 - faceMid) > 1) problems.push('off centre');
+      const g = Math.min(r.left - face.left - edge, r.top - face.top - edge, face.right - edge - r.right, face.bottom - edge - r.bottom);
+      if (g < 3) problems.push('border ' + g.toFixed(2));
+      if (!svg || !svg.viewBox || !Number.isFinite(s) || !Number.isFinite(R)) { problems.push('notch missing'); continue; }
+      const vb = svg.viewBox.baseVal, sr = svg.getBoundingClientRect();
+      const map = (x, y) => [sr.left + (x / vb.width) * sr.width, sr.top + (y / vb.height) * sr.height];
+      const screws = [[s, s], [vb.width - s, s], [s, vb.height - s], [vb.width - s, vb.height - s]];
+      const pts = [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom]];
+      let worst = 99;
+      for (const [sx, sy] of screws) {
+        const c = map(sx, sy);
+        const inwardX = sx < vb.width / 2 ? 1 : -1, inwardY = sy < vb.height / 2 ? 1 : -1;
+        const e2 = map(sx + inwardX * R * Math.SQRT1_2, sy + inwardY * R * Math.SQRT1_2);
+        const rad = Math.hypot(e2[0] - c[0], e2[1] - c[1]) + 0.775;
+        for (const [x, y] of pts) worst = Math.min(worst, Math.hypot(x - c[0], y - c[1]) - rad);
+      }
+      if (worst < 3) problems.push('notch ' + worst.toFixed(2));
+      let tops = 0, top = null;
+      const text = node.textContent;
+      for (let i = 0; i < text.length; i++) {
+        const rr = document.createRange();
+        rr.setStart(node, i); rr.setEnd(node, Math.min(text.length, i + 1));
+        const rect = rr.getClientRects()[0];
+        if (!rect || rect.width < 0.2) continue;
+        if (top === null) { top = rect.top; tops = 1; }
+        else if (Math.abs(rect.top - top) > 2) tops++;
+      }
+      if (tops > 1) problems.push('wrapped ' + text.replace(/\\u00a0/g, ' '));
+    }
+    return problems;
+  })()`;
+  const rotateSizes = [[320, 568], [340, 600], [360, 640], [375, 667], [390, 844], [412, 915], [300, 560]];
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: 'portraitPrimary', angle: 0 } });
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await boot({ settings: { theme: 'victorian' }, coins: 0, paidCoins: 0, owned: [1], best: {}, cleared: {}, pumpsSeen: {}, notebook: {}, notebookNew: {}, parts: {}, tutorialSeen: { levels: true, custom: true } });
+  if (!await ev(`window.VMStartLevel(1)`)) fail('victorian rotate plate did not start');
+  await sleep(200);
+  for (const [w, h] of rotateSizes) {
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: 'portraitPrimary', angle: 0 } });
+    await ev(`window.dispatchEvent(new Event('resize')); true`);
+    await sleep(150);
+    const where = 'victorian rotate ' + w + 'x' + h;
+    for (const p of await ev(rotateInk)) fail(where + ' ' + p);
+    console.log('rotate ink', where);
+  }
 } catch (err) {
   fail(err && err.stack ? err.stack.split('\n').slice(0, 4).join(' ') : String(err));
 } finally {
