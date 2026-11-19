@@ -209,8 +209,107 @@ try {
   if (!desk || desk.touch) fail('desktop was treated as a touch device ' + JSON.stringify(desk));
   if (!desk || desk.inputMode !== 'manual') fail('desktop did not stay manual ' + JSON.stringify(desk));
   if (desk.tiltSource === 'sensor' || desk.drag) fail('desktop took the sensor ' + JSON.stringify(desk));
-  if (desk.note !== 'No motion sensor: drag or use the arrow keys to tip the apparatus.') fail('desktop tilt note ' + desk.note);
+  if ((desk.note || '').replace(/\u00a0/g, ' ') !== 'No motion sensor: drag or use the arrow keys to tip the apparatus.') fail('desktop tilt note ' + desk.note);
   if (!/ \(no tilt sensor\)$/.test(desk.cap)) fail('desktop caption ' + desk.cap);
+
+  const buttonBreaks = `(() => {
+    const problems = [];
+    const plate = document.getElementById('p-title');
+    if (!plate || !plate.classList.contains('show')) return ['title hidden'];
+    plate.scrollTop = 0;
+    const pr = plate.getBoundingClientRect();
+    for (const b of plate.querySelectorAll('.row > button')) {
+      const face = b.querySelector('.vm-button-face') || b;
+      const text = [...face.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim());
+      const label = b.textContent.replace(/\\s+/g, ' ').trim();
+      const box = b.getBoundingClientRect();
+      const fs = parseFloat(getComputedStyle(face).fontSize);
+      if (!(box.height >= 44)) problems.push(label + ' height ' + box.height.toFixed(1));
+      if (!(fs >= 11)) problems.push(label + ' font ' + fs);
+      if (box.left < pr.left - 1 || box.right > pr.right + 1 || box.top < -1 || box.bottom > innerHeight + 1) problems.push(label + ' outside');
+      if (!text) { problems.push(label + ' no text'); continue; }
+      const src = text.textContent;
+      const re = /\\S+/g;
+      let m;
+      while ((m = re.exec(src))) {
+        const range = document.createRange();
+        range.setStart(text, m.index);
+        range.setEnd(text, m.index + m[0].length);
+        const rects = [...range.getClientRects()].filter((r) => r.width > 0.2);
+        if (rects.length > 1) problems.push(label + ' splits ' + m[0]);
+      }
+    }
+    return problems;
+  })()`;
+  const noteInk = `(() => {
+    const plate = document.getElementById('p-title');
+    const note = document.getElementById('tilt-note');
+    plate.scrollTop = 0;
+    const node = [...note.childNodes].find((n) => n.nodeType === 3);
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const ink = range.getBoundingClientRect();
+    const lines = [];
+    const s = node.textContent;
+    let top = null, start = 0;
+    const push = (end) => lines.push(s.slice(start, end).replace(/\\u00a0/g, ' ').trim());
+    for (let i = 0; i <= s.length; i++) {
+      if (i === s.length) { push(i); break; }
+      const rr = document.createRange();
+      rr.setStart(node, i); rr.setEnd(node, i + 1);
+      const rect = rr.getClientRects()[0];
+      if (!rect || rect.width < 0.2) continue;
+      if (top === null) { top = rect.top; start = i; }
+      else if (Math.abs(rect.top - top) > 2) { push(i); start = i; top = rect.top; }
+    }
+    const clean = lines.filter(Boolean);
+    return {
+      bottom: +ink.bottom.toFixed(1), vh: innerHeight,
+      gap: +(innerHeight - ink.bottom).toFixed(1),
+      over: plate.scrollHeight - plate.clientHeight,
+      last: clean[clean.length - 1] || '',
+    };
+  })()`;
+  const buttonSizes = [[300, 560], [320, 568], [340, 600], [360, 640], [390, 844], [568, 320], [844, 390]];
+  const noteSizes = [[320, 568], [360, 640], [390, 844], [568, 320], [640, 360], [844, 390], [820, 1180]];
+  await boot(seen, true);
+  for (const theme of ['victorian', 'bw']) {
+    await ev(`document.body.dataset.theme = ${JSON.stringify(theme)}; true`);
+    for (const [w, h] of buttonSizes) {
+      const portrait = h >= w;
+      await send('Emulation.setDeviceMetricsOverride', {
+        width: w, height: h, deviceScaleFactor: 1, mobile: true,
+        screenOrientation: { type: portrait ? 'portraitPrimary' : 'landscapePrimary', angle: portrait ? 0 : 90 },
+      });
+      await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+      await sleep(80);
+      const where = theme + ' title buttons ' + w + 'x' + h;
+      const problems = await ev(buttonBreaks);
+      console.log(where, JSON.stringify(problems));
+      for (const p of problems || ['no result']) if (p) fail(where + ' ' + p);
+    }
+    for (const [w, h] of noteSizes) {
+      const portrait = h >= w;
+      await send('Emulation.setDeviceMetricsOverride', {
+        width: w, height: h, deviceScaleFactor: 1, mobile: true,
+        screenOrientation: { type: portrait ? 'portraitPrimary' : 'landscapePrimary', angle: portrait ? 0 : 90 },
+      });
+      await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+      await sleep(60);
+      const ink = await ev(noteInk);
+      console.log(theme, 'note', w + 'x' + h, JSON.stringify(ink));
+      if (!ink || ink.over > 1 || !(ink.gap >= 10)) fail(theme + ' tilt note ' + w + 'x' + h + ' ' + JSON.stringify(ink));
+    }
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 820, height: 1180, deviceScaleFactor: 1, mobile: true,
+      screenOrientation: { type: 'portraitPrimary', angle: 0 },
+    });
+    await ev(`document.getElementById('tilt-note').textContent = 'No motion sensor: drag or use the arrow keys to tip the\\u00a0apparatus.'; true`);
+    const none = await ev(noteInk);
+    console.log(theme, 'no-sensor 820x1180', JSON.stringify(none));
+    if (!none || none.last.split(/\s+/).filter(Boolean).length < 2) fail(theme + ' no-sensor widows ' + (none && none.last));
+    await ev(`document.getElementById('tilt-note').textContent = ${JSON.stringify('On a phone, tap Begin and allow motion access. On a computer, drag or use the arrow keys to tip the\u00a0apparatus.')}; true`);
+  }
 
   if (stripped && stripped.identifier) await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: stripped.identifier });
   const iosStub = `(() => {
