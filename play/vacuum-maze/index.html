@@ -7919,6 +7919,7 @@ function beginRun(level, demo) {
   state.winT = 0; state.toast = null; state.seenCells = new Set(); state.contacted = false;
   kst.ax = kst.ay = 0; drag = null;
   if (!demo) {
+    ensureMotion();
     state.started = true; state.screen = 'playing'; showPanel(null); lockOrientation();
     const L = state.level, b = bodyFor(L);
     if (L.tutorial) {
@@ -8216,10 +8217,45 @@ function showHint() {
   el.classList.add('show'); hintT = 6;
   requestAnimationFrame(mountHintPlaque);
 }
+function touchDevice() {
+  // iPadOS desktop Safari often has no ontouchstart. A coarse pointer or any touch point still means a phone or tablet.
+  if ('ontouchstart' in window) return true;
+  if (navigator.maxTouchPoints > 0) return true;
+  return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+}
+let motionAsk = null;
+function askMotion() {
+  if (motionAsk) return motionAsk;
+  motionAsk = sensor.request().catch(() => 'error');
+  return motionAsk;
+}
+function ensureMotion() {
+  if (!touchDevice()) return;
+  const DM = window.DeviceMotionEvent;
+  if (!DM || typeof DM.requestPermission !== 'function') return;
+  const p = sensor.st.permission;
+  if (p === 'granted' || p === 'denied' || p === 'not-required') return;
+  // The first gesture missed. This level start is a new gesture, so ask once more.
+  if (p === 'error') motionAsk = null;
+  askMotion();
+}
+function armMotionGesture() {
+  const once = () => {
+    removeEventListener('pointerdown', once, true);
+    removeEventListener('touchend', once, true);
+    if (!touchDevice()) return;
+    const DM = window.DeviceMotionEvent;
+    if (DM && typeof DM.requestPermission === 'function') askMotion();
+  };
+  addEventListener('pointerdown', once, true);
+  addEventListener('touchend', once, true);
+}
 async function detectSensor() {
   if (!('DeviceMotionEvent' in window) && !('DeviceOrientationEvent' in window)) { setManual('none'); return; }
-  const r = await sensor.request();
-  if (r === 'denied' || r === 'error') { setManual('denied'); return; }
+  const r = await askMotion();
+  if (r === 'denied') { setManual('denied'); return; }
+  // 'error' is a missed gesture. Level start asks again; do not lock the phone into the denied sentence.
+  if (r === 'error') return;
   await new Promise((res) => setTimeout(res, 1200));
   if (sensor.st.events === 0) setManual('none'); else inputMode = 'sensor';
 }
@@ -8251,7 +8287,13 @@ function noteInput() { state.lastInput = performance.now(); }
 for (const ev of ['pointerdown', 'pointermove', 'wheel', 'keydown']) addEventListener(ev, noteInput, { passive: true, capture: true });
 function updateTilt(dt) {
   const s = sensor.update(dt, settings.smoothing);
-  if (inputMode !== 'sensor' && sensor.live()) inputMode = 'sensor';
+  if (inputMode !== 'sensor' && sensor.live()) {
+    inputMode = 'sensor';
+    const note = $('tilt-note');
+    if (note) note.textContent = tiltNote();
+    const hint = $('hint-plaque');
+    if (hint && hint.classList.contains('show')) { hint.classList.remove('show'); hintT = 0; }
+  }
   if (sensor.live()) { const r = tiltInputRef; if (!r || Math.hypot(s.x - r.x, s.y - r.y) > TILT_INPUT) { if (r) noteInput(); tiltInputRef = { x: s.x, y: s.y }; } }
   const mt = manualTilt(dt), manualActive = !!drag || T.angleOf(mt) > 0.05 || keyDirs().x || keyDirs().y;
   let t;
@@ -8314,7 +8356,7 @@ function makeTutorialLevel(mode) {
   return tutorialLevel;
 }
 function tutorialLine() {
-  const t = state.tutorial, desk = !('ontouchstart' in window), custom = state.tutorialMode === 'custom';
+  const t = state.tutorial, desk = !touchDevice(), custom = state.tutorialMode === 'custom';
   if (!t || !t.steered) return desk
     ? 'Drag, or the arrow keys, to tip the tube. Space pauses.'
     : 'Tip the phone, or drag, to steer the atom.';
@@ -8971,6 +9013,15 @@ window.VMShowPracticeDone = function () {
     // The panel overlap can be uniform black in B&W (the plate fill matches the backdrop). The full plate still changes when the HUD is painted, so that difference is the check that the probe can see ink.
     for (let i = 0; i < quiet.ref.length; i++) if (loud.ref[i] !== quiet.ref[i]) reference++;
     return { n: quiet.pix.length, ink, leaked, painted: leaked > 0, reference };
+  };
+  window.VMTiltProbe = function () {
+    return {
+      inputMode, inputReason, tiltSource: state.tiltSource || '', drag: !!drag,
+      events: sensor.st.events, permission: sensor.st.permission, live: sensor.live(),
+      note: tiltNote(), line: tutorialLine(),
+      cap: `${state.tiltSource || ''}${inputMode === 'manual' ? ' (no tilt sensor)' : ''}`,
+      touch: touchDevice(),
+    };
   };
   window.VMLessonRects = function () {
     const box = (el) => {
@@ -10212,9 +10263,12 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('resize', resize);
 addEventListener('orientationchange', () => setTimeout(resize, 200));
 bindLessonMedia();
-sensor.attach();   // Android / desktop deliver events without a prompt; iOS needs request() from a tap (Begin)
+// Android and desktop deliver motion events with no prompt, so listen from load. A touch device on iOS 13+ waits for request() from a gesture.
+const needsPrompt = window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function';
+if (!needsPrompt || !touchDevice()) sensor.attach();
+armMotionGesture();
 // desktops: no motion events within 1.5 s of load → manual steering, with the plaque hint once a level starts
-setTimeout(() => { if (inputMode === 'unknown' && sensor.st.events === 0 && !('ontouchstart' in window)) { inputMode = 'manual'; inputReason = 'none'; } }, 1500);
+setTimeout(() => { if (inputMode === 'unknown' && sensor.st.events === 0 && !touchDevice()) { inputMode = 'manual'; inputReason = 'none'; } }, 1500);
 
 if (window.Capacitor && window.Capacitor.Plugins) { const SB = window.Capacitor.Plugins.StatusBar; if (SB && SB.hide) SB.hide().catch(() => {}); }
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !window.Capacitor && !document.documentElement.hasAttribute('data-singlefile')) {
