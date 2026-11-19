@@ -688,6 +688,491 @@
   body.help-open #b-theme { position: relative; z-index: 12; }
   body.help-open #p-help.show { top: calc(var(--sat) + var(--bar) + 12px); transform: translate(-50%, 0);
     max-height: calc(100vh - var(--sat) - var(--sab) - var(--bar) - 24px); }
+
+  /* First-time per-mode tutorials (10 Nov 2026): kit ivory plaque + brass Skip plate, docked clear of the bench.
+     Padding follows the kit plaque rule (screw + concave arc + clearance). In portrait the plate
+     grows with its text and is not height-clipped. On a short or landscape phone the body copy may
+     scroll inside the padding box so the playfield stays usable; Next then sits beside Skip.
+     The phone "Whole bench" plate is hidden while the lesson is open (it shared the dock and was
+     peeking out as a gold sliver). A rotate-to-portrait hint, if present, is left alone. */
+  #coach { position: fixed; inset: 0; z-index: 8; pointer-events: none; }
+  #coach[hidden] { display: none !important; }
+  #coach-spot { position: fixed; pointer-events: none; border: 2px solid currentColor; box-shadow: none;
+    border-radius: 0; opacity: .7; }
+  body[data-theme="victorian"] #coach-spot { color: #5a3a20; }
+  body[data-theme="bw"] #coach-spot { color: #fff; }
+  #coach-slip { pointer-events: auto; position: fixed; left: 0; top: 0; width: min(420px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px); display: flex; flex-direction: column; align-items: stretch;
+    height: auto; max-height: none;
+    padding: calc(var(--_s, 10px) + var(--_R, 13px) + 2px) calc(var(--_s, 10px) + var(--_R, 13px) + 6px);
+    box-sizing: border-box; overflow: hidden; border-radius: 0; box-shadow: none; }
+  #coach-slip, #coach-slip .sub, #coach-slip h2, #coach-copy { white-space: normal !important; overflow-wrap: anywhere; word-break: break-word; }
+  #coach-slip h2 { font: 700 22px/1.15 var(--vls-font-ivory); margin: 0 0 10px; border: 0; padding: 0; letter-spacing: 0; flex: 0 0 auto; }
+  #coach-slip .sub, #coach-copy { display: block; margin: 0 0 12px; max-width: 100%; font: 16px/1.35 var(--vls-font-ivory);
+    flex: 1 1 auto; min-height: 0; }
+  /* 1 px side inset inside the copy's own scroll box: a line-initial j hooks
+     left of its advance and was clipped by the scroll box edge. */
+  #coach-copy { padding-left: 1px; padding-right: 1px; box-sizing: border-box; }
+  #coach-slip .row { margin: 0; flex: 0 0 auto; }
+  #coach-slip .row button { min-height: 44px; flex: 1 1 auto; }
+  #coach-skip, #coach-next { pointer-events: auto; }
+  #coach-skip { position: fixed; left: 0; top: 0; min-width: 72px; min-height: 44px;
+    width: min(420px, calc(100vw - 24px)); padding: 0 14px; margin: 0; box-sizing: border-box; }
+  /* Hide only the phone "Whole bench" plate (it shared the dock and drew a gold sliver). Do not hide
+     a rotate-to-portrait (or rotate-to-landscape) hint if the shell or a later pass adds one. */
+  body.coach-open #b-overview { display: none !important; }
+  /* During a short or landscape lesson, hide the footer caption so it cannot
+     collide with BUILD AREA on a sliver of bench. Restored when the lesson ends. */
+  body.coach-open.coach-short #bench-key,
+  body.coach-open.coach-tray-bottom #bench-key,
+  body.coach-open.coach-side-compact #bench-key { display: none !important; }
+  body.coach-short #coach-slip .row { display: none; }
+  @media (orientation: landscape) and (max-height: 430px) {
+    #coach-slip h2 { font-size: 16px; margin-bottom: 4px; }
+    #coach-slip .sub, #coach-copy { font-size: 13px; line-height: 1.3; margin-bottom: 6px; }
+  }
+  body.coach-short #coach-slip h2 {
+    font-size: 16px; line-height: 1.15; margin: 0 0 4px;
+  }
+  #coach-scroll-cue {
+    display: none; position: absolute; left: 0; right: 0;
+    bottom: calc(var(--_s, 10px) + 2px);
+    margin: 0; padding: 0;
+    font: 700 14px/1 var(--vls-font-ivory); color: var(--vls-ivory-ink, #2b2015);
+    letter-spacing: 0; pointer-events: none; text-align: center; z-index: 1;
+  }
+  #coach-slip.coach-copy-overflow #coach-scroll-cue { display: block; }
+  /* Fade the last line only when there is more than one visible line. A 14 px
+     mask on a single-line copy box (tight 320×320) washed out the first sentence. */
+  #coach-copy.coach-copy-overflow-mask {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
+  }
+  body[data-theme="bw"] #coach-scroll-cue { color: #000; }
+  /* Narrow the side parts tray during a short landscape lesson so the ivory
+     plate can carry its title in full and a usable strip of bench remains. */
+  body.coach-open.coach-side-compact { --drawer: 200px; }
+  /* At 480-wide short landscape the 200 px tray left only ~110 px of type
+     inside the plaque, so "The experiment" wrapped and the body scrolled. */
+  @media (max-width: 500px) {
+    /* 184 px (was 168): with the real engraved face, MOTOR ↻ needs a 108 px
+       plate face to stay at 12 px beside its icon (Manager craft rule). */
+    body.coach-open.coach-side-compact { --drawer: 184px; }
+  }
+  /* Professor HOLD on 00d6d87 / Manager craft rule: the compact side tray keeps
+     12 px engraving. One column of full-width plates, icon beside the label, so
+     the label gets the whole face instead of 6-8 px type in a half-width cell. */
+  body.coach-open.coach-side-compact[data-theme] #drawer { grid-template-columns: minmax(0, 1fr); }
+  body.coach-open.coach-side-compact #drawer button { height: 46px; }
+  body.coach-open.coach-side-compact #drawer button .brass-face { flex-direction: row; gap: 4px; padding: 0 2px; }
+  body.coach-open.coach-side-compact #drawer button canvas { width: 22px; height: 22px; flex: none; }
+  body.coach-open.coach-side-compact #drawer button small {
+    width: auto; flex: 0 1 auto; min-width: 0; max-width: 100%; box-sizing: border-box;
+    font-size: 12px; line-height: 14px; padding: 0 1px; overflow: visible;
+  }
+  body[data-theme="bw"].coach-open.coach-side-compact #drawer button { padding: 4px !important; }
+  /* Keep the scrolling tray inside the plaque padding box so a last row
+     is not clipped by the engraved border. */
+  body.coach-open.coach-side-compact[data-theme] #drawer {
+    bottom: calc(var(--sab) + 36px);
+  }
+  @media (max-width: 599px) {
+    #coach-slip h2 { font-size: 18px; margin-bottom: 8px; }
+    #coach-slip .sub, #coach-copy { font-size: 15px; line-height: 1.35; margin-bottom: 10px; }
+  }
+  /* Phone with the tray under the bench: compact it to one row of two parts while the
+     lesson is on, leaving a visible bench strip. Typography may tighten at 320; padding
+     stays at the kit inset so type never meets the engraved border or screws. Driven by
+     body.coach-tray-bottom (set from layout, not CSS orientation) so a landscape viewport
+     that still lays out a bottom tray is handled the same way. */
+  @media (max-width: 599px) {
+    /* top:auto / width:auto must be set here: the default drawer is a side
+       column, and the portrait media query that usually clears those is not
+       in force on a slightly-landscape near-square (360×340). */
+    body.coach-open.coach-tray-bottom #drawer-plaque,
+    body.coach-open.coach-tray-bottom #drawer-end {
+      top: auto; width: auto;
+      left: calc(var(--sal) + 6px); right: calc(var(--sar) + 46px);
+      height: 112px; bottom: calc(var(--sab) + 8px); padding: 16px 20px;
+    }
+    body.coach-open.coach-tray-bottom #drawer-end {
+      display: flex; align-items: center; justify-content: center;
+      left: auto; right: calc(var(--sar) + 6px); width: 34px; padding: 0;
+      box-sizing: border-box; pointer-events: none;
+      border: 1px solid var(--vls-brass-dark);
+      background: linear-gradient(90deg, #fff1b8, #d9a943 16%, #9a6b1f 42%, #4a300a 78%, #1a0e06);
+      box-shadow: 0 4px 10px #000b, inset 1px 1px 1px #fff1b8aa, inset -2px -2px 2px #130a03;
+      color: #241706; text-shadow: 0 1px #edc565; font-size: 16px;
+    }
+    body[data-theme="bw"].coach-open.coach-tray-bottom #drawer-end {
+      color: #fff; background: #000; border: 2px solid #fff; box-shadow: none; text-shadow: none;
+    }
+    body.coach-open.coach-tray-bottom[data-theme] #drawer {
+      top: auto; width: auto;
+      --tray-columns: 2; height: 68px; grid-template-rows: 60px; grid-auto-rows: 60px;
+      grid-auto-flow: column; grid-template-columns: none;
+      /* Same half-width columns as the portrait bottom tray. Without this,
+         a landscape dock (360×340) leaves grid-auto-columns at auto and
+         columns shrink to the 26 px canvas, so Victorian labels overflow. */
+      grid-auto-columns: calc((100% - (var(--tray-columns) - 1) * 6px) / var(--tray-columns));
+      gap: 6px;
+      scroll-snap-type: x mandatory; scroll-padding-inline: 8px;
+      bottom: calc(var(--sab) + 24px);
+      left: calc(var(--sal) + 28px); right: calc(var(--sar) + 66px);
+      overflow-x: auto; overflow-y: hidden;
+    }
+    body.coach-open.coach-tray-bottom #drawer button { height: 60px; scroll-snap-align: start; }
+    /* Editor catalogue: the cat-head otherwise spans two rows and cuts off Remove.
+       Collapse it to one cell so Coins, Move, and the rest scroll sideways. */
+    body.coach-open.coach-tray-bottom #drawer .cat-head {
+      grid-row: 1; grid-column: auto; height: 60px; padding: 0; gap: 0;
+      flex-direction: row; align-items: stretch;
+    }
+    body.coach-open.coach-tray-bottom #drawer .cat-head > span { display: none; }
+    body.coach-open.coach-tray-bottom #drawer .cat-head button { height: 60px; }
+  }
+  @media (max-width: 359px) {
+    body.coach-open #coach-slip h2 { font-size: 16px; margin-bottom: 6px; }
+    body.coach-open #coach-slip .sub, body.coach-open #coach-copy { font-size: 14px; line-height: 1.3; margin-bottom: 8px; }
+  }
+  /* Short/landscape typography must win over the max-width: 599px 15px rule, so three
+     short lines can fit the smallest landscape plaque. */
+  body.coach-short #coach-slip h2 { font-size: 16px; line-height: 1.15; margin: 0 0 4px; }
+  body.coach-short #coach-slip .sub, body.coach-short #coach-copy { font-size: 13px; line-height: 1.25; margin-bottom: 4px; }
+  /* Landscape phones: one size tighter so four short lines fit the smallest plaque.
+     The kit label and a page-wide white-space:normal !important otherwise wrap
+     "The experiment" onto two lines on a narrow plate. Keep the title on one line. */
+  body.coach-open.coach-short:not(.coach-tray-bottom) #coach-slip h2,
+  body.coach-open.coach-short:not(.coach-tray-bottom) #coach-slip h2.vls-plaque__label {
+    font-size: 15px; line-height: 1.15; margin: 0 0 2px;
+    white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis;
+    overflow-wrap: normal !important; word-break: normal !important;
+  }
+  body.coach-open.coach-short:not(.coach-tray-bottom) #coach-slip .sub,
+  body.coach-open.coach-short:not(.coach-tray-bottom) #coach-copy { font-size: 12px; line-height: 1.2; margin-bottom: 2px; }
+  /* 480-wide short landscape: slightly smaller type so every sentence fits
+     without scrolling, still inside the kit padding box. */
+  @media (max-width: 500px) {
+    body.coach-open.coach-short:not(.coach-tray-bottom) #coach-slip h2,
+    body.coach-open.coach-short:not(.coach-tray-bottom) #coach-slip h2.vls-plaque__label {
+      font-size: 13px; line-height: 1.15;
+    }
+    body.coach-open.coach-short:not(.coach-tray-bottom) #coach-slip .sub,
+    body.coach-open.coach-short:not(.coach-tray-bottom) #coach-copy { font-size: 11px; line-height: 1.2; }
+  }
+  /* Compact the experiment title plate during a short landscape lesson so the ivory
+     plaque can carry its copy and a usable bench remains. The brief stays available
+     if the player opens the title. */
+  body.coach-open.coach-short:not(.coach-tray-bottom) #title:not([open]) #t-slip,
+  body.coach-open.coach-short:not(.coach-tray-bottom) #title:not([open]) #t-task,
+  body.coach-open.coach-short:not(.coach-tray-bottom) #title:not([open]) #t-caption { display: none !important; }
+  body.coach-open.coach-short:not(.coach-tray-bottom) #title { min-height: 44px; padding: 6px 10px; min-width: 0; }
+  body.coach-open.coach-short:not(.coach-tray-bottom) #title b,
+  body.coach-open.coach-short:not(.coach-tray-bottom) #title #t-name {
+    font-size: 12px; line-height: 14px; white-space: nowrap !important; overflow: hidden;
+    text-overflow: ellipsis; overflow-wrap: normal; word-break: normal; max-width: 100%; flex-shrink: 1;
+  }
+  /* 320–420-wide short landscape: the default 7×44 px bar buttons plus
+     6 px gaps overflow the viewport or squeeze the experiment title to an
+     empty plate (400×320). Shrink only while the lesson is up. */
+  @media (max-width: 430px) {
+    body.coach-open.coach-short:not(.coach-tray-bottom) #bar {
+      gap: 2px; overflow: hidden; max-width: 100%; box-sizing: border-box;
+    }
+    body.coach-open.coach-short:not(.coach-tray-bottom) #bar button {
+      flex: 0 0 32px; width: 32px; min-width: 0; max-width: 32px; padding: 0;
+      box-sizing: border-box;
+    }
+    body.coach-open.coach-short:not(.coach-tray-bottom) #title {
+      padding: 4px 10px;
+    }
+  }
+  /* Side tray during a short landscape lesson: keep complete buttons on screen;
+     further catalogue rows scroll instead of being cut off. */
+  body.coach-open.coach-side-compact #drawer { overflow-x: hidden; overflow-y: auto; }
+  body.coach-open.coach-side-compact #drawer-plaque { overflow: hidden; }
+  #drawer-scroll-cue {
+    display: none; position: fixed; margin: 0; padding: 0;
+    font: 700 12px/1 var(--vls-font-ivory); color: var(--vls-ivory-ink, #2b2015);
+    letter-spacing: 0; pointer-events: none; text-align: center; z-index: 4;
+  }
+  body.drawer-tray-overflow #drawer-scroll-cue { display: block; }
+  body[data-theme="bw"] #drawer-scroll-cue { color: #000; }
+  /* During a compact bottom-tray lesson, lift the parts counter so it does
+     not sit on the tray's bottom edge. */
+  body.coach-open.coach-tray-bottom #bench-footer {
+    bottom: calc(var(--sab) + 126px);
+    left: auto;
+    right: calc(var(--sar) + 10px);
+    width: auto;
+  }
+  /* Tight square / short-portrait lessons (body.coach-tight, vh <= 450 with
+     the tray under the bench). Collapse the two-row phone bar and shorten the
+     bottom tray so Skip, the plaque (with at least the first lesson sentence)
+     and a 40 px playfield all stay on screen. 320×568 and taller phones are
+     unchanged. The editor bar is only restyled while editing — never shown
+     during an experiments lesson. */
+  body.coach-open.coach-tray-bottom.coach-tight { --bar: 40px; }
+  @media (max-width: 599px) {
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #bar {
+      display: flex; flex-wrap: nowrap; align-items: center; gap: 0;
+      height: auto; min-height: 40px; padding: 0 2px;
+      grid-template-rows: none; grid-template-columns: none;
+      overflow: hidden; box-sizing: border-box; max-width: 100%;
+    }
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title {
+      flex: 1 1 48px; min-width: 0; width: auto; grid-row: auto; grid-column: auto;
+      min-height: 40px; height: 40px; padding: 2px 4px;
+      overflow: hidden; box-sizing: border-box;
+    }
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title:not([open]) #t-slip,
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title:not([open]) #t-task,
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title:not([open]) #t-caption { display: none !important; }
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title b,
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title #t-name {
+      font-size: 12px; line-height: 14px; white-space: nowrap !important; overflow: hidden;
+      text-overflow: ellipsis; overflow-wrap: normal; word-break: normal; max-width: 100%;
+    }
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #bar button {
+      flex: 0 0 36px; width: 36px; min-width: 0; max-width: 36px;
+      height: 40px; min-height: 40px; padding: 0; box-sizing: border-box;
+    }
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #b-editor-back:not([hidden]) {
+      position: static; top: auto; left: auto; width: auto; flex: 0 0 auto;
+    }
+    /* Editor lesson only: never force the editor bar on during experiments. */
+    body.editing.coach-open.coach-tray-bottom.coach-tight #editor-bar {
+      display: flex; flex-wrap: nowrap; align-items: center; gap: 1px;
+      height: 40px; min-height: 40px; padding: 0 1px;
+      grid-template-columns: none; overflow: hidden; box-sizing: border-box;
+    }
+    body.editing.coach-open.coach-tray-bottom.coach-tight #editor-bar #ed-status {
+      display: none;
+    }
+    body.editing.coach-open.coach-tray-bottom.coach-tight #editor-bar button {
+      flex: 1 1 0; min-width: 0; max-width: none; height: 36px; min-height: 36px;
+      padding: 0; font-size: 10px; letter-spacing: -0.04em;
+      overflow: hidden; box-sizing: border-box;
+    }
+    body.editing.coach-open.coach-tray-bottom.coach-tight #editor-bar button .brass-face {
+      letter-spacing: -0.04em; font-size: 10px; padding-left: 2px; padding-right: 2px;
+    }
+    /* Icon-only plates stay narrow so SHARE/SAVE/TEST keep a full word. */
+    body.editing.coach-open.coach-tray-bottom.coach-tight #editor-bar #b-ed-exit,
+    body.editing.coach-open.coach-tray-bottom.coach-tight #editor-bar #b-ed-fit {
+      flex: 0 0 36px; max-width: 40px;
+    }
+    /* Plate widths follow label length so every label keeps legible type. */
+    body.editing.coach-open.coach-tray-bottom.coach-tight #editor-bar #b-ed-new { flex: 0.8 1 0; }
+    body.editing.coach-open.coach-tray-bottom.coach-tight #editor-bar #b-ed-save { flex: 0.95 1 0; }
+    body.editing.coach-open.coach-tray-bottom.coach-tight #editor-bar #b-ed-share { flex: 1.15 1 0; }
+    body.editing.coach-open.coach-tray-bottom.coach-tight #editor-bar #b-ed-test { flex: 1.15 1 0; }
+    body.coach-open.coach-tray-bottom.coach-tight #drawer-plaque,
+    body.coach-open.coach-tray-bottom.coach-tight #drawer-end {
+      top: auto; width: auto;
+      left: calc(var(--sal) + 6px); right: calc(var(--sar) + 46px);
+      height: 62px; bottom: calc(var(--sab) + 4px); padding: 8px 12px;
+    }
+    body.coach-open.coach-tray-bottom.coach-tight #drawer-end {
+      /* left: auto (Manager M2): the shared rule above sets left, which won
+         over right and parked the ↔ handle on the first tile at 320x320. */
+      left: auto; right: calc(var(--sar) + 6px); width: 34px; padding: 0;
+    }
+    body.coach-open.coach-tray-bottom.coach-tight[data-theme] #drawer {
+      top: auto; width: auto;
+      height: 44px; grid-template-rows: 40px; grid-auto-rows: 40px;
+      bottom: calc(var(--sab) + 14px);
+      left: calc(var(--sal) + 20px); right: calc(var(--sar) + 52px);
+    }
+    body.coach-open.coach-tray-bottom.coach-tight #drawer button,
+    body.coach-open.coach-tray-bottom.coach-tight #drawer .cat-head,
+    body.coach-open.coach-tray-bottom.coach-tight #drawer .cat-head button { height: 40px; min-height: 40px; }
+    body.coach-open.coach-tray-bottom.coach-tight #bench-footer {
+      bottom: calc(var(--sab) + 72px);
+    }
+  }
+  /* 350+ tall (320x360, 340x360): the 48 px row lets two-word labels (WINCH
+     CORD, OAK BLOCK) take two 12 px lines instead of stepping down to 10 px. */
+  @media (max-width: 599px) and (min-height: 350px) {
+    body.coach-open.coach-tray-bottom.coach-tight #drawer-plaque,
+    body.coach-open.coach-tray-bottom.coach-tight #drawer-end {
+      height: 76px; padding: 12px 14px;
+    }
+    body.coach-open.coach-tray-bottom.coach-tight #drawer-end {
+      left: auto; padding: 0;
+    }
+    body.coach-open.coach-tray-bottom.coach-tight[data-theme] #drawer {
+      height: 52px; grid-template-rows: 48px; grid-auto-rows: 48px;
+      bottom: calc(var(--sab) + 16px);
+    }
+    body.coach-open.coach-tray-bottom.coach-tight #drawer button,
+    body.coach-open.coach-tray-bottom.coach-tight #drawer .cat-head,
+    body.coach-open.coach-tray-bottom.coach-tight #drawer .cat-head button { height: 48px; min-height: 48px; }
+    body.coach-open.coach-tray-bottom.coach-tight #bench-footer {
+      bottom: calc(var(--sab) + 88px);
+    }
+  }
+
+  /* Tight squares already carry body.coach-short (13 px copy), but a 320-wide
+     plate wraps the first lesson sentence onto two lines and the reserved
+     floor was only one line. Use the short-landscape sizes so both lines
+     fit, and keep type inside the kit padding box. */
+  body.coach-open.coach-tray-bottom.coach-tight #coach-slip h2,
+  body.coach-open.coach-tray-bottom.coach-tight #coach-slip h2.vls-plaque__label {
+    font-size: 14px; line-height: 1.15; margin: 0 0 2px;
+  }
+  body.coach-open.coach-tray-bottom.coach-tight #coach-slip .sub,
+  body.coach-open.coach-tray-bottom.coach-tight #coach-copy {
+    font-size: 12px; line-height: 1.2; margin-bottom: 2px;
+  }
+
+  /* ---- Labs Manager craft HOLD on b843102 (12 Nov 2026) ---- */
+  /* B1: the tight lesson tray is one 40–48 px row, so its face is only 24–32 px
+     tall. Icon above label pushed the engraving past the face bottom (SPIKED,
+     MOTOR, MOVE cut; B&W MOTOR on the white outline). Set icon and label side
+     by side so the whole label line sits inside the face and the outline. */
+  @media (max-width: 599px) {
+    body.coach-open.coach-tray-bottom.coach-tight #drawer button .brass-face {
+      flex-direction: row; gap: 4px; padding: 0 2px; }
+    body.coach-open.coach-tray-bottom.coach-tight #drawer button canvas { width: 20px; height: 20px; flex: none; }
+    /* overflow visible: the label shrink-wraps its advance width, so a hidden
+       overflow cut the last glyph's overhang (OAK RAMP's P, 977's 7 by 0.4–1.8 px).
+       fitDrawerEngraving keeps the advance 3 px inside the face each side. */
+    body.coach-open.coach-tray-bottom.coach-tight #drawer button small {
+      width: auto; flex: 0 1 auto; min-width: 0; line-height: 14px; overflow: visible; }
+    body.coach-open.coach-tray-bottom.coach-tight #drawer .cat-head button .brass-face { gap: 3px; }
+    /* The compact bar title: centre the one-line name between the engraved
+       rules (it sat on the top rule at 320×320). */
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title { padding: 0 6px; justify-content: center; }
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title summary {
+      display: flex; align-items: center; min-height: 36px; box-sizing: border-box; }
+    body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title summary::after { top: 50%; transform: translateY(-50%); }
+  }
+  /* B2: editor bar labels stay on one line inside their faces. Faces share the
+     bar evenly (no label pushes another off the bar); the label fitter in
+     game.js shrinks type until the engraving clears the face. */
+  /* 2 px of face on each side of the label: engraved capitals overhang their
+     advance, and content-sized desktop plates put the last letter on the edge. */
+  #editor-bar button .brass-face { white-space: nowrap; padding-left: 2px; padding-right: 2px; }
+  @media (max-width: 599px) and (orientation: landscape) {
+    body.editing #editor-bar { gap: 4px; }
+    body.editing #editor-bar button { flex: 1 1 0; min-width: 0; }
+    body.editing #editor-bar #b-ed-exit, body.editing #editor-bar #b-ed-fit { flex: 0 0 44px; }
+    body.editing #editor-bar #b-ed-new { flex-grow: 0.8; } body.editing #editor-bar #b-ed-save { flex-grow: 0.95; }
+    body.editing #editor-bar #b-ed-share, body.editing #editor-bar #b-ed-test { flex-grow: 1.15; }
+    body.editing #editor-bar #ed-status { flex: 0.6 1 0; min-width: 0; }
+  }
+  /* Under 420 px wide there is no room for the status line beside six plates
+     (SHARE was cut at 360×340); the editor's toasts still report saves. */
+  @media (max-width: 420px) and (orientation: landscape) {
+    body.editing #editor-bar #ed-status { display: none; }
+    /* B6 band only (landscape <= 420 wide is always <= 420 tall): the icon
+       plates give 8 px each to New / Share / Save / Test, which overran their
+       faces at 320x300 and 360x300 with 10 px engraving. */
+    body.editing #editor-bar { gap: 3px; }
+    body.editing #editor-bar #b-ed-exit, body.editing #editor-bar #b-ed-fit { flex: 0 0 36px; }
+  }
+  /* Rail lesson on a bottom tray: the parts count moves to the left so the
+     Skip/Next rail on the right never sits on it. */
+  body.coach-open.coach-rail.coach-tray-bottom #bench-footer { left: calc(var(--sal) + 12px); right: auto; }
+  /* B6: ordinary play on a narrow short landscape (360×340, 400×320, 480×320).
+     Live 591ae790 squeezed the experiment title into a one-letter column, which
+     grew the bar down the screen and pushed the run lever off it, and the
+     300 px tray left no bench. Give the title its own row above the controls
+     (as on a portrait phone) and use the compact side tray. Not during a
+     lesson (the lesson has its own compact bar), not in the editor (its bar and tray are
+     separate), and never in portrait. */
+  @media (orientation: landscape) and (max-width: 499px) and (max-height: 430px) {
+    body:not(.coach-open):not(.editing) { --drawer: 184px; }
+    body:not(.coach-open):not(.editing) #bar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: auto 40px; gap: 4px; }
+    body:not(.coach-open):not(.editing) #title { grid-row: 1; grid-column: 1 / -1; width: 100%; min-height: 0; padding: 6px 12px; }
+    body:not(.coach-open):not(.editing) #title b { font-size: 13px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    body:not(.coach-open):not(.editing) #title .fa-objective-slip { margin-top: 2px; padding: 1px 8px 2px; }
+    body:not(.coach-open):not(.editing) #title .fa-objective-slip > #t-task { font-size: 11px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    body:not(.coach-open):not(.editing) #bar button { height: 40px; min-height: 40px; width: 100%; min-width: 0; padding: 0; }
+    body:not(.coach-open):not(.editing) #b-editor-back:not([hidden]) { position: absolute; top: 100%; left: 0; width: 84px; margin-top: 4px; font-size: 11px; }
+    /* Professor HOLD on 00d6d87 blocker 2: live reads 12 px here, so the
+       168 px B6 tray is one column of full-width plates with the icon beside
+       a 12 px label (was two half-width cells at 6 / 8.5 px). */
+    body:not(.coach-open):not(.editing)[data-theme] #drawer { grid-template-columns: minmax(0, 1fr); }
+    body:not(.coach-open):not(.editing) #drawer button { height: 46px; }
+    body:not(.coach-open):not(.editing) #drawer button .brass-face { flex-direction: row; gap: 4px; padding: 0 2px; }
+    body:not(.coach-open):not(.editing) #drawer button canvas { width: 22px; height: 22px; flex: none; }
+    body:not(.coach-open):not(.editing) #drawer button small { width: auto; flex: 0 1 auto; min-width: 0; font-size: 12px; line-height: 14px; overflow: visible; }
+    body[data-theme="bw"]:not(.coach-open):not(.editing) #drawer button { padding: 4px !important; }
+  }
+
+
+  /* Manager HOLD M1 on 00d6d87: the compact lesson bar ellipsized the experiment
+     title ("1. Inclined Deliv…", "1…"). Up to 380 px wide the lesson bar gives
+     the title its own row above the controls (as B6 does in ordinary play), on
+     one line at 11 px, never cut. Wider compact bars wrap it on words. */
+  body.coach-open.coach-short:not(.coach-tray-bottom) #title b,
+  body.coach-open.coach-short:not(.coach-tray-bottom) #title #t-name,
+  body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title b,
+  body:not(.editing).coach-open.coach-tray-bottom.coach-tight #title #t-name {
+    white-space: normal !important; text-overflow: clip !important; overflow: visible !important;
+    overflow-wrap: normal !important; word-break: normal !important; font-size: 11px !important; line-height: 13px !important; display: block;
+  }
+  /* The engraved rule follows the shorter compact plate: a 7 px inset left a
+     24 px band for two 13 px lines, so one glyph sat on the rule (400x320). */
+  body[data-theme="victorian"].coach-open.coach-short:not(.coach-tray-bottom) #title::before,
+  body[data-theme="victorian"]:not(.editing).coach-open.coach-tray-bottom.coach-tight #title::before { inset: 4px 5px !important; }
+  @media (max-width: 380px) {
+    body:not(.editing).coach-open.coach-short.coach-tight #bar {
+      display: grid !important; grid-template-columns: repeat(7, minmax(0, 1fr)) !important; grid-template-rows: auto 36px !important;
+      gap: 2px 3px !important; overflow: visible !important; height: auto !important; min-height: 0 !important;
+      align-content: start !important; grid-auto-rows: 36px; }
+    body:not(.editing).coach-open.coach-short.coach-tight #title {
+      grid-row: 1 !important; grid-column: 1 / -1 !important; width: 100% !important; min-width: 0 !important;
+      min-height: 0 !important; height: 18px !important; box-sizing: border-box !important; overflow: visible !important; padding: 0 10px !important; flex: none !important;
+      display: flex !important; align-items: center; }
+    body:not(.editing).coach-open.coach-short.coach-tight { --bar: 58px !important; }
+    /* Title row: 20 px plate, engraved rule 2 px in so the 11 px line sits inside it. */
+    body:not(.editing).coach-open.coach-short.coach-tight #title { height: 20px !important; }
+    body[data-theme="victorian"]:not(.editing).coach-open.coach-short.coach-tight #title::before { inset: 2px 5px !important; }
+    body:not(.editing).coach-open.coach-short.coach-tight #title summary { min-height: 0 !important; display: block !important; }
+    body:not(.editing).coach-open.coach-short.coach-tight #title b,
+    body:not(.editing).coach-open.coach-short.coach-tight #title #t-name {
+      white-space: nowrap !important; text-overflow: clip !important; overflow: visible !important;
+      font-size: 11px !important; line-height: 14px !important; display: block; max-width: none !important; }
+    body:not(.editing).coach-open.coach-short.coach-tight #bar button {
+      flex: none !important; width: 100% !important; max-width: none !important; min-width: 0 !important;
+      height: 36px !important; min-height: 36px !important; padding: 0 !important; grid-row: 2 !important; grid-column: auto !important; }
+  }
+  /* Manager M1 (lesson titles never cut): no ellipsis on the plate title; the
+     fitter shrinks or wraps on words, and the text-fit gate checks the ink. */
+  #coach-slip h2, #coach-slip h2.vls-plaque__label { text-overflow: clip !important; overflow: visible !important; }
+  /* Manager M4: Settings "Replay … tutorial" plates wrap on words at the Coin
+     drawer plate's size (game.js fitPanelEngravings), never mid-word. */
+  #b-set-tut-experiments .brass-face, #b-set-tut-editor .brass-face { white-space: normal !important; overflow-wrap: normal !important; word-break: normal !important; line-height: 1.15; }
+  /* A narrow panel takes the full-size engraving on up to three lines; the plate grows to hold them. */
+  #b-set-tut-experiments, #b-set-tut-editor { height: auto !important; min-height: 56px; padding-top: 12px !important; padding-bottom: 12px !important; }
+  /* Narrow editor bar (<= 360 wide): New / Share / Save / Test faces were 31-44 px,
+     too narrow for 10 px engraving inside the Victorian rule. Pull the plate
+     padding and the engraved rule in to 3-4 px at this width only, and only
+     where the six plates share ONE row (landscape, or the tight lesson dock).
+     The ordinary portrait bar is a 3-column grid of ~99 px plates; there the
+     kit's 8 px face inset stays (engraving gate, small-phone 320x640 editor). */
+  @media (max-width: 360px), (max-height: 340px) and (max-width: 380px) {
+    body[data-theme="victorian"].editing.coach-tight #editor-bar button { padding: 6px 3px !important; }
+    body[data-theme="victorian"].editing.coach-tight #editor-bar button::before { inset: 6px 3px; }
+  }
+  @media (orientation: landscape) and (max-width: 360px), (orientation: landscape) and (max-height: 340px) and (max-width: 380px) {
+    body[data-theme="victorian"].editing #editor-bar button { padding: 6px 3px !important; }
+    body[data-theme="victorian"].editing #editor-bar button::before { inset: 6px 3px; }
+  }
+  /* 300 tall (Professor P4 / Manager M5): the plate keeps its side inset (the
+     corner screws stay clear of the type) but sheds vertical padding so the
+     title and whole copy lines fit; Skip/Next/Done keep the 44 px tap height. */
+  body.coach-open.coach-xs #coach-slip {
+    padding-top: calc(var(--_s, 10px) + 2px) !important; padding-bottom: calc(var(--_s, 10px) + 2px) !important; }
+  body.coach-open.coach-xs #coach-skip, body.coach-open.coach-xs #coach-next { height: 44px !important; min-height: 44px !important; }
+  body[data-theme="bw"] #coach-slip::before, body[data-theme="bw"] #coach-slip::after { display: none; }
+  body[data-theme="bw"] #coach-slip { background: #fff; color: #000; border: 2px solid #000; border-radius: 0; box-shadow: none; }
+  /* 300 tall B&W (Labs Manager craft HOLD on 1f61fb3): the last line's descenders
+     keep at least 3 px of ink clear of the engraved bottom rule. */
+  body.coach-open.coach-xs[data-theme="bw"] #coach-slip { padding-bottom: calc(var(--_s, 10px) + 4px) !important; }
 </style>
 </head>
 <body data-theme="victorian">
@@ -706,6 +1191,7 @@
 <div id="drawer-plaque" class="vls-plaque vls-plaque--ivory" data-vls-ivory="fa/drawer" aria-hidden="true"><span class="vls-plaque__label"></span></div>
 <div id="drawer" role="toolbar" aria-label="Parts drawer; swipe horizontally on a phone" tabindex="0"></div>
 <div id="drawer-end" aria-hidden="true">↔</div>
+<div id="drawer-scroll-cue" hidden aria-hidden="true">▾</div>
 <button id="b-overview" aria-label="Toggle between the whole bench and build detail">Whole bench</button>
 <div id="bench-footer"><span id="bench-key" hidden>Dotted / faded instruments: rear display, no contact</span><div id="status" aria-live="polite"></div></div>
 <div id="editor-bar" role="toolbar" aria-label="Level editor">
@@ -721,6 +1207,16 @@
 <div id="trial-chip" role="timer" aria-label="Full laboratory trial time remaining" hidden><span class="lbl">TRIAL</span> <b id="trial-left">15:00</b></div>
 <div id="toast" role="status"><article class="vls-plaque vls-plaque--ivory fa-toast-plaque" data-vls-ivory="fa/notices"><span class="vls-plaque__label fa-toast-copy" id="toast-copy"></span></article></div>
 <div id="part-tip" role="tooltip" aria-hidden="true"><article class="vls-plaque vls-plaque--ivory fa-toast-plaque" data-vls-ivory="fa/part-tip"><span class="vls-plaque__label fa-toast-copy" id="part-tip-copy"></span></article></div>
+<div id="coach" hidden aria-hidden="true">
+  <div id="coach-spot" hidden aria-hidden="true"></div>
+  <article id="coach-slip" class="vls-plaque vls-plaque--ivory fa-ui-plaque fa-coach-slip" data-vls-ivory="fa/coach" role="note" aria-live="polite">
+    <h2 class="vls-plaque__label" id="coach-title"></h2>
+    <p class="sub" id="coach-copy"></p>
+    <div id="coach-scroll-cue" hidden aria-hidden="true">▾</div>
+    <div class="row"><button type="button" id="coach-next">Next</button></div>
+  </article>
+  <button type="button" id="coach-skip" aria-label="Skip this tutorial. Escape skips when no panel is open.">Skip</button>
+</div>
 <div id="veil"></div>
 <div class="panel" id="p-levels" role="dialog" aria-label="Experiments">
  <article class="vls-plaque vls-plaque--ivory fa-ui-plaque" data-vls-ivory="fa/panels/p-levels">
@@ -742,7 +1238,7 @@
  <article class="vls-plaque vls-plaque--ivory fa-unlock-plaque" data-vls-ivory="fa/full-laboratory/unlock">
   <h1 class="vls-plaque__label" id="unlock-title">The trial has ended</h1>
   <div class="fa-unlock-body">
-  <p class="sub" id="unlock-text">Your fifteen minutes in the full laboratory are up. Every design, best time and seal you earned is safely in the notebook. Experiments 1–3 stay open, and the full laboratory unlocks with one purchase.</p>
+  <p class="sub" id="unlock-text">Your fifteen minutes in the full laboratory are up. Every design, best time and seal you earned is safely in the notebook. Experiments 1–&#8288;3 stay open, and the full laboratory unlocks with one purchase.</p>
   <p class="sub" id="unlock-price"></p>
   <p class="sub store-links" id="unlock-stores" hidden></p>
   <p id="trial-msg" class="sub" aria-live="polite"></p>
@@ -758,6 +1254,7 @@
   <p class="sub store-links" id="set-stores" hidden></p>
   <p id="settings-msg" class="sub" aria-live="polite"></p>
   <div class="row"><button id="b-set-buy" class="buy">Buy the full laboratory</button><button id="b-set-restore">Restore Purchases</button><button id="b-set-coins">🪙 Coin drawer</button></div>
+  <div class="row"><button id="b-set-tut-experiments">Replay experiment tutorial</button></div><div class="row"><button id="b-set-tut-editor">Replay editor tutorial</button></div>
   <div class="row"><button id="b-set-theme">B&amp;W theme</button><button id="b-set-sound" aria-pressed="true">Sound: on</button><button id="b-settings-close">Back</button></div>
  </article>
 </div>
@@ -4273,7 +4770,10 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       ctx.restore();
     });
     ctx.strokeStyle=bw?'#fff':'rgba(215,196,145,.65)';ctx.setLineDash([5,5]);ctx.lineWidth=1;ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
-    ctx.fillStyle=bw?'#fff':'#dec88f';ctx.textAlign='center';ctx.font=`600 10px ${face('engraved', theme)}`;ctx.fillText(A.label,x+w/2,y-7,w*1.25);ctx.restore();
+    const quiet=typeof document!=='undefined'&&document.body&&document.body.classList.contains('coach-open')&&(document.body.classList.contains('coach-short')||document.body.classList.contains('coach-tray-bottom')||document.body.classList.contains('coach-side-compact')||(window.innerWidth<=900&&window.innerHeight<=640));
+    if(!quiet && A.label){ctx.fillStyle=bw?'#fff':'#dec88f';ctx.textAlign='center';ctx.font=`600 10px ${face('engraved', theme)}`;ctx.fillText(A.label,x+w/2,y-7,w*1.25);
+      if(VC.render&&VC.render.recordLessonLabel){const tw=Math.min(w*1.25,(typeof ctx.measureText==='function'&&ctx.measureText(A.label).width)||80);VC.render.recordLessonLabel(A.label,x+w/2-tw/2,y-16,tw,12);}}
+    ctx.restore();
   }
 
   return {kinds,normalized,shapes,draw,PAYLOADS,drawPayload,drawAssembly};
@@ -5078,11 +5578,6 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
 (function (root) { (root.VC = root.VC || {}).LEVELS = {"version":4,"launchLevels":30,"chapters":[{"id":"cabinet-of-experiments","number":1,"name":"The Cabinet of Experiments","blurb":"Twelve problems in gravity, traction and balance among the optical, anatomical and electrical cabinets.","introduces":["wheel","motorCW","motorCCW","rod","string","piston","beam","spring","weight"],"first":0,"count":12}],"levels":[{"id":"inclined-delivery","name":"Inclined Delivery","caption":"Fit the missing objective to the refractor. Roll down its storage case and brake in the assembly bay; gravity is sufficient. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":0.64,"y":0.96,"w":0.96,"h":0.88},"goalArea":{"x":2.4,"y":0.1,"w":1.28,"h":0.58,"kind":"assembly","label":"REFRACTOR OBJECTIVE","apparatus":"telescope"},"goals":[{"label":"Mounted achromatic lens cell","kind":"lens-cell","shape":"box","w":0.176,"h":0.176,"x":1.268,"y":1.312,"mass":1.3,"mat":"brass","attach":true,"tag":"OPTICAL GLASS"}],"statics":[{"kind":"instrument-case","x":0.56,"y":0.1,"w":2.14,"h":0.98,"slope":true,"label":"REFRACTOR · CASE I"},{"kind":"instrument-case","x":2.4,"y":-0.22,"w":1.38,"h":0.32,"label":"SEXTANT · CASE II"},{"kind":"porcelain-tray","x":2.4,"y":-0.012,"w":1.28,"h":0.144},{"kind":"instrument-post","x":3.7,"y":0.1,"w":0.048,"h":0.448},{"kind":"telescope","x":0.52,"y":1.08,"w":0.76,"h":0.7,"decor":true},{"kind":"wet-jar","x":2.92,"y":0.148,"w":0.28,"h":0.78,"decor":true,"specimen":"octopus","label":"OCTOPUS"},{"kind":"sextant","x":3.228,"y":0.14,"w":0.34,"h":0.332,"decor":true},{"kind":"knife-switch","x":1.88,"y":0.104,"w":0.32,"h":0.16,"decor":true}],"par":5,"parStatus":"witnessed reference part count, not an optimum claim","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"Gravity descent and braking","assembly":{"apparatus":"telescope","name":"REFRACTOR OBJECTIVE","autoSeatAfter":2,"seats":[{"x":3.04,"y":0.3726,"a":0}]},"chapter":"cabinet-of-experiments","index":0,"number":1},{"id":"optical-gauntlet","name":"The Optical Gauntlet","caption":"Complete the microscope stage with its missing slide cassette. Travel west under the low optical rail; only 44 cm of clearance. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":2.32,"y":0.48,"w":1.36,"h":0.76},"goalArea":{"x":0.68,"y":0.48,"w":0.88,"h":0.6,"kind":"assembly","label":"MICROSCOPE SLIDE STAGE","apparatus":"microscope"},"goals":[{"label":"Optical slide cassette, XII","kind":"slide-cassette","shape":"box","w":0.4,"h":0.168,"x":3.08,"y":0.716,"mass":1.5,"mat":"oak","attach":true,"tag":"SLIDES · XII"}],"statics":[{"kind":"instrument-case","x":0.5,"y":-0.22,"w":3.32,"h":0.7,"label":"OPTICAL TABLE"},{"kind":"optical-rail","x":1.58,"y":0.92,"w":1.24,"h":0.128},{"kind":"instrument-post","x":0.56,"y":0.48,"w":0.064,"h":0.38},{"kind":"theodolite","x":1.4,"y":0.484,"w":0.5,"h":1.148,"decor":true},{"kind":"theodolite","x":2.54,"y":0.484,"w":0.5,"h":1.148,"decor":true},{"kind":"telescope","x":1.844,"y":1.064,"w":0.68,"h":0.584,"decor":true},{"kind":"sextant","x":0.7,"y":1.052,"w":0.44,"h":0.4,"decor":true},{"kind":"globe","x":3.26,"y":1.244,"w":0.4,"h":0.544,"decor":true},{"kind":"knife-switch","x":3.124,"y":0.48,"w":0.368,"h":0.112,"decor":true}],"par":5,"parStatus":"witnessed reference part count, not an optimum claim","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"Low-clearance reverse travel","assembly":{"apparatus":"microscope","name":"MICROSCOPE SLIDE STAGE","autoSeatAfter":2,"seats":[{"x":1.12,"y":0.762,"a":0}]},"chapter":"cabinet-of-experiments","index":1,"number":2},{"id":"tipping-balance","name":"Tipping Balance","caption":"Seat the calibration globe in the celestial balance. A falling counterweight and the narrow fulcrum can lift it into the assembly bay. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":0.72,"y":0.24,"w":2.32,"h":0.96},"goalArea":{"x":1.84,"y":1.24,"w":0.96,"h":0.68,"kind":"assembly","label":"CELESTIAL BALANCE","apparatus":"balance"},"goals":[{"label":"Celestial calibration globe","kind":"celestial-globe","shape":"circle","w":0.152,"h":0.152,"x":1.756,"y":0.604,"mass":0.7,"mat":"glass","attach":true,"tag":"CELESTIAL","r":0.076}],"statics":[{"kind":"instrument-case","x":0.6,"y":-0.22,"w":2.6,"h":0.42,"label":"BALANCE TABLE"},{"kind":"instrument-plinth","x":2.46,"y":0.2,"w":0.2,"h":0.676,"label":"FULCRUM"},{"kind":"peg","x":2.56,"y":0.9,"r":0.025},{"kind":"optical-rail","x":2.4,"y":1.192,"w":0.432,"h":0.048},{"kind":"instrument-post","x":2.824,"y":1.192,"w":0.06,"h":0.62},{"kind":"armillary","x":0.776,"y":0.232,"w":0.68,"h":0.76,"decor":true},{"kind":"globe","x":3.12,"y":0.2,"w":0.472,"h":0.664,"decor":true},{"kind":"sextant","x":3.116,"y":1.128,"w":0.6,"h":0.672,"decor":true},{"kind":"coil","x":1.448,"y":0.204,"w":0.42,"h":0.176,"decor":true}],"par":6,"parStatus":"witnessed reference part count, not an optimum claim","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"Counterweight to vertical lift","assembly":{"apparatus":"balance","name":"CELESTIAL BALANCE","autoSeatAfter":2,"seats":[{"x":2.32,"y":1.5596,"a":0}]},"chapter":"cabinet-of-experiments","index":2,"number":3},{"id":"atlas-and-orrery","name":"Atlas and Orrery","caption":"Fit the missing planet-drive wheel to the orrery. Climb three separate risers; no continuous ramp supplies the answer. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":0.56,"y":0.24,"w":1.04,"h":0.76},"goalArea":{"x":3.2,"y":0.56,"w":0.6,"h":0.92,"kind":"assembly","label":"ORRERY PLANET DRIVE","apparatus":"orrery"},"goals":[{"label":"Orrery planet wheel","kind":"orrery-gear","shape":"circle","w":0.168,"h":0.168,"x":1.044,"y":0.516,"mass":0.8,"mat":"brass","attach":true,"tag":"ORRERY","r":0.084}],"statics":[{"kind":"instrument-case","x":0.46,"y":-0.22,"w":1.2,"h":0.46,"label":"ATLAS · VOL. III"},{"kind":"instrument-plinth","x":1.66,"y":-0.22,"w":0.52,"h":0.524,"label":"GLOBE FOOT"},{"kind":"instrument-case","x":2.18,"y":-0.22,"w":0.52,"h":0.588,"label":"ORRERY GEAR CASE"},{"kind":"instrument-plinth","x":2.7,"y":-0.22,"w":0.5,"h":0.652,"label":"PLANETARY PLINTH"},{"kind":"instrument-plinth","x":3.2,"y":-0.22,"w":0.64,"h":0.716,"label":"SURVEY DAIS"},{"kind":"globe","x":1.252,"y":0.252,"w":0.4,"h":0.608,"decor":true},{"kind":"orrery","x":2.188,"y":0.436,"w":0.84,"h":0.7,"decor":true},{"kind":"armillary","x":2.788,"y":0.548,"w":0.52,"h":0.636,"decor":true},{"kind":"theodolite","x":3.348,"y":0.52,"w":0.44,"h":0.896,"decor":true},{"kind":"instrument-post","x":3.82,"y":0.4,"w":0.048,"h":0.7}],"par":11,"parStatus":"witnessed reference part count, not an optimum claim","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"Discrete step climbing","assembly":{"apparatus":"orrery","name":"ORRERY PLANET DRIVE","autoSeatAfter":2,"seats":[{"x":3.5,"y":0.9924,"a":0}]},"chapter":"cabinet-of-experiments","index":3,"number":4},{"id":"below-the-anatomist","name":"Below the Anatomist","caption":"Complete the anatomical study cabinet with its sealed heart model. Leave the shelf to the left and descend around its lip. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":1.68,"y":1.12,"w":1.2,"h":0.72},"goalArea":{"x":1,"y":0,"w":0.68,"h":0.4,"kind":"assembly","label":"ANATOMICAL STUDY CABINET","apparatus":"anatomy"},"goals":[{"label":"Sealed anatomical specimen, heart","kind":"vial","shape":"box","w":0.2,"h":0.28,"x":2.18,"y":1.46,"mass":0.8,"mat":"glass","attach":true,"tag":"ANATOMY VI","specimen":"heart"}],"statics":[{"kind":"instrument-case","x":1.64,"y":0.944,"w":1.38,"h":0.176,"label":"ANATOMICAL DISPLAY"},{"kind":"instrument-post","x":2.952,"y":0,"w":0.068,"h":0.944},{"kind":"instrument-case","x":0.952,"y":-0.22,"w":0.776,"h":0.22,"label":"SPIRIT RECEIVER"},{"kind":"instrument-post","x":0.94,"y":0,"w":0.048,"h":0.26},{"kind":"instrument-post","x":1.688,"y":0,"w":0.048,"h":0.16},{"kind":"organ-model","x":2.384,"y":1.124,"w":0.42,"h":0.628,"decor":true,"label":"HEART · VI"},{"kind":"organ-model","x":1.768,"y":1.124,"w":0.288,"h":0.584,"decor":true,"label":"LUNG · IV"},{"kind":"wet-jar","x":3.096,"y":0.008,"w":0.476,"h":0.848,"decor":true,"specimen":"octopus","label":"SP. VIII"},{"kind":"wet-jar","x":3.58,"y":0.004,"w":0.232,"h":0.516,"decor":true,"specimen":"fish","label":"SP. X"},{"kind":"microscope","x":0.5,"y":0.276,"w":0.36,"h":0.7,"decor":true}],"par":5,"parStatus":"witnessed reference part count, not an optimum claim","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"Down and under an obstructing shelf","assembly":{"apparatus":"anatomy","name":"ANATOMICAL STUDY CABINET","autoSeatAfter":2,"seats":[{"x":1.34,"y":0.188,"a":0}]},"chapter":"cabinet-of-experiments","index":4,"number":5},{"id":"surveyors-span","name":"The Surveyor’s Span","caption":"Complete the theodolite with its calibration weight. Cross the real void between survey cases; the far bank is lower. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":0.56,"y":0.52,"w":1.04,"h":0.72},"goalArea":{"x":2.8,"y":0.4,"w":0.96,"h":0.68,"kind":"assembly","label":"THEODOLITE WEIGHT","apparatus":"theodolite"},"goals":[{"label":"Theodolite calibration weight","kind":"survey-weight","shape":"box","w":0.144,"h":0.144,"x":1.152,"y":0.808,"mass":0.8,"mat":"brass","attach":true,"tag":"SURVEY WEIGHT"}],"statics":[{"kind":"instrument-case","x":0.46,"y":-0.22,"w":1.22,"h":0.74,"label":"SURVEYOR’S CHEST"},{"kind":"instrument-case","x":2.12,"y":-0.22,"w":1.732,"h":0.62,"label":"SEXTANT CASE"},{"kind":"tripod-foot","x":1.588,"y":0.52,"w":0.112,"h":0.024},{"kind":"instrument-post","x":3.788,"y":0.4,"w":0.052,"h":0.376},{"kind":"telescope","x":0.56,"y":0.528,"w":0.48,"h":0.656,"decor":true},{"kind":"theodolite","x":1.52,"y":0.544,"w":0.216,"h":0.68,"decor":true},{"kind":"sextant","x":2.436,"y":0.404,"w":0.32,"h":0.504,"decor":true},{"kind":"globe","x":3.204,"y":0.404,"w":0.348,"h":0.556,"decor":true},{"kind":"crookes","x":1.772,"y":1.184,"w":0.46,"h":0.6,"decor":true}],"par":11,"parStatus":"witnessed reference part count, not an optimum claim","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"Unequal-height gap spanning","assembly":{"apparatus":"theodolite","name":"THEODOLITE WEIGHT","autoSeatAfter":2,"seats":[{"x":3.28,"y":0.7196,"a":0}]},"chapter":"cabinet-of-experiments","index":5,"number":6},{"id":"discharge-chimney","name":"The Discharge Chimney","caption":"Fit the missing evacuated tube between the Crookes apparatus electrode contacts. Opposed wheels must grip both posts to reach the upper mount. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":1.8,"y":0.12,"w":0.64,"h":0.92},"goalArea":{"x":1.84,"y":1.44,"w":0.56,"h":0.44,"kind":"assembly","label":"CROOKES TUBE MOUNT","apparatus":"crookes"},"goals":[{"label":"Protected Crookes discharge tube","kind":"crookes-tube","shape":"capsule","w":0.192,"h":0.112,"x":2.104,"y":0.496,"mass":0.5,"mat":"glass","attach":true,"tag":"CROOKES"}],"statics":[{"kind":"instrument-post","x":1.588,"y":0.08,"w":0.22,"h":1.816},{"kind":"instrument-post","x":2.432,"y":0.08,"w":0.22,"h":1.816},{"kind":"instrument-case","x":1.54,"y":-0.22,"w":1.16,"h":0.3,"label":"DISCHARGE SWITCHBOARD"},{"kind":"crookes","x":0.952,"y":0.864,"w":0.588,"h":0.84,"decor":true},{"kind":"crookes","x":2.716,"y":0.8,"w":0.68,"h":0.812,"decor":true},{"kind":"leyden-column","x":1.088,"y":0.084,"w":0.396,"h":0.7,"decor":true,"label":"LEYDEN"},{"kind":"coil","x":2.768,"y":0.096,"w":0.696,"h":0.4,"decor":true},{"kind":"knife-switch","x":1.616,"y":-0.12,"w":0.788,"h":0.2,"decor":true},{"kind":"telescope","x":0.652,"y":0.084,"w":0.388,"h":0.432,"decor":true}],"par":10,"parStatus":"witnessed reference part count; meets the team par standard at par 10 (Professor, 9 Nov 2026); not an optimum claim","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"Opposed-wheel friction shaft climb","assembly":{"apparatus":"crookes","name":"CROOKES TUBE MOUNT","autoSeatAfter":2,"seats":[{"x":2.12,"y":1.6468,"a":0}]},"solutionStatus":"witnessed","solutionNotes":"Ten-part steam-piston inchworm reference: two ghost-oak toggle shoes (one on the cylinder, one on the rod tip) lock against the posts when loaded downward and release when lifted; four coil springs keep the shoes seated. Normal rules, deterministic, failure-free, 19.167 s. See test/cabinet-late-solutions.js and docs/LATE-LEVELS-20261108.md.","chapter":"cabinet-of-experiments","index":6,"number":7},{"id":"planetary-receiver","name":"The Planetary Receiver","caption":"Fit the missing sun globe on the orrery spindle. The high assembly bay has no ramp: try a tipping boom, a tall frame or an airborne part. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":0.72,"y":0.2,"w":2.08,"h":1.32},"goalArea":{"x":2.76,"y":1.3,"w":1.04,"h":0.6,"kind":"assembly","label":"ORRERY SUN SPINDLE","apparatus":"planetary"},"goals":[{"label":"Orrery sun globe","kind":"celestial-globe","shape":"circle","w":0.176,"h":0.176,"x":1.808,"y":0.592,"mass":0.6,"mat":"glass","attach":true,"tag":"SOL","r":0.088}],"statics":[{"kind":"instrument-case","x":0.56,"y":-0.22,"w":2.26,"h":0.42,"label":"ASTRONOMICAL TABLE"},{"kind":"optical-rail","x":2.768,"y":1.244,"w":1.04,"h":0.056},{"kind":"instrument-post","x":3.752,"y":-0.096,"w":0.056,"h":1.34},{"kind":"instrument-plinth","x":2.552,"y":0.2,"w":0.16,"h":0.684,"label":"BOOM FOOT"},{"kind":"peg","x":2.632,"y":0.908,"r":0.025},{"kind":"orrery","x":2.856,"y":0.236,"w":0.884,"h":0.924,"decor":true},{"kind":"armillary","x":0.736,"y":0.212,"w":0.596,"h":0.672,"decor":true},{"kind":"telescope","x":1.416,"y":0.696,"w":0.66,"h":0.612,"decor":true},{"kind":"globe","x":2.14,"y":0.212,"w":0.28,"h":0.4,"decor":true}],"par":3,"parStatus":"witnessed reference part count, not an optimum claim","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"High floating receiver / extended reach","assembly":{"apparatus":"planetary","name":"ORRERY SUN SPINDLE","autoSeatAfter":2,"seats":[{"x":3.28,"y":1.582,"a":0}]},"solutionStatus":"witnessed","solutionNotes":"Three-part motor/ghost-oak reaction leg/winch reference; normal rules, deterministic, failure-free, 4.050 s. See test/cabinet-late-solutions.js and docs/LATE-LEVELS-20261106.md.","chapter":"cabinet-of-experiments","index":7,"number":8},{"id":"spirit-collection","name":"The Spirit Collection","caption":"Complete the comparative specimen rack with all three preserved specimens. Collect them from different heights and hold all three in the assembly bay together. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":0.6,"y":0.32,"w":1.64,"h":1},"goalArea":{"x":2.48,"y":0.32,"w":1.32,"h":0.96,"kind":"assembly","label":"COMPARATIVE SPECIMEN RACK","apparatus":"specimen-rack"},"goals":[{"label":"Alcohol-preserved specimen","kind":"vial","shape":"box","w":0.144,"h":0.144,"x":0.952,"y":0.728,"mass":0.8,"mat":"glass","attach":true,"tag":"I","specimen":"octopus"},{"label":"Alcohol-preserved specimen","kind":"vial","shape":"box","w":0.144,"h":0.144,"x":1.452,"y":0.568,"mass":0.8,"mat":"glass","attach":true,"tag":"II","specimen":"fish"},{"label":"Alcohol-preserved specimen","kind":"vial","shape":"box","w":0.144,"h":0.144,"x":1.952,"y":0.888,"mass":0.8,"mat":"glass","attach":true,"tag":"III","specimen":"botanical"}],"statics":[{"kind":"instrument-case","x":0.48,"y":-0.22,"w":3.36,"h":0.54,"label":"SPIRIT COLLECTION TABLE"},{"kind":"instrument-plinth","x":0.752,"y":0.32,"w":0.4,"h":0.336,"label":"I"},{"kind":"instrument-plinth","x":1.264,"y":0.32,"w":0.384,"h":0.176,"label":"II"},{"kind":"instrument-plinth","x":1.752,"y":0.32,"w":0.432,"h":0.496,"label":"III"},{"kind":"instrument-post","x":3.788,"y":0.32,"w":0.056,"h":0.42},{"kind":"wet-jar","x":2.536,"y":0.336,"w":0.384,"h":0.828,"decor":true,"specimen":"octopus","label":"OCTOPUS"},{"kind":"wet-jar","x":3.004,"y":0.34,"w":0.344,"h":0.724,"decor":true,"specimen":"fish","label":"PISCES"},{"kind":"wet-jar","x":3.452,"y":0.344,"w":0.284,"h":0.836,"decor":true,"specimen":"botanical","label":"BOTANICA"},{"kind":"organ-model","x":0.532,"y":0.336,"w":0.192,"h":0.508,"decor":true,"label":"VI"},{"kind":"microscope","x":1.332,"y":1.112,"w":0.32,"h":0.596,"decor":true}],"par":26,"parStatus":"witnessed reference part count; meets the team par standard at par 26 under a solver-slack exemption (Professor, 9 Nov 2026; docs/tickets/SOLVER-CONTACT-20261109.md; re-proven whenever the solver changes); not an optimum claim","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"Three simultaneous specimen capture","assembly":{"apparatus":"specimen-rack","name":"COMPARATIVE SPECIMEN RACK","autoSeatAfter":2,"seats":[{"x":2.81,"y":0.7712,"a":0},{"x":3.14,"y":0.7712,"a":0},{"x":3.47,"y":0.7712,"a":0}]},"solutionStatus":"witnessed","solutionNotes":"26-part toppling-gantry reference: a steel mast stands on the table beside plinth III with four counterweights at its head and a light oak arm over the plinths; a steam piston pressing on plinth III tips it over, the arm swings up and the specimens (two on cords, one braced) ride over plinth III into the rack. Normal rules, deterministic, failure-free, 4.133 s. See test/cabinet-late-solutions.js and docs/LATE-LEVELS-20261108.md.","chapter":"cabinet-of-experiments","index":8,"number":9},{"id":"galvanic-return","name":"The Galvanic Return","caption":"Complete the battery circuit with its missing cell. Travel out along the lower lane, around the shelf, then back west into the upper assembly bay. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":0.68,"y":0.16,"w":0.92,"h":0.68},"goalArea":{"x":0.68,"y":1.16,"w":0.88,"h":0.44,"kind":"assembly","label":"GALVANIC BATTERY CIRCUIT","apparatus":"battery"},"goals":[{"label":"Transportable galvanic cell","kind":"galvanic-cell","shape":"box","w":0.152,"h":0.152,"x":1.156,"y":0.524,"mass":0.6,"mat":"glass","attach":true,"tag":"CELL IV"}],"statics":[{"kind":"instrument-case","x":0.492,"y":-0.22,"w":3.288,"h":0.34,"label":"GALVANIC BENCH"},{"kind":"instrument-case","x":0.592,"y":0.92,"w":2.16,"h":0.24,"label":"CELL BATTERY SHELF"},{"kind":"instrument-post","x":0.58,"y":0.92,"w":0.064,"h":0.84},{"kind":"instrument-post","x":3.696,"y":0.12,"w":0.08,"h":1.58},{"kind":"optical-rail","x":0.592,"y":1.708,"w":3.112,"h":0.064},{"kind":"cell-bank","x":1.732,"y":1.16,"w":0.888,"h":0.44,"decor":true},{"kind":"knife-switch","x":0.776,"y":0.848,"w":0.472,"h":0.196,"decor":true},{"kind":"coil","x":2.976,"y":0.144,"w":0.656,"h":0.8,"decor":true},{"kind":"crookes","x":2.9,"y":1.148,"w":0.632,"h":0.464,"decor":true},{"kind":"globe","x":1.64,"y":0.148,"w":0.3,"h":0.46,"decor":true}],"par":24,"parStatus":"provisional until witnessed solution","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"U-channel inversion and return","assembly":{"apparatus":"battery","name":"GALVANIC BATTERY CIRCUIT","autoSeatAfter":2,"seats":[{"x":1.12,"y":1.3668,"a":0}]},"solutionStatus":"UNVERIFIED","solutionNotes":"UNVERIFIED: rim-driven walkers tried; no supported out/up/back return or two-second upper-bay hold witnessed.","chapter":"cabinet-of-experiments","index":9,"number":10},{"id":"astronomers-reach","name":"The Astronomer’s Reach","caption":"Fit the optical head to the incomplete sextant. Three separated supports cross the void: transfer your centre of mass and extend a cantilever. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":0.6,"y":0.2,"w":0.88,"h":0.64},"goalArea":{"x":3,"y":1.32,"w":0.56,"h":0.4,"kind":"assembly","label":"SEXTANT OPTICAL HEAD","apparatus":"sextant"},"goals":[{"label":"Sextant optical head and mounting plate","kind":"sextant-head","shape":"box","w":0.256,"h":0.22,"x":1.168,"y":0.49,"mass":1.2,"mat":"brass","attach":true,"tag":"SEXTANT HEAD"}],"statics":[{"kind":"instrument-case","x":0.5,"y":-0.22,"w":1.04,"h":0.42,"label":"REFRACTOR CASE"},{"kind":"theodolite","x":1.972,"y":-0.22,"w":0.408,"h":0.992},{"kind":"instrument-case","x":2.952,"y":1.132,"w":0.652,"h":0.188,"label":"SEXTANT RECEIVER"},{"kind":"instrument-post","x":3.552,"y":1.32,"w":0.052,"h":0.328},{"kind":"telescope","x":0.58,"y":0.856,"w":0.636,"h":0.56,"decor":true},{"kind":"armillary","x":2.46,"y":0.068,"w":0.416,"h":0.624,"decor":true},{"kind":"globe","x":1.632,"y":-0.016,"w":0.312,"h":0.556,"decor":true},{"kind":"sextant","x":3.036,"y":1.332,"w":0.448,"h":0.472,"decor":true}],"par":25,"parStatus":"provisional until witnessed solution","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"Sparse support / cantilever balance","assembly":{"apparatus":"sextant","name":"SEXTANT OPTICAL HEAD","autoSeatAfter":2,"seats":[{"x":3.28,"y":1.508,"a":0}]},"solutionStatus":"UNVERIFIED","solutionNotes":"UNVERIFIED: rim-driven walkers tried; no supported crossing of the sparse raised supports witnessed.","chapter":"cabinet-of-experiments","index":10,"number":11},{"id":"grand-decanter","name":"The Grand Decanter","caption":"Complete the distillation train with its missing glass receiver. Escort the large decanter through the dogleg; its orientation matters. Hold every missing part wholly in the marked bay for 2 s; the mounting clamps then seat it automatically.","gravity":9.81,"body":"earth","build":{"x":0.56,"y":0.88,"w":1.24,"h":0.96},"goalArea":{"x":3,"y":0.2,"w":0.76,"h":0.64,"kind":"assembly","label":"DISTILLATION TRAIN","apparatus":"retort"},"goals":[{"label":"The grand glass decanter","kind":"flask","shape":"flask","w":0.36,"h":0.24,"x":1.32,"y":1.16,"mass":1.8,"mat":"glass","attach":true,"tag":"DECANTER"}],"statics":[{"kind":"instrument-case","x":0.472,"y":-0.22,"w":1.18,"h":1.1,"label":"ANATOMY WORK BENCH"},{"kind":"organ-case","x":1.972,"y":0.66,"w":0.56,"h":0.936,"label":"SECTION IV"},{"kind":"instrument-case","x":2.3,"y":-0.22,"w":0.576,"h":0.54,"label":"SPIRIT DISPLAY"},{"kind":"instrument-case","x":2.94,"y":-0.22,"w":0.892,"h":0.42,"label":"CROOKES RECEIVER"},{"kind":"instrument-post","x":3.76,"y":0.2,"w":0.064,"h":0.416},{"kind":"wet-jar","x":2.344,"y":0.42,"w":0.496,"h":0.712,"decor":true,"specimen":"octopus","label":"OCTOPUS"},{"kind":"organ-model","x":0.66,"y":0.888,"w":0.368,"h":0.696,"decor":true,"label":"HEART · II"},{"kind":"crookes","x":3.048,"y":0.216,"w":0.616,"h":0.616,"decor":true},{"kind":"knife-switch","x":3.04,"y":-0.144,"w":0.584,"h":0.212,"decor":true},{"kind":"armillary","x":0.636,"y":-0.176,"w":0.556,"h":0.636,"decor":true}],"par":28,"parStatus":"witnessed reference meets the team par standard at par 28 with a 25-part reference (Professor, 10 Nov 2026); par is not the reference part count and not an optimum claim","displayKey":true,"routeFrame":{"x":0.42,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"Oversize payload through dogleg","assembly":{"apparatus":"retort","name":"DISTILLATION TRAIN","autoSeatAfter":2,"seats":[{"x":3.38,"y":0.5008,"a":0}]},"solutionStatus":"witnessed","solutionNotes":"25-part counterweight-arm reference: seven counterweights on the arm, listed first so a weight is each pin hub, swing the decanter up in an open steel cradle tilted 8 degrees and lob it over SECTION IV into the distillation train; 3.642 s, 0 failures; sturdiness 58/60 (seed 777: 109/120, seed 4242: 57/60); no sustained sink (peak 5.24 mm for 33 ms); wins with payload/rod contact capped and at 1/180, 1/240 and 1/360 s. See test/cabinet-late-solutions.js and docs/LATE-LEVELS-20261108.md.","chapter":"cabinet-of-experiments","index":11,"number":12}]}; })(typeof self !== 'undefined' ? self : this);
 
 </script>
-<script>/* src/tutorial-data.js */
-/* generated from levels/tutorial/00-first-apparatus.json by tools/sync-style.mjs; edit the JSON */
-(function (root) { (root.VC = root.VC || {}).TUTORIAL = {"id":"first-apparatus","name":"The First Apparatus","caption":"Complete the refractor by seating its missing eyepiece. Pick Motor ↻ from the drawer and tap it into the build area, then drag an Oak beam from the wheel's hub to the eyepiece pin. Enter or the lever runs and stops; on a keyboard, Space pauses and resumes. Hold the eyepiece in the marked bay for 2 s to seat it. Experiments pay coins for a first clear and for lighter, lower-energy, quicker machines; this practice bench pays none.","gravity":9.81,"body":"earth","build":{"x":0.56,"y":0,"w":1.12,"h":0.6},"goalArea":{"x":2.44,"y":0,"w":0.64,"h":0.44,"kind":"assembly","label":"EYEPIECE","apparatus":"telescope"},"goals":[{"label":"Brass eyepiece cell","kind":"lens-cell","shape":"box","w":0.14,"h":0.14,"x":1.5,"y":0.07,"mass":1,"mat":"brass","attach":true,"tag":"EYEPIECE"}],"statics":[{"kind":"instrument-case","x":0.3,"y":-0.22,"w":3.2,"h":0.22,"label":"PRACTICE BENCH"},{"kind":"instrument-post","x":3.08,"y":0,"w":0.048,"h":0.5},{"kind":"telescope","x":2.3,"y":0.62,"w":0.76,"h":0.7,"decor":true}],"parts":["motorCW","beam"],"displayKey":true,"routeFrame":{"x":0.2,"y":-0.08,"w":3.48,"h":2.02},"lamp":[2,2.05],"mechanic":"A motor wheel pushes the part into the bay","assembly":{"apparatus":"telescope","name":"REFRACTOR EYEPIECE","autoSeatAfter":2,"seats":[{"x":2.76,"y":0.2,"a":0}]},"chapter":"tutorial","number":0,"tutorial":true,"practice":true}; })(typeof self !== 'undefined' ? self : this);
-
-</script>
 <script>/* src/store-links.js */
 /* Store links for the App Store and Google Play versions (→ VC.storeLinks(), VC.STORE_LINKS).
  * The release WEB build has no shop; its unlock and coin screens show these links instead.
@@ -5796,11 +6291,27 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     g.clearRect(0, 0, c.width, c.height); g.drawImage(cut, 1, 1.5); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#f4d992'; g.fillRect(0, 0, c.width, c.height);
     g.globalCompositeOperation = 'source-over'; g.drawImage(cut, 0, 0);
   }
+  // During a short or landscape lesson, hide in-canvas bench captions (BUILD AREA,
+  // assembly/specimen labels) so they cannot pile up on a sliver of bench. The
+  // scribed box and tray stay; type returns when the lesson ends.
+  function quietLessonLabels() {
+    const b = typeof document !== 'undefined' && document.body;
+    if (!b || !b.classList.contains('coach-open')) return false;
+    return b.classList.contains('coach-short') || b.classList.contains('coach-tray-bottom')
+      || b.classList.contains('coach-side-compact')
+      || (window.innerWidth <= 900 && window.innerHeight <= 640);
+  }
+  let lessonLabels = [];
+  function beginLessonLabels() { lessonLabels = []; }
+  function recordLessonLabel(name, x, y, w, h) {
+    if (w > 1 && h > 1) lessonLabels.push({ name, x, y, w, h });
+  }
   // ---------- static layer (cached) ----------
   let layer = null, layerKey = '';
   function staticLayer(level, V, theme, dpr) {
     // A cached first frame must not keep fallback lettering after the bundled engraver arrives.
-    const key = [level.id, level._rev || 0, V.W, V.H, V.s.toFixed(4), V.x(0).toFixed(2), V.y(0).toFixed(2), theme, dpr, root.document?.fonts?.status || 'loaded'].join('|');
+    const quiet = quietLessonLabels() ? '1' : '0';
+    const key = [level.id, level._rev || 0, V.W, V.H, V.s.toFixed(4), V.x(0).toFixed(2), V.y(0).toFixed(2), theme, dpr, quiet, root.document?.fonts?.status || 'loaded'].join('|');
     if (layer && key === layerKey) return layer;
     const c = layer || document.createElement('canvas'); c.width = Math.round(V.W * dpr); c.height = Math.round(V.H * dpr);
     const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, V.W, V.H);
@@ -5815,7 +6326,11 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       const fg = g.createLinearGradient(0, fy, 0, Math.min(V.H, fy + V.s)); fg.addColorStop(0, theme === 'bw' ? '#000' : 'rgba(8,4,1,0.75)'); fg.addColorStop(1, theme === 'bw' ? '#000' : 'rgba(3,1,0,0.97)'); g.fillStyle = fg; g.fillRect(0, fy, V.W, V.H - fy); }
     // goal area (drawn before furniture so beakers sit in front)
     const A = level.goalArea, ar = V.R(A.x, A.y, A.w, A.h);
-    if (!level.assembly && A.kind !== 'beaker') K().specimenTray(g, ...ar, A.label || 'SPECIMEN TRAY', theme);
+    if (!level.assembly && A.kind !== 'beaker') {
+      const trayLabel = quietLessonLabels() ? '' : (A.label || 'SPECIMEN TRAY');
+      K().specimenTray(g, ...ar, trayLabel, theme);
+      if (trayLabel) recordLessonLabel(trayLabel, ar[0], ar[1], ar[2], 16);
+    }
     let assemblyDrawn=false;
     for (const item of [...level.statics].sort((a,b)=>Number(!!b.decor)-Number(!!a.decor))) {
       if (!item.decor && level.assembly && !assemblyDrawn) {VC.landscape.drawAssembly(g,level,V,theme,K(),AP(),drawSeatArt);assemblyDrawn=true;}
@@ -5834,7 +6349,12 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
   }
   function drawGoalOutline(ctx, [x, y, w, h], theme, label) {
     ctx.save(); ctx.strokeStyle = theme === 'bw' ? '#fff' : 'rgba(243,213,138,0.6)'; ctx.setLineDash([8, 6]); ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h); ctx.setLineDash([]);
-    ctx.fillStyle = theme === 'bw' ? '#fff' : 'rgba(243,213,138,0.9)'; ctx.font = `600 12px ${face('engraved', theme)}`; ctx.textAlign = 'center'; ctx.fillText(label, x + w / 2, y - 6); ctx.restore();
+    if (!quietLessonLabels()) {
+      ctx.fillStyle = theme === 'bw' ? '#fff' : 'rgba(243,213,138,0.9)'; ctx.font = `600 12px ${face('engraved', theme)}`; ctx.textAlign = 'center'; ctx.fillText(label, x + w / 2, y - 6);
+      const tw = (typeof ctx.measureText === 'function' && ctx.measureText(label).width) || 80;
+      recordLessonLabel(label, x + w / 2 - tw / 2, y - 18, tw, 14);
+    }
+    ctx.restore();
   }
 
   // A scribed brass drafting boundary, not a blue selection marquee. Fine double cuts
@@ -5851,7 +6371,11 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
       ctx.strokeStyle = bw ? '#fff' : `rgba(226,205,151,${active ? .85 : .48})`; ctx.strokeRect(x, y, w, h);
       ctx.lineWidth = 2; const c = Math.min(14, w / 4, h / 4);
       for (const [cx, cy, dx, dy] of [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]]) { ctx.beginPath(); ctx.moveTo(cx + dx * c, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + dy * c); ctx.stroke(); }
-      ctx.fillStyle = ctx.strokeStyle; ctx.font = `600 12px ${face('engraved', theme)}`; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('BUILD AREA', x + 8, y + 6);
+      if (!quietLessonLabels()) {
+        ctx.fillStyle = ctx.strokeStyle; ctx.font = `600 12px ${face('engraved', theme)}`; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('BUILD AREA', x + 8, y + 6);
+        const tw = (typeof ctx.measureText === 'function' && ctx.measureText('BUILD AREA').width) || 80;
+        recordLessonLabel('BUILD AREA', x + 8, y + 6, tw, 14);
+      }
       ctx.restore();
     }
   }
@@ -6144,7 +6668,7 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
     drawMeter(ctx, x2, y, r, 'TIME', meters.time || 0, sc.time || 30, 's', theme);
   }
 
-  VC.render = { invalidate() { layerKey=''; }, engraveDrawing, drawBackdrop, WALL, isAnimated, makeView, drawItem, bodyFrame, staticLayer, drawBuildZone, drawGoal, drawGoalArt, drawSeatArt, goalAura, drawPartStatic, drawNodes, drawSim, drawGoalOutline, drawPiston, drawFailure, drawStress, FAIL_ANIM, drawMeters, dialFrac, drawMeter };
+  VC.render = { invalidate() { layerKey=''; }, quietLessonLabels, beginLessonLabels, recordLessonLabel, lessonLabelBoxes: () => lessonLabels.slice(), engraveDrawing, drawBackdrop, WALL, isAnimated, makeView, drawItem, bodyFrame, staticLayer, drawBuildZone, drawGoal, drawGoalArt, drawSeatArt, goalAura, drawPartStatic, drawNodes, drawSim, drawGoalOutline, drawPiston, drawFailure, drawStress, FAIL_ANIM, drawMeters, dialFrac, drawMeter };
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
@@ -6770,6 +7294,1323 @@ window.GL_CONFIG = window.GL_CONFIG || undefined;
 })(typeof window !== 'undefined' ? window : this);
 
 </script>
+<script>/* src/coach-tutorial.js */
+/* Fantastic Apparatus: first-time, per-mode tutorials (owner ruling, 10 Nov 2026).
+ * Not a Level 0. Non-blocking ivory coach slips over the live scene, a Skip control
+ * that records the tutorial as seen, and a Settings entry to restart each mode.
+ * Modes: "experiments" (official cabinet levels 1–12) and "editor" (the level editor). */
+(function (root) {
+  'use strict';
+  const MODES = ['experiments', 'editor'];
+  const LEGACY_TUTORIAL_ID = 'first-apparatus';
+  // No widows (Labs Manager bar, 12 Nov 2026): the word that closes a sentence or
+  // clause, or the copy, is tied to the word before it with a no-break space, so a
+  // single word can never sit alone on a closing line at any plate width.
+  function noWidow(text) {
+    const t = String(text || '').split(' ');
+    for (let i = t.length - 1; i > 0; i--) {
+      if (i === t.length - 1 || /[.!?;:]["')\]]?$/.test(t[i])) { t[i - 1] = t[i - 1] + '\u00a0' + t[i]; t.splice(i, 1); i--; }
+    }
+    return t.join(' ');
+  }
+  const STEPS = {
+    experiments: [
+      { title: 'The experiment', target: '#title', openBrief: true,
+        copy: 'Open the brief. Seat the missing part in the marked bay and hold it two seconds to mount it.' },
+      { title: 'How to build', target: '#drawer',
+        copy: 'Pick a part from the drawer and tap it onto the bench. Drag from a joint to connect. Hold a part for details.' },
+      { title: 'Run and coins', target: '#lever',
+        copy: 'Enter or the lever starts a run; Space pauses. A first clear pays coins; lighter, lower-energy, quicker machines pay more.',
+        // 300x300 B&W only (Labs Manager craft HOLD on 1f61fb3): used when the whole copy
+        // cannot keep 3 px of ink clear of the engraved rules at 11 px.
+        copyXs: 'Enter or the lever runs; Space pauses. First clears pay coins; lighter, lower-energy, quicker machines pay more.' },
+    ],
+    editor: [
+      { title: 'The level editor', target: '#editor-bar',
+        copy: 'This is the level editor. Lay out a bench: props, a missing part, and an assembly bay.' },
+      { title: 'How to build a level', target: '#drawer',
+        copy: 'Place props from the catalogue, then press Test to play. Save keeps it here; Share makes a code.' },
+      { title: 'Coins', target: '#b-ed-save',
+        copy: 'Editor-made levels pay no coins. Coins from the experiments buy catalogue showpieces.' },
+    ],
+  };
+
+  function create(opts) {
+    const $ = opts.$;
+    const store = opts.store;
+    const state = opts.state;
+    const refresh = opts.refresh || function () {};
+    const officialIds = () => (opts.levels() || []).map((L) => L.id);
+    let active = null; // { mode, index }
+    let hideForPanel = false;
+    let dockBottom = 0;
+    let dockRight = 0; // > 0: the lesson playfield ends left of the Skip/Next rail (x in px)
+    let positioning = false;
+    let slipObserver = null;
+
+    function defaultSeen() { return { experiments: false, editor: false }; }
+    function readSeen() {
+      const v = store.get('tutorials', null);
+      if (v && typeof v === 'object') return { experiments: !!v.experiments, editor: !!v.editor };
+      return defaultSeen();
+    }
+    function writeSeen(seen) { store.set('tutorials', { experiments: !!seen.experiments, editor: !!seen.editor }); }
+
+    function customSaved() {
+      try {
+        const raw = localStorage.getItem('fa.custom');
+        if (!raw) return false;
+        const v = JSON.parse(raw);
+        if (Array.isArray(v)) return v.length > 0;
+        if (v && typeof v === 'object') {
+          const levels = v.levels || v.items || v;
+          if (Array.isArray(levels)) return levels.length > 0;
+          return Object.keys(v).length > 0;
+        }
+      } catch (e) { /* ignore */ }
+      return false;
+    }
+
+    function migrate() {
+      const existing = store.get('tutorials', null);
+      if (existing && typeof existing === 'object' && ('experiments' in existing || 'editor' in existing)) {
+        const seen = { experiments: !!existing.experiments, editor: !!existing.editor };
+        writeSeen(seen);
+        return seen;
+      }
+      const progress = store.get('progress', {}) || {};
+      const last = store.get('last', null);
+      const hadLevel0 = !!(progress[LEGACY_TUTORIAL_ID] || last === LEGACY_TUTORIAL_ID || store.get('design.' + LEGACY_TUTORIAL_ID, null));
+      const hadCampaign = officialIds().some((id) => last === id || (progress[id] && (progress[id].done || progress[id].bestParts || progress[id].bestTime)));
+      const lastIsEditor = typeof last === 'string' && last.indexOf('editor-') === 0;
+      const seen = { experiments: !!(hadLevel0 || hadCampaign), editor: !!(customSaved() || lastIsEditor) };
+      writeSeen(seen);
+      return seen;
+    }
+
+    function forceRequested() {
+      try { return !!store.get('tutorialsForce', false); } catch (e) { return false; }
+    }
+    function autoStartAllowed() {
+      if (forceRequested()) return true;
+      if (typeof navigator !== 'undefined' && navigator.webdriver) return false;
+      return true;
+    }
+
+    function currentMode() {
+      if (state.editing || state.testing) return 'editor';
+      if (Number.isInteger(state.li) && state.level && !state.level.custom && !state.level.tutorial) return 'experiments';
+      return null;
+    }
+
+    function panelOpen() { return !!(document.querySelector && document.querySelector('.panel.show')); }
+
+    function dockBottomY() { return (active && !hideForPanel) ? dockBottom : 0; }
+    function dockRightX() { return (active && !hideForPanel) ? dockRight : 0; }
+
+    function resetDockedNext() {
+      const slip = $('coach-slip'), next = $('coach-next');
+      const row = slip && slip.querySelector('.row');
+      if (next && row && next.parentElement !== row) row.appendChild(next);
+      if (next) {
+        next.style.position = '';
+        next.style.left = '';
+        next.style.top = '';
+        next.style.width = '';
+        next.style.minWidth = '';
+        next.style.zIndex = '';
+        next.style.minHeight = '';
+      }
+      const copy = $('coach-copy');
+      if (copy) { copy.style.maxHeight = ''; copy.style.overflowY = ''; }
+      document.body.classList.remove('coach-short', 'coach-tray-bottom', 'coach-side-compact', 'coach-tight', 'coach-rail', 'coach-xs');
+      if (copy) copy.style.marginBottom = '';
+      const slip0 = $('coach-slip'), copy0 = $('coach-copy'), cue0 = $('coach-scroll-cue');
+      if (slip0) slip0.classList.remove('coach-copy-overflow');
+      if (copy0) { copy0.classList.remove('coach-copy-overflow'); copy0.style.maxHeight = ''; copy0.style.overflow = ''; }
+      if (cue0) cue0.hidden = true;
+      { const tn = $('t-name'); if (tn && /^\d+\.\u00a0/.test(tn.textContent || '')) tn.textContent = tn.textContent.replace(/^(\d+\.)\u00a0/, '$1 '); }
+      if (root.VC && VC.render && typeof VC.render.invalidate === 'function') VC.render.invalidate();
+    }
+
+    // Exact glyph ink bounds (canvas measureText rounds them to whole px): the character drawn
+    // once at 8x and scanned at half coverage; cached per font and character.
+    const inkCache = {};
+    function inkBounds(cache, font, ch) {
+      const key = font + '|' + ch; if (cache[key]) return cache[key];
+      const Z = 8, fs = parseFloat((font.match(/([\d.]+)px/) || [0, 12])[1]) || 12, S = Math.ceil(fs * Z * 3);
+      const c = document.createElement('canvas'); c.width = S; c.height = S; const g = c.getContext('2d', { willReadFrequently: true });
+      g.font = font.replace(/([\d.]+)px/, (m, v) => (parseFloat(v) * Z) + 'px'); g.textBaseline = 'alphabetic'; g.fillStyle = '#000';
+      const px0 = Math.round(S / 3), by = Math.round(S * 2 / 3); g.fillText(ch, px0, by);
+      const d = g.getImageData(0, 0, S, S).data; let x0 = S, x1 = -1, y0 = S, y1 = -1;
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (d[(y * S + x) * 4 + 3] >= 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      const r = x1 < 0 ? null : { l: (x0 - px0) / Z, r: (x1 + 1 - px0) / Z, a: (by - y0) / Z, d: (y1 + 1 - by) / Z };
+      cache[key] = r; return r;
+    }
+    // Smallest clearance, CSS px, from the copy's glyph ink (exact bounds, per character) to the
+    // bottom corner notches as the kit draws them (quarter arcs of radius R round the screws at
+    // (s, h - s), 1.6 px stroke; SVG viewBox = border box, fitted into the padding box), less
+    // the target. > 0 means the plate is short by that much.
+    function notchShortfall(slip, copy, target) {
+      const gcs = getComputedStyle(slip), b = parseFloat(gcs.borderLeftWidth) || 0;
+      const s0 = parseFloat(gcs.getPropertyValue('--_s')) || 10, R0 = parseFloat(gcs.getPropertyValue('--_R')) || 13;
+      const sr = slip.getBoundingClientRect(), W = sr.width, H = sr.height; if (!(W > 2 * b && H > 2 * b)) return 0;
+      const k = Math.min((W - 2 * b) / W, (H - 2 * b) / H);
+      const ox = sr.left + b + ((W - 2 * b) - k * W) / 2, oy = sr.top + b + ((H - 2 * b) - k * H) / 2;
+      const cy = oy + k * (H - s0), cs = [ox + k * s0, ox + k * (W - s0)], Rr = k * R0, hw = 0.8 * k;
+      const cv = document.createElement('canvas').getContext('2d'); let worst = Infinity;
+      const tw = document.createTreeWalker(copy, NodeFilter.SHOW_TEXT); let n;
+      while ((n = tw.nextNode())) {
+        const ccs = getComputedStyle(n.parentElement); cv.font = `${ccs.fontStyle} ${ccs.fontWeight} ${ccs.fontSize} ${ccs.fontFamily}`;
+        const t = n.textContent;
+        for (let i = 0; i < t.length; i++) {
+          if (/\s/.test(t[i])) continue;
+          const rg = document.createRange(); rg.setStart(n, i); rg.setEnd(n, i + 1); const r = rg.getBoundingClientRect();
+          if (!(r.width > 0) || r.bottom < cy - Rr - target - 4) continue;
+          const m = cv.measureText(t[i]), base = r.top + m.fontBoundingBoxAscent, ib = inkBounds(inkCache, cv.font, t[i]); if (!ib) continue;
+          const x0 = r.left + ib.l, x1 = r.left + ib.r, y0 = base - ib.a, y1 = base + ib.d;
+          for (const cx of cs) worst = Math.min(worst, Math.hypot(Math.max(x0 - cx, 0, cx - x1), Math.max(y0 - cy, 0, cy - y1)) - Rr - hw);
+        }
+      }
+      return Number.isFinite(worst) ? target - worst : 0;
+    }
+
+    function refreshChrome(el) {
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const key = Math.round(r.width) + 'x' + Math.round(r.height);
+      if (el.getAttribute('data-fa-chrome') === key && el.querySelector(':scope > .vls-plaque__chrome-built')) return;
+      const wrap = el.querySelector(':scope > .vls-plaque__chrome-built');
+      if (wrap) wrap.remove();
+      if (root.VLS && typeof root.VLS.plaqueChrome === 'function') root.VLS.plaqueChrome(el);
+      el.setAttribute('data-fa-chrome', key);
+    }
+
+    function position() {
+      if (positioning) return;
+      if (!active) { dockBottom = 0; return; }
+      const root = $('coach'); if (!root || root.hidden) { dockBottom = 0; return; }
+      positioning = true;
+      try {
+        positionBody(root);
+      } finally {
+        positioning = false;
+      }
+    }
+
+    // A no-break tie (noWidow) wider than a narrow plate was split mid-word by
+    // overflow-wrap:anywhere ("showpiec|es." at 300x300 B&W editor step 3). Step the
+    // copy type down in 0.5 px until every tied pair sits on one line, floor 10 px.
+    function fitTies(copy) {
+      if (!copy || !copy.firstChild || copy.firstChild.nodeType !== 3) return;
+      const node = copy.firstChild, t = node.textContent;
+      const broken = () => {
+        const re = /\S*\u00a0\S*/g; let m;
+        while ((m = re.exec(t))) {
+          const rg = document.createRange(); rg.setStart(node, m.index); rg.setEnd(node, m.index + m[0].length);
+          const tops = [...rg.getClientRects()].filter((r) => r.width > 0.01).map((r) => Math.round(r.top));
+          if (tops.length && Math.max(...tops) - Math.min(...tops) > 2) return true;
+        }
+        return false;
+      };
+      let px = parseFloat(getComputedStyle(copy).fontSize) || 13;
+      while (px > 10 && broken()) { px -= 0.5; copy.style.fontSize = px + 'px'; }
+    }
+
+    // Titles never break inside a word (Professor HOLD on 00d6d87, P3: B&W
+    // "The / experime / nt" in a 176 px plate). Step the type down to a 12 px
+    // floor first; the caller widens the plate if a word still cannot fit.
+    function titleWordBroken(title) {
+      if (!title || !title.firstChild) return false;
+      // Engraved glyphs overhang their advance box by up to ~1 px; a word whose
+      // advance touches the content edge puts ink over it (600x800 B&W "experiment").
+      const tr = title.getBoundingClientRect(), tcs = getComputedStyle(title);
+      const cL = tr.left + (parseFloat(tcs.borderLeftWidth) || 0) + (parseFloat(tcs.paddingLeft) || 0);
+      const cR = tr.right - (parseFloat(tcs.borderRightWidth) || 0) - (parseFloat(tcs.paddingRight) || 0);
+      const walk = document.createTreeWalker(title, NodeFilter.SHOW_TEXT);
+      while (walk.nextNode()) {
+        const node = walk.currentNode, t = node.textContent; const re = /[^ \t\n\u00a0-]+-?/g; let m;
+        while ((m = re.exec(t))) {
+          const rg = document.createRange(); rg.setStart(node, m.index); rg.setEnd(node, m.index + m[0].length);
+          const tops = [...rg.getClientRects()].filter((r) => r.width > 0.01).map((r) => Math.round(r.top + r.height / 2));
+          if (tops.length > 1 && Math.max(...tops) - Math.min(...tops) > 2) return true;
+          for (const r of rg.getClientRects()) if (r.width > 0.01 && (r.right > cR - 1 || r.left < cL - 0.5)) return true;
+        }
+      }
+      return title.scrollWidth > title.clientWidth + 0.5;
+    }
+    function fitTitleWords(title) {
+      if (!title) return true;
+      title.style.setProperty('overflow-wrap', 'normal', 'important');
+      title.style.setProperty('word-break', 'normal', 'important');
+      let fs = parseFloat(getComputedStyle(title).fontSize) || 16;
+      while (titleWordBroken(title) && fs > 12) { fs = Math.max(12, fs - 0.5); title.style.fontSize = fs + 'px'; }
+      return !titleWordBroken(title);
+    }
+    function positionBody(root) {
+      const slip = $('coach-slip'), spot = $('coach-spot'), skip = $('coach-skip');
+      const step = STEPS[active.mode][active.index];
+      { const c0 = $('coach-copy'); if (c0) { c0.style.fontSize = ''; c0.style.lineHeight = ''; if (c0.dataset.xsCopy) { c0.textContent = noWidow(step.copy); delete c0.dataset.xsCopy; } } }
+      const pad = 10;
+      const vw = window.innerWidth, vh = window.innerHeight;
+      // Match the CSS bottom-tray rule exactly, including 1:1 viewports. CSS
+      // orientation:portrait is height >= width, so vw < 600 && vh > vw missed
+      // every square from 320 to 580 and docked Skip off the right edge of a
+      // full-width bottom tray. Use matchMedia so a load-at-size path and a
+      // resize-into-size path see the same orientation the style engine does.
+      // Never infer a bottom tray from geometry: a side tray pushed down by a
+      // tall title bar on 480×320 is not a bottom tray.
+      const cssBottomTray = typeof window.matchMedia === 'function'
+        && window.matchMedia('(max-width: 599px) and (orientation: portrait)').matches;
+      const portrait = cssBottomTray || (vw < 600 && vh > vw);
+      const drawer = $('drawer'), plaque = $('drawer-plaque');
+      const trayEl = plaque || drawer;
+      let trayR = trayEl && !trayEl.hidden ? trayEl.getBoundingClientRect() : null;
+      let trayAtBottom = portrait;
+      document.body.classList.toggle('coach-tray-bottom', !!(active && trayAtBottom));
+      let dockPortrait = portrait || trayAtBottom;
+      // Short phones and landscape phones only — never treat a tall desktop landscape as short.
+      // Squares and near-squares over 500 tall (640x640, 800x800) are not short:
+      // the compact side tray squeezed their tray to 200 px with 6-8 px labels
+      // (Professor HOLD on 00d6d87 blocker 1). They keep the ordinary tray.
+      // A bottom-tray square (520x520, 580x580: CSS-portrait under 600 wide) stays
+      // short as before 55f34b2: its tray is already the bottom dock, and short
+      // only moves Skip/Next to the rail so the bench keeps 72 px.
+      const short = vh <= 500 || (dockPortrait && vw <= 430 && vh <= 640) || (dockPortrait && vw <= 900 && vh <= vw);
+      let sideCompact = !!(active && short && !trayAtBottom && vw < 900);
+      // Tight square / short-portrait: the two-row phone bar plus the compact
+      // bottom tray leave no room for Skip, the plaque and a 40 px playfield
+      // at 320–360 tall, and just above that at 320×427 / 360×432 (near 3:4
+      // and 5:6). Leave 320×568 and taller phones on the existing chrome.
+      let tight = !!(active && trayAtBottom && vh <= 450);
+      document.body.classList.toggle('coach-short', short);
+      document.body.classList.toggle('coach-side-compact', sideCompact);
+      document.body.classList.toggle('coach-tight', tight);
+      // A slightly-landscape near-square (360×340) is not CSS-portrait, so the
+      // side-compact tray plus the lever left only the 100 px plate floor and a
+      // 38–42 px type column. "The experiment" clipped mid-word, and in B&W the
+      // step-2 first sentence wrapped taller than the copy box. When height can
+      // take the tight bottom-tray stack (already proven at 320×320 / 360×360),
+      // prefer that dock over a 100 px sliver. Wider short landscapes (400×320,
+      // 480×320) keep the side tray because their plates are already > 100 px.
+      // 300 tall (Professor HOLD on 00d6d87, P4): the side tray left a 38-42 px
+      // copy column and the plate over the RUN lever; take the tight dock there too.
+      if (active && sideCompact && vw < 600 && vh >= 300) {
+        const lever0 = $('lever');
+        const leverOn0 = lever0 && !lever0.hidden && getComputedStyle(lever0).display !== 'none';
+        const lR0 = leverOn0 ? lever0.getBoundingClientRect() : null;
+        const dRight0 = Math.max(drawer ? drawer.getBoundingClientRect().right : 0,
+          plaque ? plaque.getBoundingClientRect().right : 0);
+        const x0t = Math.max(pad, dRight0 + 8);
+        const x1t = Math.min(vw - pad, lR0 ? lR0.left - 8 : vw - pad);
+        const slipWt = Math.max(100, Math.min(420, Math.min(x1t, vw - pad) - x0t));
+        // A plate under 150 px (400×320: 120 px) cannot hold the lesson beside a
+        // Skip/Next rail either; take the tight bottom-tray dock there too. With
+        // no lever to sit under (the editor), the rail takes its own column.
+        const railCut = leverOn0 ? 0 : 92;
+        if (slipWt - railCut < 150) {
+          trayAtBottom = true;
+          dockPortrait = true;
+          sideCompact = false;
+          tight = vh <= 450;
+          document.body.classList.toggle('coach-tray-bottom', true);
+          document.body.classList.toggle('coach-side-compact', false);
+          document.body.classList.toggle('coach-tight', tight);
+          trayR = trayEl && !trayEl.hidden ? trayEl.getBoundingClientRect() : null;
+        }
+      }
+
+      const fitLabel = (el, minPx) => {
+        if (!el) return;
+        const face = el.querySelector && el.querySelector('.brass-face');
+        const start = parseFloat(getComputedStyle(face || el).fontSize) || 16;
+        el.style.fontSize = '';
+        if (face) face.style.fontSize = '';
+        // Ink, not just the layout box: engraved capitals overhang their
+        // advance (NEXT's N sat 0.4–1.4 px outside the face at 480×320).
+        const inkOut = (host) => {
+          const rg = document.createRange(); rg.selectNodeContents(host);
+          const r = rg.getBoundingClientRect(), b = host.getBoundingClientRect();
+          const cs = getComputedStyle(host);
+          const l = b.left + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.paddingLeft) || 0);
+          const rt = b.right - (parseFloat(cs.borderRightWidth) || 0) - (parseFloat(cs.paddingRight) || 0);
+          // 3 px rule (Manager M6): measured 2.1-2.4 px at 2 px; keep 3.5 px.
+          return r.width > 0 && (r.left < l + 3.5 || r.right > rt - 3.5);
+        };
+        const overflow = () => {
+          if (el.scrollWidth > el.clientWidth + 1) return true;
+          if (face && face.scrollWidth > face.clientWidth + 1) return true;
+          if ((el.id === 'coach-skip' || el.id === 'coach-next') && inkOut(face || el)) return true;
+          return false;
+        };
+        if (!overflow()) return;
+        for (let s = start; s >= minPx; s -= 0.5) {
+          el.style.fontSize = s + 'px';
+          if (face) face.style.fontSize = s + 'px';
+          if (!overflow()) return;
+        }
+      };
+      { const sl0 = $('coach-slip'); if (sl0) { sl0.style.paddingTop = ''; sl0.style.paddingBottom = ''; sl0.style.removeProperty('padding-left'); sl0.style.removeProperty('padding-right'); } }
+      const titleEl0 = $('coach-title');
+      if (titleEl0) {
+        titleEl0.style.fontSize = '';
+        titleEl0.style.marginBottom = '';
+        titleEl0.style.removeProperty('white-space');
+        titleEl0.style.removeProperty('overflow');
+        titleEl0.style.removeProperty('text-overflow');
+        titleEl0.style.removeProperty('overflow-wrap');
+        titleEl0.style.removeProperty('word-break');
+      }
+      if (skip) { skip.style.fontSize = ''; skip.style.height = ''; skip.style.minHeight = ''; const sf = skip.querySelector('.brass-face'); if (sf) sf.style.fontSize = ''; }
+      const next0 = $('coach-next');
+      if (next0) { next0.style.fontSize = ''; next0.style.height = ''; const nf = next0.querySelector('.brass-face'); if (nf) nf.style.fontSize = ''; }
+      // The compact lesson bar may have changed height (title row): re-read it
+      // so the lever and tray follow before they are measured.
+      // Manager M1: the wrapping compact bar (381-599 wide) keeps the experiment
+      // number with the first word ("1. Inclined / Delivery", never "1." alone).
+      { const tn = $('t-name'); if (tn) { const t = tn.textContent || ''; const tied = t.replace(/^(\d+\.) /, '$1\u00a0');
+        if (short && vw > 380 && vw < 600) { if (t !== tied) tn.textContent = tied; } else if (/^\d+\.\u00a0/.test(t)) tn.textContent = t.replace(/^(\d+\.)\u00a0/, '$1 '); } }
+      if (typeof opts.syncBar === 'function') opts.syncBar();
+      // Re-measure after compacting the short-landscape title bar (and any tray class changes).
+      const barEl = document.getElementById(document.body.classList.contains('editing') ? 'editor-bar' : 'bar');
+      const barB = barEl ? barEl.getBoundingClientRect().bottom : 48;
+      trayR = trayEl && !trayEl.hidden ? trayEl.getBoundingClientRect() : null;
+      const dRight = Math.max(drawer ? drawer.getBoundingClientRect().right : 0, plaque ? plaque.getBoundingClientRect().right : 0);
+      const lever = $('lever');
+      const leverOn = lever && !lever.hidden && getComputedStyle(lever).display !== 'none';
+      const lR = leverOn ? lever.getBoundingClientRect() : null;
+      let x0, x1;
+      if (dockPortrait) {
+        x0 = pad;
+        x1 = (lR && lR.top < barB + 200) ? Math.max(x0 + 160, lR.left - 8) : (vw - pad);
+      } else {
+        x0 = Math.max(pad, dRight + 8);
+        x1 = Math.min(vw - pad, lR ? lR.left - 8 : vw - pad);
+        // Never fall back to covering the side drawer or the lever; use a narrower plate instead.
+        if (x1 - x0 < 160) {
+          x0 = Math.max(pad, dRight + 6);
+          x1 = Math.min(vw - pad, lR ? lR.left - 6 : vw - pad);
+        }
+      }
+      // Never let the plaque run off the right edge — on a 320-wide landscape the
+      // compact tray already uses 200 px, so a 160 px minimum would overflow.
+      const rightLimit = Math.min(x1, vw - pad);
+      const slipW = Math.max(100, Math.min(420, rightLimit - x0));
+      slip.style.width = slipW + 'px';
+      skip.style.width = slipW + 'px';
+      const left = x0;
+      const top = barB + (tight ? 4 : 8);
+      slip.style.left = left + 'px';
+      slip.style.top = top + 'px';
+      const title = $('coach-title'), copy = $('coach-copy'), next = $('coach-next');
+      if (title && !short && !fitTitleWords(title)) {
+        // Still a word wider than the plate at 12 px: widen the plate into free
+        // room on the right (never over the lever) in 4 px steps.
+        const maxW = Math.max(slipW, Math.min(420, (lR ? lR.left - 8 : vw - pad) - left, vw - pad - left));
+        for (let w2 = slipW + 4; w2 <= maxW && titleWordBroken(title); w2 += 4) { slip.style.width = w2 + 'px'; skip.style.width = w2 + 'px'; }
+      }
+      // Short landscape plates can be narrower than "The experiment" / "Run and coins"
+      // at the stylesheet size, and nowrap+ellipsis was cutting those titles mid-word
+      // (e.g. "The ex…", "Run a…" at 400×320). Shrink the title to stay on one line;
+      // only wrap if it still cannot fit at 11 px.
+      if (title && short) {
+        fitLabel(title, 11);
+        // Short-landscape CSS forces nowrap !important + ellipsis (to keep
+        // "The experiment" on one line at 480-wide). A 100–140 px plate still
+        // cannot hold that title at 11 px, so override and wrap on a word.
+        if (title.scrollWidth > title.clientWidth) {
+          title.style.setProperty('white-space', 'normal', 'important');
+          title.style.setProperty('overflow', 'visible', 'important');
+          title.style.setProperty('text-overflow', 'clip', 'important');
+          title.style.setProperty('overflow-wrap', 'normal', 'important');
+          title.style.setProperty('word-break', 'normal', 'important');
+          // After wrapping, a single word such as "experiment" can still be
+          // wider than a 38–42 px column at 11 px. Keep shrinking until it fits.
+          if (titleWordBroken(title) && !fitTitleWords(title)) fitLabel(title, 11);
+        }
+      }
+      const row = slip.querySelector('.row');
+      const host = $('coach');
+      // Portrait: the plate grows with its text; Next stays inside. Short/landscape: cap the
+      // plate so the bench stays usable, scroll the body copy inside the padding box, and park
+      // Next beside Skip (a child of the overflow-hidden plate would be clipped).
+      if (next) {
+        next.style.position = '';
+        next.style.left = '';
+        next.style.top = '';
+        next.style.width = '';
+        next.style.zIndex = '';
+        next.style.minHeight = '';
+        if (short) {
+          if (host && next.parentElement !== host) host.appendChild(next);
+        } else if (row && next.parentElement !== row) {
+          row.appendChild(next);
+        }
+      }
+      if (copy) { copy.style.maxHeight = ''; copy.style.overflowY = ''; copy.style.marginBottom = ''; }
+      slip.style.maxHeight = 'none';
+      slip.style.height = 'auto';
+      slip.style.overflowY = '';
+      // 300 tall (Professor P4 / Manager M5, N5): the narrow 300-tall docks
+      // (< 480 wide) take the compact rail. Skip/Next/Done keep the 44 px tap
+      // height everywhere (Labs Manager HOLD on b6cc153: 36 px was too small).
+      const xs = vh < 320 && vw < 480;
+      document.body.classList.toggle('coach-xs', !!(active && xs));
+      const skipH = 44, gap = tight ? 6 : 8, edge = 8;
+      const trayTop = (dockPortrait && trayR) ? trayR.top : vh - pad;
+      // Stated minimum playfield height: 64 px in a tall portrait, 40 px on a
+      // short or square viewport (the official sweep's playfieldMin rule).
+      // Ordinary-play stageRect uses bottom = vh-32; during a lesson only, sit
+      // the playfield closer to the bottom (vh-8) so the plaque can use that
+      // unused 24 px and still leave a 40 px on-screen bench.
+      // Side-tray squares and near-squares over 500 tall (600x620, 640x640) are
+      // no longer short (P1), so they stack the plate; keep them a usable
+      // 72 px lesson bench (the plate caps and the copy scrolls) instead of 40.
+      const minStage = short ? 40 : (dockPortrait ? 64 : 72);
+      const stageBottom = dockPortrait ? Math.max(minStage + edge, trayTop - (tight ? 8 : 14)) : (vh - 8);
+      const maxDock = Math.max(barB + 8, stageBottom - minStage);
+      // Grow with the text when there is room. Cap and scroll the body copy only
+      // when the natural height would cover the bench or the tray. maxDock already
+      // reserves minStage, so do not subtract it again.
+      fitTies(copy);
+      const natural = slip.getBoundingClientRect().height;
+      // Compact lessons (Labs Manager HOLD on b843102): on squares, near-squares
+      // and short landscapes the stacked plate + Skip/Next row left a 40 px
+      // strip of bench and a half-cut copy line above the cue. When the stacked
+      // layout would leave less than a usable bench, park Skip and Next as a
+      // brass rail under the run lever (or at the right edge when there is no
+      // lever), let the plate use the column beside it, show only whole copy
+      // lines (the rest scrolls behind the engraved cue), and give the bench the
+      // larger of the column under the plate or the full width under the rail.
+      const LESSON_STAGE_MIN = 72;
+      const band = stageBottom - top;
+      if (short && next && band - (natural + gap + skipH + 8) < 96) {
+        const leverShown = !!(lR && lR.width > 0 && lR.bottom < stageBottom);
+        // 300 tall (Manager/Professor N5 on 7b0d242): the stacked plate left a
+        // 14-29 px copy box with the cue on the type. Take the rail under the
+        // lever with 3 px joints (it may run down beside the 40 px bench to
+        // just above the tray), so the plate gets the whole column beside it.
+        const xsRail = xs && short;
+        // Rail buttons are at least 80 px wide in coach-xs (rail gate 80x44): at
+        // 300 wide the lever is 78 px, so the rail overhangs it 2 px to the left.
+        const railW = Math.round(Math.max(xsRail ? 80 : 76, Math.min(96, leverShown ? lR.width : 84)));
+        const railX = Math.round(leverShown ? lR.right - railW : (vw - pad - railW));
+        let railGap = xsRail ? 3 : 6;
+        let railTop = Math.round(leverShown && lR.top < top + 48 ? lR.bottom + railGap : top);
+        let nextTop = railTop + skipH + railGap;
+        let railBottom = xsRail ? Math.max(stageBottom, trayTop - 2) : stageBottom;
+        const plateL = x0, plateR = railX - 8;
+        const plateW = Math.floor(Math.min(420, plateR - plateL));
+        // 300 tall with 44 px buttons (Labs Manager HOLD on b6cc153): two 44 px
+        // buttons do not stack between the lever and the tray. Then Next/Done
+        // stays under the lever and Skip sits beside it on the same row, below
+        // the plate; the bench is the column left of Skip. The plate, its copy
+        // fit and the lever are unchanged.
+        const rowSkipX = railX - railGap - railW;
+        // Narrowest 300-tall docks (300x300, Labs Manager HOLD on adde550): the
+        // row leaves the bench left of Skip under the stated 120 px. There the
+        // two 44 px buttons stack under the lever with 1 px joints, Next/Done
+        // resting on the parts tray, and the bench keeps the column under the
+        // plate. 320 wide and up keep the row exactly as on adde550.
+        const benchLeft = dockPortrait ? 12 : 0;
+        if (xsRail && leverShown && nextTop + skipH > railBottom + 0.5 && rowSkipX - 8 - benchLeft < 120) {
+          const tTop = Math.ceil(lR.bottom) + 1;
+          if (tTop + skipH + 1 + skipH <= trayTop + 0.5) {
+            railGap = 1; railTop = tTop; nextTop = tTop + skipH + 1; railBottom = trayTop;
+          }
+        }
+        const rowRail = xsRail && leverShown && nextTop + skipH > railBottom + 0.5
+          && railTop + skipH <= railBottom + 0.5 && rowSkipX >= plateL;
+        if ((nextTop + skipH <= railBottom + 0.5 || rowRail) && plateW >= 150) {
+          slip.style.width = plateW + 'px';
+          skip.style.width = '';
+          slip.style.left = plateL + 'px';
+          slip.style.top = top + 'px';
+          if (title) {
+            title.style.fontSize = '';
+            for (const k of ['white-space', 'overflow', 'text-overflow', 'overflow-wrap', 'word-break']) title.style.removeProperty(k);
+            fitLabel(title, 11);
+            if (title.scrollWidth > title.clientWidth) {
+              title.style.setProperty('white-space', 'normal', 'important');
+              title.style.setProperty('overflow', 'visible', 'important');
+              title.style.setProperty('text-overflow', 'clip', 'important');
+              title.style.setProperty('overflow-wrap', 'normal', 'important');
+              title.style.setProperty('word-break', 'normal', 'important');
+            }
+          }
+          // The title size fitted here, before the kit chrome refits its label.
+          const railTitleFs = title ? getComputedStyle(title).fontSize : '';
+          // 300 tall B&W (Labs Manager craft HOLD on 86e08e4): the title starts past the
+          // engraved corner notch. The notch is a quarter arc of radius R round the screw
+          // at (s, s), drawn by the kit's SVG (viewBox = border box, scaled to fit the
+          // padding box), so measure the arc the chrome draws and pad the title's sides
+          // until its line box keeps 3.5 px (+ half the 1.6 px stroke) off the arc.
+          const bwXs = xsRail && document.body.getAttribute('data-theme') === 'bw';
+          const guardTitle = () => {
+            if (!bwXs || !title) return;
+            title.style.removeProperty('padding-left'); title.style.removeProperty('padding-right');
+            const gcs = getComputedStyle(slip), b = parseFloat(gcs.borderLeftWidth) || 0;
+            const s0 = parseFloat(gcs.getPropertyValue('--_s')) || 10, R0 = parseFloat(gcs.getPropertyValue('--_R')) || 13;
+            const sr = slip.getBoundingClientRect(), W = sr.width, H = sr.height;
+            if (!(W > 2 * b && H > 2 * b)) return;
+            const k = Math.min((W - 2 * b) / W, (H - 2 * b) / H);
+            const ox = sr.left + b + ((W - 2 * b) - k * W) / 2, oy = sr.top + b + ((H - 2 * b) - k * H) / 2;
+            const cxL = ox + k * s0, cxR = ox + k * (W - s0), cy = oy + k * s0, D = k * R0 + 0.8 + 3.5;
+            const rg = document.createRange(); rg.selectNodeContents(title);
+            let pl = 0, pr = 0;
+            for (const r of rg.getClientRects()) {
+              if (!(r.width > 0.5)) continue;
+              const dy = Math.max(0, r.top - cy); if (dy >= D) continue;
+              const dx = Math.sqrt(D * D - dy * dy);
+              pl = Math.max(pl, cxL + dx - r.left); pr = Math.max(pr, r.right - (cxR - dx));
+            }
+            if (pl > 0) title.style.setProperty('padding-left', Math.ceil(pl * 2) / 2 + 'px', 'important');
+            if (pr > 0) title.style.setProperty('padding-right', Math.ceil(pr * 2) / 2 + 'px', 'important');
+          };
+          guardTitle();
+          slip.style.maxHeight = 'none';
+          slip.style.overflow = 'hidden';
+          if (copy) {
+            copy.style.maxHeight = '';
+            copy.style.overflow = '';
+            copy.style.marginBottom = '0px';
+            copy.classList.remove('coach-copy-overflow-mask');
+            fitTies(copy);
+            // 300 tall (300x300 B&W editor step 3): a no-break tie wider than
+            // the copy column took the type under the 11 px floor. First pull
+            // the side inset in to just clear the engraved corner (as the
+            // whole-copy fit below does), then refit the ties from the
+            // stylesheet size.
+            if (xsRail && (parseFloat(getComputedStyle(copy).fontSize) || 12) < 11 - 0.01) {
+              const s0 = getComputedStyle(slip);
+              const pl = parseFloat(s0.paddingLeft) || 0, pr = parseFloat(s0.paddingRight) || 0;
+              const inset = Math.max(0, pl - ((parseFloat(s0.getPropertyValue('--_s')) || 10) + (parseFloat(s0.getPropertyValue('--_R')) || 13) + (bwXs ? 3 : 2)));
+              if (inset > 0) {
+                slip.style.setProperty('padding-left', (pl - inset) + 'px', 'important');
+                slip.style.setProperty('padding-right', (pr - inset) + 'px', 'important');
+                copy.style.fontSize = '';
+                fitTies(copy);
+              }
+            }
+          }
+          const scs = getComputedStyle(slip);
+          const padT = parseFloat(scs.paddingTop) || 0, padB = parseFloat(scs.paddingBottom) || 0;
+          const titleH = title ? title.getBoundingClientRect().height : 0;
+          const titleMb = title ? (parseFloat(getComputedStyle(title).marginBottom) || 0) : 0;
+          let lh = copy ? parseFloat(getComputedStyle(copy).lineHeight) : 16;
+          if (!(lh > 0)) lh = 16;
+          // Prefer the column under the plate; leave it a usable bench.
+          // 300 tall keeps the stated 40 px playfield floor (minStage) under the plate.
+          const benchMin = xsRail ? minStage : LESSON_STAGE_MIN;
+          let benchGap = 8; // plate-to-bench gap (closes to 4 px only in the last-resort 300-tall fit below)
+          let plateMax = Math.max(0, stageBottom - benchMin - benchGap - top - (xsRail ? 1 : 0)); // 1 px: the bench top is ceil()ed
+          const fullH = copy ? copy.scrollHeight : 0;
+          let fullLines = Math.max(1, Math.round(fullH / lh));
+          const fitLines = Math.max(1, Math.floor((plateMax - padT - padB - titleH - titleMb - 1) / lh));
+          let showLines = Math.min(fullLines, fitLines);
+          let scrolls = false;
+          const cue = $('coach-scroll-cue');
+          const applyLines = () => {
+            scrolls = showLines < fullLines;
+            if (copy) {
+              copy.style.maxHeight = (showLines * lh) + 'px';
+              copy.style.overflow = scrolls ? 'auto' : 'hidden';
+              copy.style.webkitOverflowScrolling = 'touch';
+              copy.classList.toggle('coach-copy-overflow', scrolls);
+            }
+            slip.classList.toggle('coach-copy-overflow', scrolls);
+            if (cue) cue.hidden = !scrolls;
+          };
+          applyLines();
+          refreshChrome(slip);
+          // The estimate leaves out the cue and kit chrome; measure the plate
+          // and give back whole lines until the bench under it stays usable.
+          while (copy && showLines > 1 && slip.getBoundingClientRect().bottom > top + plateMax + 0.5) {
+            showLines -= 1;
+            applyLines();
+            refreshChrome(slip);
+          }
+          // 300 tall (N5): the whole lesson copy, never a cut line under a cue.
+          // Step the copy down 0.5 px to the 11 px team floor (never below),
+          // then tighten the leading to 1.15, then pull the side inset in to
+          // just clear the engraved corner (the screws and the rule's concave
+          // corners stay clear of the type), until every line fits the plate.
+          if (xsRail && copy && showLines < fullLines) {
+            const fz0 = parseFloat(getComputedStyle(copy).fontSize) || 12;
+            const pL0 = slip.style.paddingLeft, pR0 = slip.style.paddingRight;
+            const sideIn = Math.max(0, (parseFloat(scs.paddingLeft) || 0) - ((parseFloat(scs.getPropertyValue('--_s')) || 10) + (parseFloat(scs.getPropertyValue('--_R')) || 13) + (bwXs ? 3 : 2)));
+            // The kit's plaque chrome refits its label when the plate resizes
+            // (14 px grew to 17 px); keep the title at the size fitted above.
+            const tFs = railTitleFs;
+            const tWs = title ? title.style.getPropertyValue('white-space') : '';
+            const tWsP = title ? title.style.getPropertyPriority('white-space') : '';
+            const keepTitle = () => { if (!title) return; title.style.fontSize = tFs; if (tWs) title.style.setProperty('white-space', tWs, tWsP); };
+            const fitAll = () => {
+              copy.style.maxHeight = ''; copy.style.overflow = '';
+              lh = parseFloat(getComputedStyle(copy).lineHeight); if (!(lh > 0)) lh = (parseFloat(copy.style.fontSize) || fz0) * 1.2;
+              fullLines = Math.max(1, Math.round(copy.scrollHeight / lh));
+              showLines = fullLines; applyLines(); refreshChrome(slip); keepTitle();
+              return slip.getBoundingClientRect().bottom <= top + plateMax + 0.5 && copy.scrollHeight <= copy.clientHeight + 1;
+            };
+            // B&W draws a 2 px border on top of the same padding: last, close the
+            // title-to-copy gap. The vertical padding stays (Labs Manager craft
+            // HOLD on 1f61fb3: pulling it in by the border width put the type on
+            // the engraved rules; the ink keeps at least 3 px clear of them).
+            const bTx = parseFloat(scs.borderTopWidth) || 0, bBx = parseFloat(scs.borderBottomWidth) || 0;
+            const pT1 = slip.style.paddingTop, pB1 = slip.style.paddingBottom, tmb1 = title ? title.style.marginBottom : '';
+            let fitted = false;
+            const fitLoops = (sideInX = sideIn) => {
+              for (const inset of [0, sideInX]) {
+                if (fitted) break;
+                if (inset) { slip.style.setProperty('padding-left', ((parseFloat(scs.paddingLeft) || 0) - inset) + 'px', 'important'); slip.style.setProperty('padding-right', ((parseFloat(scs.paddingRight) || 0) - inset) + 'px', 'important'); }
+                for (const lhk of [0, 1.15]) {
+                  if (fitted) break;
+                  copy.style.lineHeight = lhk ? String(lhk) : '';
+                  for (let fz = fz0; fz >= 11 - 0.001 && !fitted; fz -= 0.5) { copy.style.fontSize = fz + 'px'; fitted = fitAll(); }
+                }
+              }
+            };
+            for (const trim of [0, 1]) {
+              if (fitted) break;
+              if (trim) {
+                if (!(bTx + bBx > 0)) break;
+                if (title) title.style.marginBottom = '0px';
+              }
+              fitLoops();
+            }
+            // 300x300 B&W "Run and coins" (Labs Manager craft HOLD on 1f61fb3):
+            // the whole copy does not fit with the ink 3 px clear of the rules,
+            // so that step takes its shorter wording (same meaning), then refits.
+            if (!fitted && step.copyXs && bTx + bBx > 0) {
+              copy.textContent = noWidow(step.copyXs); copy.dataset.xsCopy = '1';
+              copy.style.fontSize = ''; copy.style.lineHeight = '';
+              // Start again from the full side inset: the shorter wording keeps the
+              // type clear of the engraved corners when it fits without the pull-in.
+              if (pL0) slip.style.paddingLeft = pL0; else slip.style.removeProperty('padding-left');
+              if (pR0) slip.style.paddingRight = pR0; else slip.style.removeProperty('padding-right');
+              // The shorter wording ends on a short last line, so its pull-in may come
+              // 1 px closer to the corner (+2 instead of +3); the gate measures the ink.
+              fitLoops(sideIn + 1);
+              if (!fitted) { copy.textContent = noWidow(step.copy); delete copy.dataset.xsCopy; }
+            }
+            // Last resort (300x300 B&W step 3 only; every other 300-tall state
+            // fits above): with the trimmed padding and side inset still in
+            // place, close the plate-to-bench gap from 8 to 4 px (the bench
+            // keeps its 40 px floor) and tighten the 11 px leading to 1.1.
+            if (!fitted) {
+              benchGap = 4; plateMax += 4;
+              copy.style.lineHeight = '1.1';
+              for (let fz = fz0; fz >= 11 - 0.001 && !fitted; fz -= 0.5) { copy.style.fontSize = fz + 'px'; fitted = fitAll(); }
+              if (!fitted) { benchGap = 8; plateMax -= 4; }
+            }
+            keepTitle();
+            if (!fitted) {
+              slip.style.removeProperty('padding-top'); slip.style.removeProperty('padding-bottom');
+              if (pT1) slip.style.paddingTop = pT1; if (pB1) slip.style.paddingBottom = pB1;
+              if (title) title.style.marginBottom = tmb1;
+              copy.style.fontSize = ''; copy.style.lineHeight = '';
+              if (pL0) slip.style.paddingLeft = pL0; else slip.style.removeProperty('padding-left');
+              if (pR0) slip.style.paddingRight = pR0; else slip.style.removeProperty('padding-right');
+              lh = parseFloat(getComputedStyle(copy).lineHeight) || 16;
+              fullLines = Math.max(1, Math.round(copy.scrollHeight / lh));
+              showLines = Math.min(fullLines, Math.max(1, Math.floor((plateMax - padT - padB - titleH - titleMb - 1) / lh)));
+              applyLines(); refreshChrome(slip);
+              while (showLines > 1 && slip.getBoundingClientRect().bottom > top + plateMax + 0.5) { showLines -= 1; applyLines(); refreshChrome(slip); }
+            }
+          }
+          // 300 tall: whole copy, nothing scrolls, so the copy box need not clip
+          // the first or last line's glyph boxes at all.
+          if (xsRail && copy && showLines >= fullLines) copy.style.overflow = 'visible';
+          // Whole first sentence (tutorial gate, 320x320 step 2 "Enter or the lever
+          // starts a run; Space pauses." showed one line). The plate may take the
+          // extra lines only while the bench keeps the text-fit floor: 72 px from
+          // 320 tall up, the 40 px minStage below 320. If the extra lines would eat
+          // that bench, step the copy type down (0.5 px, floor 11 px, the team type floor) until the sentence fits the lines the bench allows;
+          // else restore the type and keep the cut plus the engraved cue.
+          if (copy && showLines < fullLines) {
+            const txt = copy.textContent || '';
+            const m = txt.match(/^[\s\S]*?[.!?](\s|$)/);
+            const growLimit = (vh < 320 ? stageBottom - minStage - 8 : top + plateMax) + 0.5;
+            const sentenceLines = () => {
+              let needBottom = null;
+              try {
+                const rg = document.createRange();
+                const walker = document.createTreeWalker(copy, NodeFilter.SHOW_TEXT);
+                let left = m[0].trimEnd().length, node = null, off = 0;
+                while ((node = walker.nextNode())) { const L = node.nodeValue.length; if (left <= L) { off = left; break; } left -= L; }
+                if (node) { rg.setStart(copy, 0); rg.setEnd(node, off); const rs = rg.getClientRects(); if (rs.length) needBottom = Math.max(...Array.from(rs).map((r) => r.bottom)); }
+              } catch (e) { needBottom = null; }
+              if (needBottom == null) return null;
+              const cTop = copy.getBoundingClientRect().top - copy.scrollTop;
+              return Math.min(fullLines, Math.ceil((needBottom - cTop - 0.5) / lh));
+            };
+            const tryGrow = () => {
+              copy.scrollTop = 0;
+              const need = sentenceLines();
+              if (need == null) return true;          // cannot measure: leave as is
+              if (need <= showLines) return true;
+              const keep = showLines;
+              showLines = need; applyLines(); refreshChrome(slip);
+              if (slip.getBoundingClientRect().bottom <= growLimit) return true;
+              showLines = keep; applyLines(); refreshChrome(slip);
+              return false;
+            };
+            if (m && !tryGrow()) {
+              // 320x320 step 2: the 12 px copy leaves one line. Step the copy
+              // down (to the team's 11 px type floor, never below). B&W's plate
+              // also carries a 2 px drawn border on top of the same 25 px
+              // padding, so its chrome is 4 px taller than Victorian's and the
+              // 11 px pair still missed the 72 px bench by ~1.5 px: next, pull
+              // the B&W padding in by the border width so ink-to-edge matches
+              // Victorian exactly; last, close the title-to-copy gap by up to
+              // 3 px (never below 0; the kit fitter owns the title size).
+              const fs0 = copy.style.fontSize, lh0 = lh, full0 = fullLines, show0 = showLines;
+              const tmb0 = title ? title.style.marginBottom : '';
+              const pT0 = slip.style.paddingTop, pB0 = slip.style.paddingBottom;
+              const bT = parseFloat(scs.borderTopWidth) || 0, bB = parseFloat(scs.borderBottomWidth) || 0;
+              const copyFz0 = parseFloat(getComputedStyle(copy).fontSize) || 13;
+              let done = false;
+              for (let db = 0; db <= ((bT + bB) > 0 ? 1 : 0) && !done; db += 1) {
+              if (db) { slip.style.paddingTop = Math.max(0, padT - bT) + 'px'; slip.style.paddingBottom = Math.max(0, padB - bB) + 'px'; }
+              const padTx = db ? Math.max(0, padT - bT) : padT, padBx = db ? Math.max(0, padB - bB) : padB;
+              for (let dm = 0; dm <= 3 && !done; dm += 1) {
+                if (dm) { if (!title || titleMb - dm < 0) break; title.style.marginBottom = (titleMb - dm) + 'px'; }
+                for (let fz = copyFz0 - 0.5; fz >= 11 && !done; fz -= 0.5) {
+                  copy.style.fontSize = fz + 'px';
+                  copy.style.maxHeight = ''; copy.style.overflow = '';
+                  lh = parseFloat(getComputedStyle(copy).lineHeight); if (!(lh > 0)) lh = fz * 1.3;
+                  fullLines = Math.max(1, Math.round(copy.scrollHeight / lh));
+                  showLines = Math.min(fullLines, Math.max(1, Math.floor((plateMax - padTx - padBx - bT - bB - titleH - (titleMb - dm) - 1) / lh)));
+                  applyLines(); refreshChrome(slip);
+                  while (showLines > 1 && slip.getBoundingClientRect().bottom > top + plateMax + 0.5) { showLines -= 1; applyLines(); refreshChrome(slip); }
+                  done = slip.getBoundingClientRect().bottom <= top + plateMax + 0.5 && tryGrow();
+                  if (done) { const n = sentenceLines(); done = n != null && n <= showLines; }
+                }
+              }
+              if (!done && title) title.style.marginBottom = tmb0;
+              }
+              if (!done) { copy.style.fontSize = fs0; slip.style.paddingTop = pT0; slip.style.paddingBottom = pB0; if (title) title.style.marginBottom = tmb0; lh = lh0; fullLines = full0; showLines = show0; applyLines(); refreshChrome(slip); }
+            }
+          }
+          // Still over with a single copy line: the title is the one that
+          // wrapped (300×300 "How to build a / level"). Keep it on one line at
+          // a smaller engraving before giving the bench up; else keep the wrap.
+          if (copy && title && slip.getBoundingClientRect().bottom > top + plateMax + 0.5 && title.getBoundingClientRect().height > 1.5 * (parseFloat(getComputedStyle(title).lineHeight) || parseFloat(getComputedStyle(title).fontSize) * 1.2)) {
+            const wrapProps = ['white-space', 'overflow', 'text-overflow', 'overflow-wrap', 'word-break'];
+            const wrapVals = wrapProps.map((k) => title.style.getPropertyValue(k));
+            const fs0 = title.style.fontSize;
+            title.style.setProperty('white-space', 'nowrap', 'important');
+            title.style.setProperty('overflow', 'visible', 'important');
+            title.style.removeProperty('text-overflow');
+            title.style.removeProperty('overflow-wrap');
+            title.style.removeProperty('word-break');
+            // Strict one-line fit (fitLabel allows 1 px; engraved ink overhangs
+            // its advance, so keep a 1 px margin inside the title box here).
+            const oneLine = () => {
+              const rg = document.createRange(); rg.selectNodeContents(title);
+              const tr = title.getBoundingClientRect();
+              return title.scrollWidth <= title.clientWidth && rg.getBoundingClientRect().right <= tr.right - 1;
+            };
+            for (let fz = parseFloat(getComputedStyle(title).fontSize) || 14; fz >= 9; fz -= 0.5) {
+              title.style.fontSize = fz + 'px';
+              if (oneLine()) break;
+            }
+            if (!oneLine()) {
+              wrapProps.forEach((k, i) => { if (wrapVals[i]) title.style.setProperty(k, wrapVals[i], 'important'); else title.style.removeProperty(k); });
+              title.style.fontSize = fs0;
+            } else {
+              // The kit's plaque chrome refits its label (nowrap without
+              // priority, stylesheet size); re-apply the one-line fit after it.
+              const fsFit = title.style.fontSize;
+              const chrome = () => {
+                refreshChrome(slip);
+                title.style.setProperty('white-space', 'nowrap', 'important');
+                title.style.fontSize = fsFit;
+              };
+              chrome();
+              const titleH2 = title.getBoundingClientRect().height;
+              showLines = Math.min(fullLines, Math.max(1, Math.floor((plateMax - padT - padB - titleH2 - titleMb - 1) / lh)));
+              applyLines();
+              chrome();
+              while (showLines > 1 && slip.getBoundingClientRect().bottom > top + plateMax + 0.5) {
+                showLines -= 1;
+                applyLines();
+                chrome();
+              }
+            }
+          }
+          // 300 tall: redraw the chrome for the final plate size. A chrome built for an
+          // earlier, taller plate was scaled into the final one and moved the corner notch
+          // and the top rule onto the title (B&W 300x300 editor step 0, 320x300 editor
+          // step 1; Victorian 300x300 editor step 1, rule through the title). B&W always
+          // re-checks its title guard and redraws; Victorian redraws only a stale chrome
+          // (viewBox more than 2 px off the plate), so every other plate is unchanged.
+          // The kit refits its label on a redraw (14 px grew to 17 px): keep the fitted
+          // title size and wrap.
+          if (xsRail && title) {
+            const staleChrome = (tol = 2) => {
+              const g = slip.querySelector(':scope > .vls-plaque__chrome-built > svg');
+              if (!g) return true;
+              const vb = (g.getAttribute('viewBox') || '').trim().split(/\s+/).map(Number), r = slip.getBoundingClientRect();
+              return !(vb.length === 4 && Math.abs(vb[2] - r.width) <= tol && Math.abs(vb[3] - r.height) <= tol);
+            };
+            if (bwXs || staleChrome()) {
+              const tFs1 = railTitleFs || getComputedStyle(title).fontSize, tWs1 = title.style.getPropertyValue('white-space'), tWsP1 = title.style.getPropertyPriority('white-space');
+              const redraw = () => {
+                // The UI-plaque observer (game.js refreshUiPlaques, on a resize or a font
+                // load) can rebuild this chrome while the plate is briefly taller, under the
+                // same size key, so refreshChrome would keep it: the SVG then scales into the
+                // final plate and moves the top-left notch toward the title (Labs Manager
+                // craft HOLD on 36b4945, B&W 340x300 and 360x300 experiment step 0). Drop
+                // the key whenever the drawn viewBox is off the plate.
+                if (staleChrome(0.5)) slip.removeAttribute('data-fa-chrome');
+                refreshChrome(slip);
+                title.style.fontSize = tFs1;
+                if (tWs1) title.style.setProperty('white-space', tWs1, tWsP1); else title.style.removeProperty('white-space');
+              };
+              guardTitle(); redraw();
+              guardTitle(); redraw();
+              // B&W: the copy's last line against the bottom corner notches (Labs Manager /
+              // Professor, 19 Nov: 3.5 px of geometric clearance; 340x300 experiment step 2,
+              // the "p" of "pay more." 3.44 px off the bottom-left notch). Glyph ink boxes
+              // from the font's own bounds; only a plate short of 3.5 px gets the shortfall
+              // under its copy, in 0.5 px steps, and a redraw. Every other plate is unchanged.
+              if (bwXs && copy) for (let pass = 0; pass < 3; pass++) {
+                const short = notchShortfall(slip, copy, 3.5);
+                if (!(short > 0)) break;
+                const pb = parseFloat(getComputedStyle(slip).paddingBottom) || 0;
+                slip.style.setProperty('padding-bottom', (pb + Math.ceil(short * 2) / 2) + 'px', 'important');
+                redraw();
+              }
+            }
+          }
+          if (root.VC && VC.render && typeof VC.render.invalidate === 'function') VC.render.invalidate();
+          const pin = (el, y, x) => {
+            el.style.position = 'fixed';
+            el.style.pointerEvents = 'auto';
+            el.style.zIndex = '8';
+            el.style.minHeight = skipH + 'px';
+            el.style.height = xs ? skipH + 'px' : '';
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            el.style.width = railW + 'px';
+            el.style.minWidth = railW + 'px';
+          };
+          if (host && next.parentElement !== host) host.appendChild(next);
+          if (rowRail) {
+            // 6 px under the plate: the tutorial gate's plate-to-Skip clearance.
+            const rowTop = Math.max(railTop, Math.ceil(slip.getBoundingClientRect().bottom) + 6);
+            pin(skip, rowTop, rowSkipX);
+            pin(next, rowTop, railX);
+          } else {
+            pin(skip, railTop, railX);
+            pin(next, nextTop, railX);
+          }
+          fitLabel(skip, 10);
+          fitLabel(next, 10);
+          const slipR2 = slip.getBoundingClientRect();
+          const nextR2 = next.getBoundingClientRect();
+          const stageL = dockPortrait ? 12 : (Math.max(drawer ? drawer.getBoundingClientRect().right : 0, plaque ? plaque.getBoundingClientRect().right : 0) + 12);
+          const skipR2 = skip.getBoundingClientRect();
+          const colTop = Math.ceil(slipR2.bottom + benchGap), colRight = Math.floor(rowRail ? Math.min(plateR, skipR2.left - 8) : plateR);
+          const fullTop = Math.ceil(Math.max(slipR2.bottom, nextR2.bottom, skipR2.bottom) + 8), fullRight = vw - 12;
+          const colArea = Math.max(0, colRight - stageL) * Math.max(0, stageBottom - colTop);
+          const fullArea = Math.max(0, fullRight - stageL) * Math.max(0, stageBottom - fullTop);
+          // Prefer whichever bench meets the usable minimum (>= 72 px tall,
+          // >= 120 px wide); only when both or neither do, take the larger area.
+          // (A wider 58 px strip under the rail is not a usable bench.)
+          const colOk = stageBottom - colTop >= benchMin && colRight - stageL >= 120;
+          const fullOk = stageBottom - fullTop >= benchMin && fullRight - stageL >= 120;
+          const useCol = (colOk !== fullOk) ? colOk : (colArea > fullArea && stageBottom - colTop >= 24);
+          const newDock = useCol ? colTop : fullTop;
+          const newRight = useCol ? colRight : 0;
+          const changed = newDock !== dockBottom || newRight !== dockRight;
+          dockBottom = newDock;
+          dockRight = newRight;
+          document.body.classList.add('coach-rail');
+          finishPosition(changed, step, spot, slip);
+          return;
+        }
+      }
+      document.body.classList.remove('coach-rail');
+      // Tight squares must keep at least the first lesson sentence visible, so
+      // the plaque floor is padding + title + the wrapped first sentence, not
+      // a bare 48 px or a single line box (which left a mid-sentence clip at
+      // 320×320 when "Enter or the lever…" wrapped).
+      const padT0 = parseFloat(getComputedStyle(slip).paddingTop) || 0;
+      const padB0 = parseFloat(getComputedStyle(slip).paddingBottom) || 0;
+      const titleH0 = title ? title.getBoundingClientRect().height : 0;
+      const titleMb0 = title ? (parseFloat(getComputedStyle(title).marginBottom) || 0) : 0;
+      const lh0 = copy ? (parseFloat(getComputedStyle(copy).lineHeight) || 16) : 16;
+      const firstSentenceH = (function measureFirstSentence(copyEl, fallback) {
+        if (!copyEl) return fallback;
+        const nodes = [];
+        const walk = document.createTreeWalker(copyEl, NodeFilter.SHOW_TEXT);
+        while (walk.nextNode()) nodes.push(walk.currentNode);
+        const joined = nodes.map((n) => n.textContent).join('');
+        const compact = joined.replace(/\s+/g, ' ').trim();
+        const mm = compact.match(/^.*?[.!?](?=\s|$)/);
+        const sentence = (mm ? mm[0] : compact).trim();
+        if (!sentence) return fallback;
+        let acc = '', end = -1, start = -1;
+        for (let i = 0; i < joined.length; i++) {
+          const ch = /\s/.test(joined[i]) ? ' ' : joined[i];
+          if (ch === ' ' && (acc.endsWith(' ') || acc.length === 0)) continue;
+          if (start < 0 && ch !== ' ') start = i;
+          acc += ch;
+          const norm = acc.replace(/\s+/g, ' ').trim();
+          if (norm === sentence || (norm.length >= sentence.length && norm.startsWith(sentence))) {
+            end = i + 1;
+            break;
+          }
+        }
+        const toPoint = (idx) => {
+          let n = 0;
+          for (const node of nodes) {
+            const len = node.textContent.length;
+            if (idx <= n + len) return { node, offset: Math.max(0, Math.min(len, idx - n)) };
+            n += len;
+          }
+          const last = nodes[nodes.length - 1];
+          return last ? { node: last, offset: last.textContent.length } : null;
+        };
+        const a = start >= 0 ? toPoint(start) : null;
+        const b = end >= 0 ? toPoint(end) : null;
+        if (!a || !b) return fallback;
+        const range = document.createRange();
+        range.setStart(a.node, a.offset);
+        range.setEnd(b.node, b.offset);
+        const rects = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+        if (!rects.length) return fallback;
+        return Math.max(fallback, Math.ceil(rects[rects.length - 1].bottom - rects[0].top));
+      })(copy, lh0);
+      const minSlip = tight
+        ? Math.ceil(padT0 + padB0 + titleH0 + titleMb0 + firstSentenceH + 2)
+        : 48;
+      const slipBudget = Math.floor(maxDock - gap - skipH - top);
+      // Honour the first-sentence floor only when the reserved Skip/playfield
+      // budget can take it; never grow the plaque into Skip's slot.
+      let maxSlip = Math.max(48, slipBudget);
+      if (tight && vw >= 320 && vh >= 320) maxSlip = Math.min(Math.max(minSlip, Math.min(maxSlip, slipBudget)), Math.max(48, slipBudget));
+      const needCap = natural > maxSlip || (top + natural + gap + skipH > maxDock);
+      if (needCap) {
+        maxSlip = Math.max(48, Math.min(maxSlip, slipBudget));
+        slip.style.maxHeight = maxSlip + 'px';
+        slip.style.overflow = 'hidden';
+        const padT = parseFloat(getComputedStyle(slip).paddingTop) || 0;
+        const padB = parseFloat(getComputedStyle(slip).paddingBottom) || 0;
+        const titleH = title ? title.getBoundingClientRect().height : 0;
+        const titleMb = title ? (parseFloat(getComputedStyle(title).marginBottom) || 0) : 0;
+        const copyMb = copy ? (parseFloat(getComputedStyle(copy).marginBottom) || 0) : 0;
+        const nextInside = next && next.parentElement && slip.contains(next);
+        const nextH = (nextInside && !short) ? (next.getBoundingClientRect().height + 4) : 0;
+        const lhC = copy ? (parseFloat(getComputedStyle(copy).lineHeight) || 16) : 16;
+        // Whole lines only (no half-cut line above the cue).
+        const copyMax = Math.max(lhC, Math.floor(Math.max(32, maxSlip - padT - padB - titleH - titleMb - copyMb - nextH) / lhC) * lhC);
+        if (copy) {
+          copy.style.maxHeight = copyMax + 'px';
+          copy.style.overflow = 'auto';
+          copy.style.webkitOverflowScrolling = 'touch';
+        }
+      }
+      refreshChrome(slip);
+      // Remeasure after the kit chrome is built: type must stay in the padding box,
+      // clear of the engraved rule, even if chrome slightly changes the inner size.
+      if (needCap && copy) {
+        const slipNow = slip.getBoundingClientRect();
+        const padT = parseFloat(getComputedStyle(slip).paddingTop) || 0;
+        const padB = parseFloat(getComputedStyle(slip).paddingBottom) || 0;
+        const titleH = title ? title.getBoundingClientRect().height : 0;
+        const titleMb = title ? (parseFloat(getComputedStyle(title).marginBottom) || 0) : 0;
+        const copyMb = copy ? (parseFloat(getComputedStyle(copy).marginBottom) || 0) : 0;
+        const nextInside = next && next.parentElement && slip.contains(next);
+        const nextH = (nextInside && !short) ? (next.getBoundingClientRect().height + 4) : 0;
+        const lh = parseFloat(getComputedStyle(copy).lineHeight) || 18;
+        // Fill the remaining padding box. Do not reserve copy margin or the
+        // overlay scroll cue — those were leaving a leftover line unused.
+        // On tight squares, never let the copy box fall below the wrapped
+        // first sentence when the padding box can take it.
+        const raw = slipNow.height - padT - padB - titleH - titleMb - nextH - 2;
+        const needFirst = (tight && vw >= 320 && vh >= 320) ? firstSentenceH : lh;
+        const copyMax0 = Math.max(lh, raw >= needFirst ? Math.max(raw, needFirst) : raw);
+        // Whole lines only: round the scroll window down to a line multiple.
+        const copyMax = Math.max(lh, Math.floor((copyMax0 + 0.5) / lh) * lh);
+        copy.style.maxHeight = copyMax + 'px';
+        copy.style.overflow = 'auto';
+        copy.style.webkitOverflowScrolling = 'touch';
+      }
+      const overflow = !!(copy && copy.scrollHeight > copy.clientHeight + 1);
+      slip.classList.toggle('coach-copy-overflow', overflow);
+      if (copy) {
+        copy.classList.toggle('coach-copy-overflow', overflow);
+        const lhNow = parseFloat(getComputedStyle(copy).lineHeight) || 16;
+        // No fade mask: it half-showed the last line. Whole lines + the engraved cue.
+        copy.classList.remove('coach-copy-overflow-mask'); void lhNow;
+      }
+      const cue = $('coach-scroll-cue');
+      if (cue) cue.hidden = !overflow;
+      if (root.VC && VC.render && typeof VC.render.invalidate === 'function') VC.render.invalidate();
+      let slipR = slip.getBoundingClientRect();
+      // Skip must sit clear of the plate. If the plate ran past the budget,
+      // shrink it so Skip stays below it and on screen with the playfield.
+      const skipRoomTop = Math.max(0, maxDock - skipH);
+      if (slipR.bottom + gap > skipRoomTop + 0.5) {
+        const allowed = Math.max(48, Math.floor(skipRoomTop - gap - slipR.top));
+        slip.style.maxHeight = allowed + 'px';
+        slip.style.overflow = 'hidden';
+        slipR = slip.getBoundingClientRect();
+      }
+      // Last guard, whole lines only: a line whose glyph box crosses the plate's
+      // padding edge (0.4 px at 300-tall B&W after a 1280x800 round trip) is
+      // scrolled out of the window instead of half shown.
+      if (copy && copy.firstChild) {
+        const scs = getComputedStyle(slip);
+        const limit = slipR.bottom - (parseFloat(scs.paddingBottom) || 0) - (parseFloat(scs.borderBottomWidth) || 0);
+        const cr = copy.getBoundingClientRect(), top0 = cr.top + copy.clientTop;
+        const viewBot = Math.min(limit, top0 + copy.clientHeight);
+        const lhG = parseFloat(getComputedStyle(copy).lineHeight) || 16;
+        const rg = document.createRange(); rg.selectNodeContents(copy);
+        const cut = [...rg.getClientRects()].filter((r) => r.width > 0.5 && r.top < viewBot - 0.25 && r.bottom > viewBot + 0.1).sort((a, b) => a.top - b.top)[0];
+        if (cut) {
+          const keep = Math.max(lhG, Math.floor((cut.top - top0 + 0.5) / lhG) * lhG);
+          copy.style.maxHeight = keep + 'px'; copy.style.overflow = 'auto';
+          const ov = copy.scrollHeight > copy.clientHeight + 1;
+          slip.classList.toggle('coach-copy-overflow', ov); copy.classList.toggle('coach-copy-overflow', ov);
+          const cue2 = $('coach-scroll-cue'); if (cue2) cue2.hidden = !ov;
+        }
+      }
+      let skipTop = Math.max(0, Math.min(slipR.bottom + gap, skipRoomTop));
+      const pinInView = (el, x, y, w) => {
+        if (!el) return;
+        const maxW = Math.max(44, vw - 2 * edge);
+        w = Math.max(44, Math.min(w, maxW));
+        x = Math.max(edge, Math.min(x, vw - edge - w));
+        y = Math.max(0, Math.min(y, Math.max(0, vh - edge - skipH)));
+        if (x + w > vw - edge) {
+          w = Math.max(44, vw - edge - x);
+        }
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.style.width = w + 'px';
+        el.style.minWidth = w + 'px';
+      };
+      if (short) {
+        // Two brass plates side by side, both fully on screen and not overlapping
+        // so each stays tappable at its centre (a 72 px CSS min-width overflowed
+        // when the remaining slot was narrower than 72).
+        // Keep each half to the plaque width when that already holds SKIP/NEXT/DONE.
+        // Only grow into the space out to the lever (or the right margin) when a
+        // label would otherwise clip: a 100–140 px plate left 44–46 px halves at
+        // 400×320. After typography, re-pin to slip.bottom + gap so the reserved
+        // 8 px (6 px tight) clearance is not eaten if the plate's box settles.
+        // Only reserve the lever's column when it actually crosses the Skip row.
+        // A lever parked above the plaque (typical short landscape) used to
+        // starve 400×320 halves down to 58 px and clip SKIP/NEXT.
+        const leverOverlapsRow = !!(lR && lR.top < skipTop + skipH && lR.bottom > skipTop);
+        const stopAt = leverOverlapsRow ? Math.max(0, lR.left - 6) : (vw - edge);
+        const room = Math.max(0, stopAt - Math.max(0, left));
+        const byPlate = Math.max(0, Math.min(slipW, room));
+        let half = Math.max(44, Math.floor((byPlate - 8) / 2) || 44);
+        const placePair = (h, y) => {
+          pinInView(skip, Math.max(0, left), y, h);
+          if (next) {
+            next.style.position = 'fixed';
+            next.style.pointerEvents = 'auto';
+            next.style.minHeight = '44px';
+            next.style.zIndex = '8';
+            const nextLeft = Math.min(vw - h - edge, left + h + 8);
+            pinInView(next, Math.max(0, nextLeft), y, h);
+          }
+        };
+        const labelFits = (el) => {
+          if (!el) return true;
+          const face = (el.querySelector && el.querySelector('.brass-face')) || el;
+          return el.scrollWidth <= el.clientWidth + 1 && face.scrollWidth <= face.clientWidth + 1;
+        };
+        placePair(half, skipTop);
+        fitLabel(skip, 10);
+        if (next) fitLabel(next, 10);
+        if ((!labelFits(skip) || !labelFits(next) || half < 72) && room > byPlate + 1) {
+          half = Math.max(half, Math.floor((room - 8) / 2) || 44);
+          placePair(half, skipTop);
+          fitLabel(skip, 10);
+          if (next) fitLabel(next, 10);
+        }
+        slipR = slip.getBoundingClientRect();
+        if (slipR.bottom + gap > skipRoomTop + 0.5) {
+          const allowed = Math.max(48, Math.floor(skipRoomTop - gap - slipR.top));
+          slip.style.maxHeight = allowed + 'px';
+          slip.style.overflow = 'hidden';
+          slipR = slip.getBoundingClientRect();
+        }
+        skipTop = Math.max(0, Math.min(slipR.bottom + gap, skipRoomTop));
+        placePair(half, skipTop);
+      } else {
+        pinInView(skip, Math.max(0, left), skipTop, slipW);
+      }
+      const skipR = skip.getBoundingClientRect();
+      const nextR = next ? next.getBoundingClientRect() : skipR;
+      const nextDock = Math.min(maxDock, Math.ceil(Math.max(skipR.bottom, slipR.bottom, nextR.bottom) + 8));
+      const changed = nextDock !== dockBottom || dockRight !== 0;
+      dockBottom = nextDock;
+      dockRight = 0;
+      finishPosition(changed, step, spot, slip);
+    }
+
+    function finishPosition(changed, step, spot, slip) {
+      // Point at compact targets only (the run lever). Never drop a ring over the drawer or the brief.
+      const targetSel = step && step.target;
+      const allowSpot = targetSel === '#lever' || targetSel === '#b-ed-test' || targetSel === '#b-ed-save';
+      if (allowSpot && targetSel) {
+        const target = document.querySelector(targetSel);
+        if (target && target.getBoundingClientRect().width && getComputedStyle(target).display !== 'none') {
+          const r = target.getBoundingClientRect();
+          spot.hidden = false;
+          spot.style.left = Math.max(0, r.left - 4) + 'px';
+          spot.style.top = Math.max(0, r.top - 4) + 'px';
+          spot.style.width = Math.max(8, r.width + 8) + 'px';
+          spot.style.height = Math.max(8, r.height + 8) + 'px';
+        } else { spot.hidden = true; }
+      } else { spot.hidden = true; }
+      if (changed && typeof opts.onReserve === 'function') opts.onReserve();
+      if (window.VC && VC.gameState && typeof VC.gameState.fitTrayChrome === 'function') {
+        VC.gameState.fitTrayChrome();
+        requestAnimationFrame(() => { if (VC.gameState && VC.gameState.fitTrayChrome) VC.gameState.fitTrayChrome(); });
+      }
+      // The ivory plate can grow a few pixels after the first pin (font metrics,
+      // kit chrome) especially on step 0. Re-pin when its box changes so Skip
+      // keeps the reserved 8 px (6 px tight) gap.
+      if (typeof ResizeObserver === 'function' && !slipObserver) {
+        slipObserver = new ResizeObserver(() => {
+          if (active && !positioning) requestAnimationFrame(() => { if (active && !positioning) position(); });
+        });
+        slipObserver.observe(slip);
+      }
+    }
+
+    function render() {
+      const root = $('coach'); if (!root) return;
+      if (!active || hideForPanel) {
+        root.hidden = true; root.setAttribute('aria-hidden', 'true'); document.body.classList.remove('coach-open'); resetDockedNext();
+        if (typeof opts.syncBar === 'function') opts.syncBar();
+        if (dockBottom || dockRight) { dockBottom = 0; dockRight = 0; if (typeof opts.onReserve === 'function') opts.onReserve(); }
+        return;
+      }
+      const step = STEPS[active.mode][active.index];
+      const last = active.index >= STEPS[active.mode].length - 1;
+      $('coach-title').textContent = step.title.split(' ').length >= 3 ? noWidow(step.title) : step.title;
+      $('coach-copy').textContent = noWidow(step.copy);
+      $('coach-next').textContent = last ? 'Done' : 'Next';
+      $('coach-skip').hidden = false;
+      root.hidden = false;
+      root.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('coach-open');
+      refresh();
+      position();
+      requestAnimationFrame(position);
+      requestAnimationFrame(() => requestAnimationFrame(position));
+    }
+
+    function markSeen(mode) {
+      const seen = readSeen(); seen[mode] = true; writeSeen(seen);
+    }
+    function clearSeen(mode) {
+      const seen = readSeen(); seen[mode] = false; writeSeen(seen);
+    }
+
+    // Seen is marked only on Skip, on Done, or when the player wins the experiment
+    // with the lesson still open. Reload, changing mode, or otherwise abandoning
+    // mid-lesson calls close(false) and leaves the flags untouched.
+    function close(mark) {
+      if (active && mark) markSeen(active.mode);
+      active = null;
+      hideForPanel = false;
+      dockBottom = 0;
+      dockRight = 0;
+      if (typeof opts.onReserve === 'function') opts.onReserve();
+      const root = $('coach');
+      if (root) { root.hidden = true; root.setAttribute('aria-hidden', 'true'); }
+      document.body.classList.remove('coach-open');
+      resetDockedNext();
+      // Re-read the bar now: the compact lesson bar's --bar must not linger
+      // until a ResizeObserver tick (lever drawn at the lesson's 40 px bar).
+      if (typeof opts.syncBar === 'function') opts.syncBar();
+      if (typeof opts.onReserve === 'function') opts.onReserve();
+      if (window.VC && VC.gameState && typeof VC.gameState.fitTrayChrome === 'function') VC.gameState.fitTrayChrome();
+    }
+
+    function start(mode, reason) {
+      if (MODES.indexOf(mode) < 0) return false;
+      if (reason !== 'restart' && reason !== 'force' && readSeen()[mode]) return false;
+      if (reason !== 'restart' && reason !== 'force' && !autoStartAllowed()) return false;
+      if (currentMode() !== mode && reason !== 'restart') return false;
+      if (reason === 'restart') clearSeen(mode);
+      if (currentMode() !== mode) return true; // cleared; will play on next entry
+      active = { mode, index: 0 };
+      hideForPanel = panelOpen();
+      render();
+      return true;
+    }
+
+    function maybeStart(mode) {
+      if (!mode) mode = currentMode();
+      if (!mode) { if (active) close(false); return false; }
+      if (active && active.mode !== mode) close(false);
+      if (active && active.mode === mode) { hideForPanel = panelOpen(); render(); return true; }
+      return start(mode, 'auto');
+    }
+
+    function skip() { if (active) close(true); }
+    function next() {
+      if (!active) return;
+      if (active.index >= STEPS[active.mode].length - 1) close(true);
+      else { active.index += 1; render(); }
+    }
+
+    function restart(mode) { return start(mode, 'restart'); }
+
+    function onEnterLevel() { maybeStart(currentMode()); }
+    function onPanels() {
+      if (!active) return;
+      hideForPanel = panelOpen();
+      render();
+    }
+    function onWin() { if (active && active.mode === 'experiments') close(true); }
+
+    function onKey(e) {
+      if (!active) return false;
+      if (e.key !== 'Escape') return false;
+      // Panels (Settings, pause-adjacent dialogs, levels, the trial lock, …) close first.
+      if (hideForPanel || panelOpen()) return false;
+      e.preventDefault(); skip(); return true;
+    }
+
+    function bind() {
+      const skipB = $('coach-skip'), nextB = $('coach-next');
+      if (skipB) skipB.addEventListener('click', (e) => { e.preventDefault(); skip(); });
+      if (nextB) nextB.addEventListener('click', (e) => { e.preventDefault(); next(); });
+      window.addEventListener('resize', () => { if (active) position(); });
+      window.addEventListener('orientationchange', () => setTimeout(() => { if (active) position(); }, 200));
+    }
+
+    return {
+      migrate, maybeStart, start, skip, next, restart, close, onEnterLevel, onPanels, onWin, onKey, bind,
+      isOpen: () => !!active && !hideForPanel,
+      isActive: () => !!active,
+      mode: () => active && active.mode,
+      step: () => active && active.index,
+      seen: readSeen,
+      steps: STEPS,
+      modes: MODES,
+      autoStartAllowed, migrateSeen: migrate, LEGACY_TUTORIAL_ID, dockBottom: dockBottomY, dockRight: dockRightX,
+    };
+  }
+
+  root.VC = root.VC || {};
+  root.VC.coachTutorial = { create, MODES, STEPS, LEGACY_TUTORIAL_ID };
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
 <script>/* src/game.js */
 /* Fantastic Apparatus: editor, game loop and UI. */
 window.VC.ready = (async function () {
@@ -6779,8 +8620,6 @@ window.VC.ready = (async function () {
   await window.VLS.ivory.ready();
   const VC = window.VC, S = VC.sim, R = VC.render, { PARTS, ORDER, PISTON } = VC.parts;
   const LEVELS = VC.LEVELS.levels;
-  // Level 0 (9 Nov 2026): a practice level outside the catalogue; levels 1–12 keep their indices, numbers and entitlements.
-  const TUTORIAL = VC.TUTORIAL || null;
   const $ = (id) => document.getElementById(id);
   const canvas = $('game'), ctx = canvas.getContext('2d');
   const store = { get(k, d) { try { const v = localStorage.getItem('fa.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -6792,6 +8631,7 @@ window.VC.ready = (async function () {
     progress: store.get('progress', {}), acc: 0, last: 0, t: 0, hold: false, W: 0, H: 0, dpr: 1, nid: 1, won: false };
   VC.gameState = state;   // shared with the level editor (src/editor.js)
   let partTip = null;
+  let coach = null;
   function bindPartTip(button, text) { if (partTip && text) partTip.bind(button, text); }
 
   // The bevel is hardware, not printable area. Keep every changing button caption/icon in a
@@ -6834,6 +8674,7 @@ window.VC.ready = (async function () {
     state.W = W; state.H = H; state.dpr = dpr; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     if (state.level && !state.userCam) fitCamera(state.overview);
     refreshUnlockPlaque();
+    fitTrayChrome();
   }
   const portrait = () => state.W < 600 && state.H > state.W;
   function levelBounds(L, detail = false) {
@@ -6881,10 +8722,25 @@ window.VC.ready = (async function () {
   }
   function stageRect() {
     const dr = $('drawer-plaque').getBoundingClientRect();
-    const left = portrait() ? 12 : dr.right + 12, right = state.W - 12;
-    const top = barHeight() + (portrait() && !state.editing ? 86 : 16);
-    const bottom = portrait() ? dr.top - 14 : state.H - 32;
-    return { x: left, y: top, w: Math.max(24, right - left), h: Math.max(24, bottom - top) };
+    // Ordinary play keeps the live portrait() test (H > W) so the stage equals
+    // 591ae790 after Skip. During a lesson only, follow the CSS bottom-tray
+    // layout (coach-tray-bottom), including 1:1 viewports the live test misses.
+    const lessonOpen = document.body.classList.contains('coach-open');
+    const lessonBottomTray = lessonOpen && document.body.classList.contains('coach-tray-bottom');
+    const phonePortrait = portrait() || lessonBottomTray;
+    const left = phonePortrait ? 12 : dr.right + 12, right = state.W - 12;
+    let top = barHeight() + (phonePortrait && !state.editing ? 86 : 16);
+    // After the lesson, landscape bottom stays at H-32 so the stage matches live
+    // 591ae790. While a lesson is open, drop it to H-8 so the reserved playfield
+    // can sit lower and the plaque can use the unused 24 px.
+    const tight = lessonOpen && document.body.classList.contains('coach-tight');
+    const bottom = phonePortrait ? dr.top - (tight ? 8 : 14) : state.H - (lessonOpen ? 8 : 32);
+    if (coach && coach.dockBottom) top = Math.max(top, coach.dockBottom());
+    // Compact lesson rail: Skip/Next sit in a column under the lever and the
+    // bench is the column beside them (lesson only; 0 in ordinary play).
+    let r2 = right;
+    if (lessonOpen && coach && coach.dockRight) { const dx = coach.dockRight(); if (dx > left + 24) r2 = Math.min(right, dx); }
+    return { x: left, y: top, w: Math.max(24, r2 - left), h: Math.max(24, bottom - top) };
   }
   new ResizeObserver(() => { syncBarHeight(); if (state.level && !state.userCam) fitCamera(state.overview); }).observe($('bar'));
   const barHeight = () => $(state.editing ? 'editor-bar' : 'bar').getBoundingClientRect().bottom;
@@ -6898,7 +8754,6 @@ window.VC.ready = (async function () {
     if (!isUnlocked(i)) { if (ENT.status().trial.endedAt && state.level) showTrialEnded(); else toast(`Experiment ${i + 1} is in the full laboratory. Levels 1–${ENT.FREE_LEVELS} are free.`); if (state.level) return false; i = 0; }
     enterLevel(LEVELS[i], i);
   }
-  function enterTutorial() { if (TUTORIAL) enterLevel(TUTORIAL, null); }
   // load any level object: a shipped one (li = its index) or an editor-made one (li = null; never gated, pays no coins)
   function enterLevel(L, li) {
     state.cordDraft=null; stop(true); state.editing = false; document.body.classList.remove('editing');
@@ -6907,13 +8762,14 @@ window.VC.ready = (async function () {
     state.nid = 1 + state.design.nodes.reduce((m, n) => Math.max(m, +String(n.id).replace(/\D/g, '') || 0), 0);
     if (S.validateDesign(state.level, state.design).length) state.design = { nodes: [], parts: [] };
     state.undo = []; state.redo = []; store.set('last', state.level.id);
-    $('t-name').textContent = `${state.level.tutorial ? 0 : state.li + 1}. ${state.level.name}`; $('t-caption').textContent = state.level.caption;
+    $('t-name').textContent = `${Number.isInteger(state.li) ? (state.li + 1) + '. ' : ''}${state.level.name}`; $('t-caption').textContent = state.level.caption;
     $('t-task').textContent = state.level.assembly ? `Assemble: ${state.level.assembly.name.toLowerCase()}` : 'Experiment brief';
-    $('title').open = !!state.level.tutorial; $('bench-key').hidden = !state.level.displayKey; syncBarHeight();
+    $('title').open = false; $('bench-key').hidden = !state.level.displayKey; syncBarHeight();
     $('b-editor-back').hidden = !state.testing;
-    buildDrawer(); fitCamera(!!state.level.tutorial); updateStatus();   // Level 0 opens on the whole bench so the bay is in view
-    if (!state.tool || (state.level.parts && !state.level.parts.includes(state.tool) && PARTS[state.tool]) || (state.level.tutorial && /^string/.test(state.tool))) state.tool = (state.level.parts || ['motorCW'])[0];
+    buildDrawer(); fitCamera(); updateStatus();
+    if (!state.tool || (state.level.parts && !state.level.parts.includes(state.tool) && PARTS[state.tool])) state.tool = (state.level.parts || ['motorCW'])[0];
     syncDrawer();
+    if (coach) coach.onEnterLevel();
   }
   function saveDesign() { store.set('design.' + state.level.id, state.design); }
 
@@ -6928,14 +8784,15 @@ window.VC.ready = (async function () {
   function buildDrawer() {
     const d = $('drawer'); d.innerHTML = '';
     if (partTip) partTip.hide();
-    if (state.editing && state.drawerHook) return state.drawerHook(d);
+    if (state.editing && state.drawerHook) {
+      const r = state.drawerHook(d);
+      requestAnimationFrame(fitTrayChrome);
+      return r;
+    }
     const lab = (t) => { const e = document.createElement('div'); e.className = 'drawer-label'; e.textContent = t; d.appendChild(e); };
     lab('Parts');
-    // Level 0 (Labs Manager, 9 Nov 2026): the practice drawer holds only the parts this bench uses, and no cord tools.
-    const practice = !!(state.level && state.level.tutorial);
     for (const id of ORDER) {
-      if (practice && !state.level.parts.includes(id)) continue;
-      if (PARTS[id].extra && id === 'beam' && !practice) lab('Extras');
+      if (PARTS[id].extra && id === 'beam') lab('Extras');
       const b = document.createElement('button'); b.dataset.tool = id; b.setAttribute('aria-label', PARTS[id].label);
       const c = document.createElement('canvas'); c.width = 96; c.height = 96; b.appendChild(c);
       const sm = document.createElement('small'); sm.textContent = PARTS[id].short; b.appendChild(sm);
@@ -6945,7 +8802,7 @@ window.VC.ready = (async function () {
       d.appendChild(b); drawIcon(c, id);
     }
     lab('Tools');
-    for (const t of TOOLS) { if (practice && t.id.startsWith('string')) continue; const b = document.createElement('button'); b.dataset.tool = t.id; b.setAttribute('aria-label', t.label); const c = document.createElement('canvas'); c.width = c.height = 96; b.appendChild(c); const label = document.createElement('small'); label.textContent = t.label; b.appendChild(label); drawIcon(c, t.id);
+    for (const t of TOOLS) { const b = document.createElement('button'); b.dataset.tool = t.id; b.setAttribute('aria-label', t.label); const c = document.createElement('canvas'); c.width = c.height = 96; b.appendChild(c); const label = document.createElement('small'); label.textContent = t.label; b.appendChild(label); drawIcon(c, t.id);
       if (t.id.startsWith('string')) b.disabled = !!state.level.parts && !state.level.parts.includes('string');
       b.addEventListener('click', () => { state.cordDraft = null; state.tool = t.id; syncDrawer(); });
       bindPartTip(b, TOOL_TIP[t.id]); d.appendChild(b); }
@@ -6953,11 +8810,292 @@ window.VC.ready = (async function () {
     clr.addEventListener('click', () => { if (state.mode !== 'build' || !state.design.parts.length) return; commit(() => { state.design = { nodes: [], parts: [] }; }); toast('Bench cleared. Undo (↶) brings it back.'); });
     bindPartTip(clr, 'Clear all. Removes every part from the bench. Undo brings them back.');
     d.appendChild(clr);
+    requestAnimationFrame(fitTrayChrome);
   }
   function syncDrawer() { for (const b of $('drawer').querySelectorAll('button[data-tool]')) {
     const selected = b.dataset.tool === state.tool;
     b.classList.toggle('sel', selected); b.setAttribute('aria-pressed', String(selected));
   } }
+  // Engraving stays on the button face: shrink type / tracking until the label
+  // fits the face. Then trim the tray's visible window so a whole row always
+  // shows; if more rows remain, show a scroll cue rather than a cut row.
+  function fitDrawerEngraving() {
+    const d = $('drawer'); if (!d) return;
+    for (const btn of d.querySelectorAll('button')) {
+      const face = btn.querySelector('.brass-face') || btn;
+      // Icon beside the label (tight lesson tray): the label gets what the icon leaves.
+      // 3 px each side: engraved glyphs overhang their (tracked) advance box.
+      let avail = Math.max(0, face.clientWidth - 6);
+      if (/row/.test(getComputedStyle(face).flexDirection)) {
+        const icon = face.querySelector('canvas, span');
+        const fcs = getComputedStyle(face);
+        if (icon && icon.offsetWidth) avail = Math.max(0, avail - icon.offsetWidth - (parseFloat(fcs.columnGap) || 0) - (parseFloat(fcs.paddingLeft) || 0) - (parseFloat(fcs.paddingRight) || 0));
+      }
+      if (avail < 8) continue;
+      const icon0 = face.querySelector('canvas');
+      if (icon0) { icon0.style.width = ''; icon0.style.height = ''; }
+      // Body plates (Earth / Mars / Moon): the glyph's 30 px line box is for the
+      // stacked ordinary tile; beside the label it overflowed a 22 px face, so
+      // the fitter stepped "Earth 9.81" down to 10 px at 400x320 although 12 px fits.
+      const glyph = !icon0 && face.querySelector(':scope > span');
+      if (glyph) {
+        if (glyph.dataset.lh0 === undefined) glyph.dataset.lh0 = glyph.style.lineHeight || '';
+        if (/row/.test(getComputedStyle(face).flexDirection)) glyph.style.setProperty('line-height', '18px', 'important');
+        else { glyph.style.removeProperty('line-height'); glyph.style.lineHeight = glyph.dataset.lh0; }
+      }
+      const labels = [...btn.querySelectorAll('small, b')].filter((el) => (el.textContent || '').trim());
+      for (const el of labels) {
+        el.style.fontSize = '';
+        el.style.letterSpacing = '';
+        el.style.transform = '';
+        el.style.removeProperty('white-space');
+        el.style.lineHeight = '';
+        void el.offsetWidth;
+        const textWidth = () => {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          const w = range.getBoundingClientRect().width;
+          return Math.max(w, el.scrollWidth > el.clientWidth + 0.5 ? el.scrollWidth : w);
+        };
+        // Readable floor (Professor HOLD on 00d6d87, Manager craft rule): tray
+        // engraving never drops below 10 px, and stays at its 12 px stylesheet
+        // size wherever it can. Prefer, in order: the full size with a smaller
+        // icon or on two engraved lines, then 0.5 px steps down to the floor.
+        // Tracking tightens before any size step.
+        const FLOOR = 10;
+        let size = parseFloat(getComputedStyle(el).fontSize) || 12;
+        const size0 = Math.max(size, FLOOR);
+        let tracking = getComputedStyle(el).letterSpacing || '-0.04em';
+        const apply = (fs, ls) => { el.style.fontSize = fs + 'px'; el.style.letterSpacing = ls; void el.offsetWidth; };
+        // Body plates (Earth / Mars / Moon) carry a glyph <span> instead of a canvas icon.
+        const icon = face.querySelector('canvas') || face.querySelector(':scope > span');
+        const multi = /\S\s+\S/.test((el.textContent || '').trim());
+        const lines = () => {
+          const rg = document.createRange(); rg.selectNodeContents(el);
+          const rs = [...rg.getClientRects()].filter((r) => r.width > 0.5);
+          const tops = new Set(rs.map((r) => Math.round(r.top)));
+          return { n: tops.size, w: rs.reduce((m, r) => Math.max(m, r.width), 0) };
+        };
+        const faceAvail = () => {
+          let a = Math.max(0, face.clientWidth - 6);
+          if (/row/.test(getComputedStyle(face).flexDirection) && icon && icon.offsetWidth) {
+            const fcs = getComputedStyle(face);
+            a = Math.max(0, a - icon.offsetWidth - (parseFloat(fcs.columnGap) || 0) - (parseFloat(fcs.paddingLeft) || 0) - (parseFloat(fcs.paddingRight) || 0));
+          }
+          return a;
+        };
+        const fitsFace = (maxLines) => {
+          const L = lines(), fr = face.getBoundingClientRect(), er = el.getBoundingClientRect();
+          const fcs = getComputedStyle(face);
+          const faceBottom = fr.bottom - (parseFloat(fcs.paddingBottom) || 0) - (parseFloat(fcs.borderBottomWidth) || 0);
+          const faceTop = fr.top + (parseFloat(fcs.borderTopWidth) || 0);
+          return L.n <= maxLines && L.w <= faceAvail() && er.bottom <= faceBottom + 0.5 && er.top >= faceTop - 0.5 && face.scrollHeight <= face.clientHeight + 0.5;
+        };
+        let done = false;
+        outer: for (let s2 = size0; s2 >= FLOOR - 0.01; s2 -= 0.5) {
+          for (const iconPx of [0, 20, 16]) {
+            if (icon && icon.tagName === 'CANVAS') { icon.style.width = iconPx ? iconPx + 'px' : ''; icon.style.height = iconPx ? iconPx + 'px' : ''; }
+            // Body-plate glyph over a two-line label (320x568 lesson): a shorter
+            // glyph line before any type step.
+            else if (icon && iconPx && !/row/.test(getComputedStyle(face).flexDirection)) icon.style.setProperty('line-height', (iconPx === 20 ? 16 : 13) + 'px', 'important');
+            el.style.removeProperty('white-space'); el.style.lineHeight = '';
+            for (const tr of [tracking, '-0.04em', '-0.06em']) {
+              apply(s2, tr);
+              if (fitsFace(1)) { done = true; break outer; }
+            }
+            if (multi) {
+              el.style.setProperty('white-space', 'normal', 'important');
+              el.style.lineHeight = (s2 + 0.5).toFixed(2) + 'px';
+              apply(s2, tracking);
+              if (fitsFace(2)) { done = true; break outer; }
+            }
+          }
+        }
+        if (done) continue;
+        // Nothing fits even at the floor: keep 10 px (two lines for a
+        // two-word label) and scale the advance horizontally, never below 10 px type.
+        if (icon && icon.tagName === 'CANVAS') { icon.style.width = '16px'; icon.style.height = '16px'; }
+        size = FLOOR;
+        if (multi) { el.style.setProperty('white-space', 'normal', 'important'); el.style.lineHeight = (FLOOR + 1) + 'px'; }
+        else { el.style.removeProperty('white-space'); el.style.lineHeight = ''; }
+        apply(size, '-0.06em');
+        avail = faceAvail();
+        let w = multi ? lines().w : textWidth();
+        if (w > avail && w > 0) {
+          // Overflowing nowrap text starts at the box's left edge (centring
+          // does not apply), so scale from the left and centre the result.
+          const k = Math.max(0.75, avail / w);
+          const dx = Math.max(0, (el.clientWidth - w * k) / 2);
+          el.style.transformOrigin = 'left top';
+          el.style.transform = 'translateX(' + dx.toFixed(2) + 'px) scaleX(' + k + ')';
+        }
+      }
+    }
+  }
+  // Catalogue "Coins 0 ＋" plate: mixed text and <b>, so fit the whole face run
+  // (Professor P5: its ink touched the face edge). Tracking first, 10 px floor.
+  function fitCoinsPlate() {
+    const b = $('b-cat-coins'); if (!b || !b.offsetWidth) return;
+    const face = b.querySelector('.brass-face') || b;
+    face.style.fontSize = ''; face.style.letterSpacing = '';
+    const inb = b.querySelector('b'); if (inb) { inb.style.fontSize = ''; inb.style.letterSpacing = ''; inb.style.transform = ''; }
+    const fits = () => {
+      const rg = document.createRange(); rg.selectNodeContents(face);
+      const r = rg.getBoundingClientRect(), f = face.getBoundingClientRect();
+      // 1.5 px each side: covers the engraved ink overhang plus the gate's 0.5 px clearance.
+      return r.left >= f.left + 1.5 && r.right <= f.right - 1.5 && face.scrollWidth <= face.clientWidth + 0.5;
+    };
+    let size = parseFloat(getComputedStyle(face).fontSize) || 12;
+    for (const tr of ['', '-0.04em', '-0.06em']) { face.style.letterSpacing = tr; if (fits()) return; }
+    while (!fits() && size > 10) { size = Math.max(10, size - 0.5); face.style.fontSize = size + 'px'; }
+  }
+  // Editor bar engraving: one line, inside the face (Labs Manager HOLD on
+  // b843102: NEW read "EV", SAVE "AV", "▶ TEST" wrapped at 360–480 wide).
+  // Type steps down until the label's ink box clears the face; the face
+  // geometry and the bar height are unchanged.
+  function fitBarLabels() {
+    const bar = $('editor-bar');
+    if (!bar || !state.editing) return;
+    for (const b of bar.querySelectorAll('button')) {
+      const face = b.querySelector('.brass-face') || b;
+      face.style.fontSize = ''; face.style.letterSpacing = '';
+      if (!b.offsetWidth || !(face.textContent || '').trim()) continue;
+      // The label sits in its own span so a last-resort horizontal condense
+      // (scaleX >= 0.75) keeps 10 px tall type instead of shrinking it.
+      let lab = face.querySelector(':scope > .bar-label');
+      if (!lab && face.childNodes.length === 1 && face.firstChild.nodeType === 3) {
+        lab = document.createElement('span'); lab.className = 'bar-label'; lab.textContent = face.firstChild.textContent; face.replaceChildren(lab);
+      }
+      if (lab) { lab.style.transform = ''; lab.style.display = 'inline-block'; lab.style.transformOrigin = 'center'; }
+      // The Victorian engraved rule (::before) sits inside the button padding;
+      // the ink must clear it as well as the face.
+      const be = getComputedStyle(b, '::before'); const br = b.getBoundingClientRect();
+      const ruleOn = be && be.content && be.content !== 'none' && be.position === 'absolute' && parseFloat(be.borderLeftWidth) > 0;
+      const ruleL = ruleOn ? br.left + (parseFloat(be.left) || 0) + (parseFloat(be.borderLeftWidth) || 0) + 1 : -1e9;
+      const ruleR = ruleOn ? br.right - (parseFloat(be.right) || 0) - (parseFloat(be.borderRightWidth) || 0) - 1 : 1e9;
+      const fits = () => {
+        const rg = document.createRange(); rg.selectNodeContents(face);
+        const r = rg.getBoundingClientRect(), f = face.getBoundingClientRect(), fcs = getComputedStyle(face);
+        // Content box, not border box: the face's own padding is not room for ink.
+        const fl = f.left + (parseFloat(fcs.borderLeftWidth) || 0) + (parseFloat(fcs.paddingLeft) || 0);
+        const fr = f.right - (parseFloat(fcs.borderRightWidth) || 0) - (parseFloat(fcs.paddingRight) || 0);
+        // 1.5 px each side: engraved capitals overhang their advance box.
+        return r.width <= fr - fl - 3 && r.left >= Math.max(fl + 1.5, ruleL) && r.right <= Math.min(fr - 1.5, ruleR) && face.scrollWidth <= face.clientWidth + 0.5;
+      };
+      let size = parseFloat(getComputedStyle(face).fontSize) || 14;
+      // Floor 10 px (Professor HOLD on 00d6d87): tighten tracking before any
+      // size step, never below 10 px; a label that still overruns at 10 px is
+      // condensed horizontally (scaleX >= 0.8), not shrunk.
+      for (const tr of ['', '-0.04em', '-0.06em']) { face.style.letterSpacing = tr; if (fits()) break; }
+      for (let i = 0; i < 40 && !fits() && size > 10; i++) { size = Math.max(10, size - 0.5); face.style.fontSize = size + 'px'; }
+      if (!fits() && lab) {
+        const rg = document.createRange(); rg.selectNodeContents(lab);
+        const fcs = getComputedStyle(face);
+        const content = face.clientWidth - (parseFloat(fcs.paddingLeft) || 0) - (parseFloat(fcs.paddingRight) || 0);
+        const w = rg.getBoundingClientRect().width, room = Math.min(content - 4, ruleOn ? ruleR - ruleL - 4 : 1e9);
+        if (w > 0 && room > 0) lab.style.transform = 'scaleX(' + Math.max(0.75, room / w).toFixed(3) + ')';
+      }
+    }
+  }
+  state.fitBarLabels = fitBarLabels;
+  // One settled re-fit after layout and late font loads: a fit taken mid-reflow
+  // measured a narrower face and left 11 px labels where 12 px fits.
+  let trayRefitTimer = 0;
+  function fitTrayChrome(settled) {
+    if (settled !== true) { clearTimeout(trayRefitTimer); trayRefitTimer = setTimeout(() => fitTrayChrome(true), 120); }
+    const d = $('drawer'), plaque = $('drawer-plaque'), cue = $('drawer-scroll-cue');
+    fitBarLabels();
+    if (!d) return;
+    d.style.maxHeight = '';
+    d.classList.remove('drawer-scroll-overflow');
+    document.body.classList.remove('drawer-tray-overflow');
+    if (cue) {
+      cue.hidden = true;
+      cue.style.left = cue.style.width = cue.style.top = cue.style.height = '';
+    }
+    // Lesson-time tray trim, cue and engraving shrink apply only while a lesson
+    // is open. After Skip/Done they must not persist into ordinary play.
+    if (!document.body.classList.contains('coach-open')) {
+      for (const el of d.querySelectorAll('small, b')) {
+        el.style.fontSize = ''; el.style.letterSpacing = ''; el.style.transform = ''; el.style.removeProperty('white-space'); el.style.lineHeight = '';
+      }
+      for (const c of d.querySelectorAll('button canvas')) { c.style.width = ''; c.style.height = ''; }
+      for (const g of d.querySelectorAll('button .brass-face > span[data-lh0]')) { g.style.removeProperty('line-height'); g.style.lineHeight = g.dataset.lh0; }
+      // Narrow short landscape (360×340–480×320) uses the compact side tray in
+      // ordinary play too (B6); fit its engraving to the face there only.
+      if (!state.editing && window.matchMedia && window.matchMedia('(orientation: landscape) and (max-width: 499px) and (max-height: 430px)').matches) fitDrawerEngraving();
+      return;
+    }
+    fitDrawerEngraving();
+    fitCoinsPlate();
+    void d.offsetHeight;
+    if (plaque && !plaque.hidden) {
+      // Clip to the plaque's inner padding box, not the drawer's current
+      // bottom. Using min(drawer.bottom, plaque) - 3 made each tightening
+      // pass treat the last whole row as a sliver and eat it (B&W 480×320
+      // kept one parts row; the editor tray stopped at TOOLS, hiding MOVE).
+      // Several passes still catch a row that reflows after a trim.
+      for (let pass = 0; pass < 3; pass++) {
+        const cs = getComputedStyle(plaque);
+        const padT = parseFloat(cs.paddingTop) || 0;
+        const padB = parseFloat(cs.paddingBottom) || 0;
+        const pr = plaque.getBoundingClientRect();
+        const dr = d.getBoundingClientRect();
+        const clipBottom = pr.bottom - padB - 1;
+        const clipTop = Math.max(dr.top, pr.top + padT);
+        const rows = [];
+        for (const el of d.children) {
+          const ecs = getComputedStyle(el);
+          if (ecs.display === 'none' || ecs.visibility === 'hidden') continue;
+          const r = el.getBoundingClientRect();
+          if (r.height < 2 || r.width < 2) continue;
+          let row = rows.find((x) => Math.abs(x.top - r.top) < 8);
+          if (!row) { row = { top: r.top, bottom: r.bottom }; rows.push(row); }
+          row.bottom = Math.max(row.bottom, r.bottom);
+        }
+        rows.sort((a, b) => a.top - b.top);
+        let lastFull = -1;
+        for (let i = 0; i < rows.length; i++) {
+          if (rows[i].top >= clipTop - 1 && rows[i].bottom <= clipBottom + 1) lastFull = i;
+        }
+        const partial = rows.some((row) => row.top < clipBottom + 2 && row.bottom > clipBottom + 1);
+        if (partial && lastFull >= 0) {
+          const next = Math.max(0, rows[lastFull].bottom - dr.top);
+          if (d.style.maxHeight === next + 'px') break;
+          d.style.maxHeight = next + 'px';
+          void d.offsetHeight;
+        } else break;
+      }
+    }
+    void d.offsetHeight;
+    syncTrayScrollCue();
+  }
+  function syncTrayScrollCue() {
+    const d = $('drawer'), plaque = $('drawer-plaque'), cue = $('drawer-scroll-cue');
+    if (!d) return;
+    const overflowY = d.scrollHeight > d.clientHeight + 2;
+    const canScrollY = /auto|scroll/.test(getComputedStyle(d).overflowY);
+    const atEnd = d.scrollTop + d.clientHeight >= d.scrollHeight - 2;
+    const show = !!(overflowY && canScrollY && plaque && cue && !atEnd);
+    d.classList.toggle('drawer-scroll-overflow', show);
+    document.body.classList.toggle('drawer-tray-overflow', show);
+    if (!cue) return;
+    if (show) {
+      const pr = plaque.getBoundingClientRect();
+      cue.hidden = false;
+      cue.style.left = pr.left + 'px';
+      cue.style.width = pr.width + 'px';
+      cue.style.top = (pr.bottom - 20) + 'px';
+      cue.style.height = '16px';
+    } else {
+      cue.hidden = true;
+      document.body.classList.remove('drawer-tray-overflow');
+    }
+    if (!d.dataset.trayCueBound) {
+      d.dataset.trayCueBound = '1';
+      d.addEventListener('scroll', syncTrayScrollCue, { passive: true });
+    }
+  }
   function drawIcon(c, id) {
     const g = c.getContext('2d'), bw = state.theme === 'bw'; g.clearRect(0, 0, 96, 96);
     // Copperplate-style outlines cut into the plate, not miniature coloured part renders.
@@ -7220,10 +9358,11 @@ window.VC.ready = (async function () {
     if (newTime) congrats.push('New best time');
     const cong = congrats.length ? ' ' + congrats.join(' · ') + '!' : '';
     $('win-text').textContent = `${state.sim.assemblyCompleted ? state.sim.assemblyCompleted + ' assembled. ' : ''}${n} part${n === 1 ? '' : 's'}, ${mass.toFixed(2)} kg, ${energy.toFixed(1)} J, settled after ${t.toFixed(1)} s.${cong}`;
-    $('win-coins').innerHTML = L.practice ? 'Practice bench: no coins. Experiments 1–12 pay them.' : L.custom ? (state.testing ? 'Editor test run: the level is winnable. Editor-made levels pay no coins.' : 'Editor-made levels pay no coins.')
+    $('win-coins').innerHTML = L.practice ? 'Practice bench: no coins. Experiments 1–\u206012 pay them.' : L.custom ? (state.testing ? 'Editor test run: the level is winnable. Editor-made levels pay no coins.' : 'Editor-made levels pay no coins.')
       : `<b>+${award.coins} coins</b> · ${award.lines.map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${v}`).join(' · ')} · purse ${ECO.coins}`;
     if (state.testing && state.onTestWin) state.onTestWin();
-    $('b-win-next').style.display = (Number.isInteger(state.li) && state.li < LEVELS.length - 1) || L.tutorial ? '' : 'none';
+    $('b-win-next').style.display = (Number.isInteger(state.li) && state.li < LEVELS.length - 1) ? '' : 'none';
+    if (coach) coach.onWin();
     showPanel('p-win');
   }
 
@@ -7277,13 +9416,13 @@ window.VC.ready = (async function () {
     renderStoreLinks();
   }
   const UNLOCK_COPY = {
-    trial: ['The trial has ended', 'Your fifteen minutes in the full laboratory are up. Every design, best time and seal you earned is safely in the notebook. Experiments 1–3 stay open, and the full laboratory unlocks with one purchase.', 'Back to experiments 1–3'],
-    locked: ['Unlock the full laboratory', 'Experiments 1–3 are free. One purchase opens every experiment, including the chapters still to come as free updates. No ads and no subscription.', 'Not now'],
+    trial: ['The trial has ended', 'Your fifteen minutes in the full laboratory are up. Every design, best time and seal you earned is safely in the notebook. Experiments 1–\u20603 stay open, and the full laboratory unlocks with one purchase.', 'Back to experiments 1–\u20603'],
+    locked: ['Unlock the full laboratory', 'Experiments 1–\u20603 are free. One purchase opens every experiment, including the chapters still to come as free updates. No ads and no subscription.', 'Not now'],
     editor: ['Keep more of your own levels', 'The level editor is free for everyone, and you can keep one level of your own. The full laboratory unlock keeps as many as you like, and opens every experiment too.', 'Not now'],
   };
   const UNLOCK_COPY_WEB = {
-    trial: ['The trial has ended', `Your fifteen minutes in the full laboratory are up. Every design, best time and seal you earned is safely in this browser. Experiments 1–3 stay open here.`, 'Back to experiments 1–3'],
-    locked: ['The full laboratory', `Experiments 1–3 are free to play here. The full laboratory opens every other experiment, including the chapters still to come.`, 'Not now'],
+    trial: ['The trial has ended', `Your fifteen minutes in the full laboratory are up. Every design, best time and seal you earned is safely in this browser. Experiments 1–\u20603 stay open here.`, 'Back to experiments 1–\u20603'],
+    locked: ['The full laboratory', `Experiments 1–\u20603 are free to play here. The full laboratory opens every other experiment, including the chapters still to come.`, 'Not now'],
     editor: ['Keep more of your own levels', `The level editor is free, and this web version keeps one level of your own. The full laboratory keeps as many as you like.`, 'Not now'],
   };
   // Shared printed-plaque mounting. Never measure hidden articles or stretch old corner arcs.
@@ -7318,6 +9457,15 @@ window.VC.ready = (async function () {
         fitEngravedLabel(title, available, 14);
         const smaller = Math.min(11, parseFloat(title.style.fontSize) * .8);
         face.querySelectorAll(':scope > span:not(.seal)').forEach(status => fitEngravedLabel(status, available, smaller));
+      } else if (/^b-set-tut-/.test(button.id)) {
+        // Manager M4: the two "Replay … tutorial" plates keep the Coin drawer
+        // plate's type size and wrap on words (three lines at most, the plate grows) instead of
+        // shrinking a one-line engraving to 6.8-10.3 px. Floor 10 px.
+        let size = parseFloat(getComputedStyle(button).fontSize) || 14;
+        const lines = () => { const rg = document.createRange(); rg.selectNodeContents(face); return new Set([...rg.getClientRects()].filter((r) => r.width > 0.5).map((r) => Math.round(r.top))).size; };
+        const over = () => face.scrollWidth > face.clientWidth + 0.5 || face.scrollHeight > face.clientHeight + 0.5 || lines() > 3;
+        face.style.fontSize = size + 'px';
+        while (over() && size > 10) { size = Math.max(10, size - 0.5); face.style.fontSize = size + 'px'; }
       } else fitEngravedLabel(face, available, parseFloat(getComputedStyle(button).fontSize));
     });
   }
@@ -7354,13 +9502,13 @@ window.VC.ready = (async function () {
     $('b-set-buy').innerHTML = `Buy the full laboratory <b class="price">${p.displayPrice}</b>`;
     $('b-set-buy').hidden = STORELESS || p.owned || DEV;
     if (STORELESS) {
-      $('set-status').textContent = ENT.trialRelevant() ? `Free trial: ${fmt(ENT.trialRemainingMs())} of the full laboratory left. Experiments 1–3 are always free.` : 'Experiments 1–3 are free in this web version.';
+      $('set-status').textContent = ENT.trialRelevant() ? `Free trial: ${fmt(ENT.trialRemainingMs())} of the full laboratory left. Experiments 1–\u20603 are always free.` : 'Experiments 1–\u20603 are free in this web version.';
       $('unlock-price').textContent = 'The full laboratory is a one-time purchase.'; return;
     }
     let devNote = '';
     $('set-status').textContent = devNote ? devNote : p.owned ? 'The full laboratory is unlocked on this device. Thank you!'
       : st.pending ? 'Your purchase is waiting for approval. The laboratory opens as soon as it is approved.'
-      : ENT.trialRelevant() ? `Free trial: ${fmt(ENT.trialRemainingMs())} of the full laboratory left. Experiments 1–3 are always free.` : 'Experiments 1–3 are free. One purchase unlocks the rest.';
+      : ENT.trialRelevant() ? `Free trial: ${fmt(ENT.trialRemainingMs())} of the full laboratory left. Experiments 1–\u20603 are always free.` : 'Experiments 1–\u20603 are free. One purchase unlocks the rest.';
     $('unlock-price').textContent = p.priceIsFallback ? `One-time purchase, about ${p.displayPrice}.` : `One-time purchase: ${p.displayPrice}.`;
   }
   const BUY_MSG = { pending: 'Your purchase is waiting for approval (for example Ask to Buy, or a payment still clearing). The laboratory opens by itself as soon as it is approved.',
@@ -7383,13 +9531,22 @@ window.VC.ready = (async function () {
   const unlockBtns = () => [$('b-trial-unlock'), $('b-trial-restore')], setBtns = () => [$('b-set-buy'), $('b-set-restore')];
   $('b-trial-unlock').addEventListener('click', () => doBuy($('trial-msg'), unlockBtns()));
   $('b-trial-restore').addEventListener('click', () => doRestore($('trial-msg'), unlockBtns()));
-  $('b-trial-free').addEventListener('click', () => { hidePanel('p-trial'); if (state.unlockReason === 'trial' && Number.isInteger(state.li) && !isUnlocked(state.li)) loadLevel(Math.min(ENT.FREE_LEVELS - 1, state.li)); });
+  $('b-trial-free').addEventListener('click', () => {
+    const reason = state.unlockReason, li = state.li;
+    hidePanel('p-trial');
+    if (reason === 'trial' && Number.isInteger(li) && !isUnlocked(li)) loadLevel(Math.min(ENT.FREE_LEVELS - 1, li));
+  });
   $('b-set-buy').addEventListener('click', () => doBuy($('settings-msg'), setBtns()));
   $('b-set-restore').addEventListener('click', () => doRestore($('settings-msg'), setBtns()));
   // whenever the store grants (purchase, restore, a pending purchase approved later) or revokes (refund) the unlock
   PUR.onEntitlementChange((s) => {
     refreshShop();
-    if (s.owned) { if ($('p-trial').classList.contains('show')) { hidePanel('p-trial'); if (state.unlockReason === 'locked' && $('p-levels').classList.contains('show')) showLevels(); }
+    if (s.owned) {
+      const reason = state.unlockReason;
+      const trialOpen = $('p-trial').classList.contains('show');
+      const levelsOpen = $('p-levels').classList.contains('show');
+      if (trialOpen) hidePanel('p-trial');
+      if (reason === 'locked' && levelsOpen) showLevels();
       toast('The full laboratory is yours. Thank you!'); }
     else if (Number.isInteger(state.li) && !isUnlocked(state.li)) { if (state.mode === 'run') state.trialEndPending = true; else showUnlock('locked'); }
   });
@@ -7458,6 +9615,7 @@ window.VC.ready = (async function () {
   }
   function draw() {
     const V = view(), th = state.theme, L = state.level; if (!L) return;
+    if (R.beginLessonLabels) R.beginLessonLabels();
     ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
     ctx.drawImage(R.staticLayer(L, V, th, state.dpr), 0, 0, state.W, state.H);
     for (const it of L.statics) if (!it.dynamic && R.isAnimated(it)) { ctx.save(); R.drawItem(ctx, it, V.R, V.P, th, state.t); ctx.restore(); }
@@ -7499,6 +9657,8 @@ window.VC.ready = (async function () {
       s += ` · best ${bm}${be}, ${p.bestTime.toFixed(1)} s`;
     }
     if (state.cordDraft) s += state.tool === 'stringWinch' ? ' · Winch cord open, one end set' : ` · Pulley cord open, ${state.cordDraft.via.length} hub${state.cordDraft.via.length === 1 ? '' : 's'}`;
+    // no widow: tie the closing word to the one before it (Manager bar, 12 Nov)
+    // Same as live 591ae790 (Manager M3 / status ellipsis at 640x360 B&W): no tie.
     $('status').textContent = s;
   }
 
@@ -7506,8 +9666,8 @@ window.VC.ready = (async function () {
   let toastT = 0; function toast(msg) { const t = $('toast'); $('toast-copy').textContent = msg; t.classList.add('show'); refreshUiPlaques(); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
   // While the Help notebook is open the theme toggle stays above the veil (see index.html, body.help-open).
   const syncHelpOpen = () => document.body.classList.toggle('help-open', $('p-help').classList.contains('show'));
-  function showPanel(id) { if (partTip) partTip.hide(); $('veil').classList.add('show'); $(id).classList.add('show'); syncHelpOpen(); refreshUiPlaques(); }
-  function hidePanel(id) { $(id).classList.remove('show'); if (!document.querySelector('.panel.show')) $('veil').classList.remove('show'); syncHelpOpen(); }
+  function showPanel(id) { if (partTip) partTip.hide(); $('veil').classList.add('show'); $(id).classList.add('show'); syncHelpOpen(); refreshUiPlaques(); if (coach) coach.onPanels(); }
+  function hidePanel(id) { $(id).classList.remove('show'); if (!document.querySelector('.panel.show')) $('veil').classList.remove('show'); syncHelpOpen(); if (coach) coach.onPanels(); }
   function showLevels() {
     stop(true); const g = $('levels-grid'); g.innerHTML = '';
     const words = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'], nL = LEVELS.length;
@@ -7517,10 +9677,6 @@ window.VC.ready = (async function () {
     if (VC.editor && VC.editor.enabled) { const ed = document.createElement('div'); ed.className = 'chapter-head editor-head';
     ed.innerHTML = `<b>The level editor</b><span><button id="b-open-editor" class="buy">✎ Open the level editor</button></span>`; g.appendChild(ed);
     ed.querySelector('button').addEventListener('click', () => { hidePanel('p-levels'); VC.editor.open(); }); }
-    if (TUTORIAL) { const p = state.progress[TUTORIAL.id], b = document.createElement('button'); b.className = 'tutorial' + (p && p.done ? ' done' : ''); b.dataset.tutorial = TUTORIAL.id;
-      b.innerHTML = `<b>0. ${TUTORIAL.name}</b><span>practice bench · no coins</span><span class="seal" aria-label="${p && p.done ? 'complete' : ''}">${p && p.done ? '✓' : ''}</span>`;
-      b.addEventListener('click', () => { hidePanel('p-levels'); enterTutorial(); });
-      const row = document.createElement('div'); row.className = 'tutorial-row'; row.appendChild(b); g.appendChild(row); }
     LEVELS.forEach((L, i) => {
       if (heads.has(i) && chapters.length > 1) { const c = heads.get(i), h = document.createElement('div'); h.className = 'chapter-head';
         const done = LEVELS.slice(c.first, c.first + c.count).filter((x) => state.progress[x.id] && state.progress[x.id].done).length;
@@ -7560,6 +9716,15 @@ window.VC.ready = (async function () {
   $('b-help-close').addEventListener('click', () => hidePanel('p-help'));
   $('b-settings').addEventListener('click', () => { $('settings-msg').textContent = ''; $('b-set-theme').textContent = state.theme === 'bw' ? 'Gaslight theme' : 'B&W theme'; refreshShop(); renderStoreLinks(); showPanel('p-settings'); });
   $('b-settings-close').addEventListener('click', () => hidePanel('p-settings'));
+  function restartTutorial(mode) {
+    if (!coach) return;
+    hidePanel('p-settings');
+    const started = coach.restart(mode);
+    const inMode = (mode === 'editor' && (state.editing || state.testing)) || (mode === 'experiments' && Number.isInteger(state.li) && state.level && !state.level.custom && !state.editing);
+    if (started && !inMode) toast(mode === 'editor' ? 'The editor tutorial will play the next time you open the level editor.' : 'The experiment tutorial will play the next time you open an experiment.');
+  }
+  $('b-set-tut-experiments').addEventListener('click', () => restartTutorial('experiments'));
+  $('b-set-tut-editor').addEventListener('click', () => restartTutorial('editor'));
   const syncSound = () => { const on = !VC.sound || VC.sound.enabled(); $('b-set-sound').textContent = on ? 'Sound: on' : 'Sound: off'; $('b-set-sound').setAttribute('aria-pressed', on ? 'true' : 'false'); };
   syncSound(); $('b-set-sound').addEventListener('click', () => { if (VC.sound) { VC.sound.setEnabled(!VC.sound.enabled()); VC.sound.unlock(); } syncSound(); });
   $('b-set-theme').addEventListener('click', () => { setTheme(state.theme === 'bw' ? 'victorian' : 'bw'); $('b-set-theme').textContent = state.theme === 'bw' ? 'Gaslight theme' : 'B&W theme'; });
@@ -7570,7 +9735,7 @@ window.VC.ready = (async function () {
   $('lever').addEventListener('click', run);
   $('b-win-again').addEventListener('click', () => { hidePanel('p-win'); stop(true); run(); });
   $('b-win-edit').addEventListener('click', () => { stop(); });
-  $('b-win-next').addEventListener('click', () => { hidePanel('p-win'); if (state.level && state.level.tutorial) loadLevel(0); else loadLevel(state.li + 1); });
+  $('b-win-next').addEventListener('click', () => { hidePanel('p-win'); loadLevel(state.li + 1); });
   $('b-editor-back').addEventListener('click', () => { hidePanel('p-win'); VC.editor && VC.editor.back(); });
   $('veil').addEventListener('click', () => { for (const id of ['p-levels', 'p-help', 'p-settings', 'p-coins']) hidePanel(id); });
   window.addEventListener('keydown', (e) => {
@@ -7584,7 +9749,21 @@ window.VC.ready = (async function () {
       else if (state.mode === 'run' && state.sim) { e.preventDefault(); if (!e.repeat) togglePause(); }
     }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
-    else if (e.key === 'Escape') { state.cordDraft=null; updateStatus(); if (partTip) partTip.hide(); if ($('p-trial').classList.contains('show') && state.unlockReason === 'locked') { hidePanel('p-trial'); return; } for (const id of ['p-levels', 'p-help', 'p-win', 'p-settings']) hidePanel(id); if ($('p-trial').classList.contains('show') && !isUnlocked(state.li)) $('b-trial-free').click(); }
+    else if (e.key === 'Escape') {
+      // Close Settings, the trial/lock screen, and other panels first. Only skip the
+      // lesson when nothing is in the way. (Pause is not a panel: the toast says Space resumes.)
+      state.cordDraft=null; updateStatus(); if (partTip) partTip.hide();
+      const trialOpen = $('p-trial').classList.contains('show'), reason = state.unlockReason;
+      if (trialOpen && reason === 'locked') { hidePanel('p-trial'); return; }
+      if (trialOpen && reason === 'trial' && Number.isInteger(state.li) && !isUnlocked(state.li)) { $('b-trial-free').click(); return; }
+      if (trialOpen) { hidePanel('p-trial'); return; }
+      let closed = false;
+      for (const id of ['p-levels', 'p-help', 'p-win', 'p-settings', 'p-coins', 'p-buyitem', 'p-save', 'p-share']) {
+        const el = $(id); if (el && el.classList.contains('show')) { hidePanel(id); closed = true; }
+      }
+      if (closed) return;
+      if (coach && coach.onKey(e)) return;
+    }
     else if (e.key === 'Delete' || e.key === 'Backspace') { state.tool = 'delete'; syncDrawer(); }
     else if (e.key === 'm') { state.tool = 'move'; syncDrawer(); }
   });
@@ -7593,7 +9772,7 @@ window.VC.ready = (async function () {
 
   // test hooks
   ENT.onChange(() => { if (document.getElementById('p-levels').classList.contains('show')) showLevels(); });
-  Object.assign(state, { ENT, PUR, ECO, storeless: STORELESS, enterLevel, buildDrawer, syncDrawer, showPanel, hidePanel, showCoins, drawIcon, levelBounds, updateStatus, purse, showUnlock, refreshShop, isUnlocked, loadLevel, enterTutorial, TUTORIAL, run, stop, togglePause, fitCamera, setTheme, showLevels, proposePart, commit, view, stageRect, toast, LEVELS, bindPartTip,
+  Object.assign(state, { ENT, PUR, ECO, storeless: STORELESS, enterLevel, buildDrawer, syncDrawer, fitTrayChrome, showPanel, hidePanel, showCoins, drawIcon, levelBounds, updateStatus, purse, showUnlock, refreshShop, isUnlocked, loadLevel, run, stop, togglePause, fitCamera, setTheme, showLevels, proposePart, commit, view, stageRect, toast, LEVELS, bindPartTip,
     setDesign(d) { state.design = JSON.parse(JSON.stringify(d)); saveDesign(); updateStatus(); } });
 
   // ---------------- boot ----------------
@@ -7602,10 +9781,16 @@ window.VC.ready = (async function () {
   if (window.VLS && typeof window.VLS.plaqueMount === 'function') window.VLS.plaqueMount(document);
   document.body.style.setProperty('--fa-case-wood', `url("${window.VLS.apparatus.woodPanelDataURL(320, 640, 27, { dpr: 1, grainDir: 'v', figure: 'plain' })}")`);
   partTip = window.VC.partTip.mount({ tip: $('part-tip'), copy: $('part-tip-copy'), refresh: refreshUiPlaques });
+  coach = VC.coachTutorial.create({ $, store, state, refresh: refreshUiPlaques, syncBar: syncBarHeight, levels: () => LEVELS,
+    onReserve() { if (state.level && !state.userCam) fitCamera(state.overview); } });
+  coach.bind();
+  state.coach = coach;
   resize();
-  const last = store.get('last', null), li = Math.max(0, LEVELS.findIndex((L) => L.id === last));
-  // A fresh player (nothing played yet) meets Level 0 first; anyone can skip it from the experiments list.
-  if (TUTORIAL && (last === TUTORIAL.id || (last == null && !(state.progress[TUTORIAL.id] && state.progress[TUTORIAL.id].done)))) enterTutorial(); else loadLevel(li);
+  const last = store.get('last', null);
+  // A last visit to the retired Level 0 (first-apparatus) resumes on Experiment 1. Progress and designs for that id are left in place.
+  const li = Math.max(0, LEVELS.findIndex((L) => L.id === last));
+  coach.migrate();
+  loadLevel(li);
   setTheme(state.theme);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { buildDrawer(); syncDrawer(); drawLever(); });
   requestAnimationFrame(frame);
@@ -7673,6 +9858,7 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !wind
     s.testing = false; s.enterLevel(C.toPlayable(ed.level, 'editor-' + (ed.id || 'draft')), null);
     s.editing = true; document.body.classList.add('editing'); s.drawerHook = buildDrawer; s.editorInput = input; s.overlay = overlay;
     ed.sel = null; ed.tool = 'move'; s.buildDrawer(); preview(); s.fitCamera(); VC.notes && VC.notes.emit('editor');
+    if (s.coach) s.coach.maybeStart('editor');
   }
   function newLevel() { ed.level = C.newLevel(); ed.id = null; ed.tested = false; open(); }
   function back() { if (!ed.level) return open(); const s = S(); s.testing = false; open(ed.id || undefined); }
