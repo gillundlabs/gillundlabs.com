@@ -1178,6 +1178,20 @@
     body[data-theme="victorian"] #p-title { padding: 14px 16px; }
     .panel h1 { font-size: clamp(22px,7vw,30px) !important; }
   }
+  /* A short or narrow title plate was scrolling the tilt note off the first paint. Tighten the plate, not the type. */
+  @media (max-height: 420px), (max-width: 340px) {
+    body[data-theme] #p-title { padding: 8px 10px; }
+    body[data-theme] #p-title h1 { font-size: 22px !important; line-height: 1.05; margin: 0 0 2px; padding-bottom: 2px; }
+    body[data-theme] #p-title p { margin: 2px 0; font-size: 13px; line-height: 1.25; }
+    body[data-theme] #p-title .row { margin-top: 6px; gap: 6px; }
+    body[data-theme] #p-title .row button { font-size: 12px; letter-spacing: .02em; min-height: 44px; min-width: 0; }
+  }
+  @media (max-width: 340px) {
+    body[data-theme] #p-title .row button { flex: 1 1 42%; }
+  }
+  @media (max-width: 500px) and (min-height: 700px) {
+    #tilt-note { text-wrap: pretty; }
+  }
 </style>
 </head>
 <body data-theme="victorian">
@@ -9737,7 +9751,7 @@ function tiltNote() {
   if (sensor.live()) return 'Tilt sensor active: tip the phone to steer.';
   if (inputMode === 'manual' && inputReason === 'denied') return 'Motion access was denied: drag or use the arrow keys to tip the apparatus (or allow Motion & Orientation access in Settings).';
   if (inputMode === 'manual') return 'No motion sensor: drag or use the arrow keys to tip the apparatus.';
-  return 'On a phone, tap Begin and allow motion access. On a computer, drag or use the arrow keys to tip the apparatus.';
+  return 'On a phone, tap Begin and allow motion access. On a computer, drag or use the arrow keys to tip the\u00a0apparatus.';
 }
 // ---- level list: world selector, chapters, padlocks
 function buildBodies() {
