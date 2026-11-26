@@ -7937,7 +7937,7 @@ function beginRun(level, demo) {
   state.world.onContact = (a, hit) => onContact(a, hit);
   state.model = A.buildModel(state.world.atom.z);
   const a = state.world.atom; state.cam = { x: a.x, y: a.y, k: 1, lx: 0, ly: 0 };
-  state.winT = 0; state.toast = null; state.seenCells = new Set(); state.contacted = false;
+  state.winT = 0; state.toast = null; state.toastT = 0; toastQueue.length = 0; state.seenCells = new Set(); state.contacted = false;
   kst.ax = kst.ay = 0; drag = null;
   if (!demo) {
     ensureMotion();
@@ -7949,15 +7949,36 @@ function beginRun(level, demo) {
       syncTutorial();
     }
     else {
-      state.tutorial = null; syncTutorial(); unlock('start'); unlock('body:' + b);
+      state.tutorial = null; syncTutorial();
+      // The goal stays on screen for its full moment. Notebook unlocks (including the first
+      // wall) queue behind it instead of replacing it.
+      const pumps = [...new Set(L.exits.map((e) => pumpName(e.pump).toLowerCase()))].join(' or ');
+      toast(L.body ? `This apparatus stands on ${E.BODIES[L.body].name}: g = ${E.BODIES[L.body].g} m/s²` : `Steer the atom into the ${pumps}`);
+      if (!tempExplained) {
+        tempExplained = true;
+        toast('Temperature is the atom\u2019s, in nK. It sets the speed, and scales with the window so a crossing takes the same time on every screen.');
+      }
+      unlock('start'); unlock('body:' + b);
       if (L.lasers && L.lasers.length) { unlock('laser'); for (const bm of L.lasers) unlock('laser:' + bm.line); }
     }
-    const pumps = [...new Set(L.exits.map((e) => pumpName(e.pump).toLowerCase()))].join(' or ');
-    if (!L.tutorial) toast(L.body ? `This apparatus stands on ${E.BODIES[L.body].name}: g = ${E.BODIES[L.body].g} m/s²` : `Steer the atom into the ${pumps}`);
     if (inputMode === 'manual') showHint();
   }
 }
-function toast(t) { state.toast = t; state.toastT = 3.5; }
+let tempExplained = false;
+const toastQueue = [];
+function toast(t) {
+  if (!t) return;
+  if (state.toast && state.toastT > 0) { toastQueue.push(t); return; }
+  state.toast = t; state.toastT = 3.5;
+}
+function advanceToast(dt) {
+  if (!(state.toastT > 0)) return;
+  state.toastT -= dt;
+  if (state.toastT > 0) return;
+  const next = toastQueue.shift();
+  if (next) { state.toast = next; state.toastT = 3.5; }
+  else { state.toast = null; state.toastT = 0; }
+}
 function lockOrientation() { try { const so = screen.orientation; if (so && so.lock) so.lock('portrait').catch(() => {}); } catch (e) { /* not allowed */ } }
 
 // ------------------------------------------------------------------ notebook unlocks
@@ -7992,7 +8013,7 @@ const keys = new Set();
 let drag = null;                       // {id, x0, y0, x, y, base}
 const kst = { ax: 0, ay: 0 };          // manual tilt angles (degrees) from keys / drag
 let inputMode = 'unknown', inputReason = '', hintT = 0, hintPlaced = false;
-const dragR = () => Math.max(160, Math.min(vw, vh) * 0.4);   // px of drag for 90°
+const dragR = () => Math.min(260, Math.max(160, Math.min(vw, vh) * 0.4));   // px of drag for 90°; capped so a big screen still tips
 function setManual(reason) {
   inputMode = 'manual'; inputReason = reason;
   showHint();
@@ -8203,13 +8224,15 @@ function mountHintPlaque() {
   const label = el.querySelector(':scope > .vls-plaque__label');
   const fitted = label ? label.style.fontSize : '';
   const wrap = () => {
-    if (!label || !lessonFraming()) return;
-    // The lesson sentence wraps. Ordinary play leaves the kit's one-line plaque alone.
+    if (!label) return;
+    // The lesson sentence wraps. On a computer the play hint also wraps, so "H holds the tilt." stays on the plaque.
+    if (!lessonFraming() && touchDevice()) return;
     label.style.whiteSpace = 'normal';
     label.style.fontSize = fitted;
     label.style.overflow = 'visible';
     label.style.height = 'auto';
     label.style.textOverflow = 'clip';
+    label.style.maxWidth = 'min(460px, 78vw)';
   };
   wrap();
   if (!el.getClientRects().length) return;
@@ -8221,7 +8244,12 @@ function hintLabel() {
 }
 function showHint() {
   const el = $('hint-plaque');
-  hintLabel().textContent = sensorSentence();
+  const lab = hintLabel();
+  const text = sensorSentence();
+  const hold = !lessonFraming() && !touchDevice() && text.endsWith('H holds the tilt.');
+  if (hold) {
+    lab.replaceChildren(document.createTextNode(text.slice(0, -'H holds the tilt.'.length)), document.createElement('br'), document.createTextNode('H holds the tilt.'));
+  } else lab.textContent = text;
   if (!lessonFraming()) {
     hintPlaced = false;
     document.body.classList.remove('lesson-frame');
@@ -8279,6 +8307,13 @@ async function detectSensor() {
   if (r === 'error') return;
   await new Promise((res) => setTimeout(res, 1200));
   if (sensor.st.events === 0) setManual('none'); else inputMode = 'sensor';
+}
+const KEY_TILT = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
+function kickKey(code) {
+  const d = KEY_TILT[code];
+  if (!d || keys.has(code) || state.screen !== 'playing') return;
+  kst.ax = Math.max(-90, Math.min(90, kst.ax + d[0] * 8));
+  kst.ay = Math.max(-90, Math.min(90, kst.ay + d[1] * 8));
 }
 function keyDirs() {
   let x = 0, y = 0;
@@ -8339,9 +8374,9 @@ function frame(now) {
     if (!state.world.won) { if (!(devHooks.on && state.freeze) && !state.holdWorld) { E.step(state.world, dt); watchCells(); } if (state.world.won) onWin(); }
     else { if (!(devHooks.on && state.freeze)) { E.step(state.world, dt); state.winT += dt; } if (state.demo && state.winT > E.EXTRACTION_DURATION + 0.25) startLevel(state.levelIdx, true); }
   }
-  purchase.trial.tick(dt * 1000, state.screen === 'playing' && !state.demo && !(state.level && state.level.tutorial) && !document.hidden, performance.now() - state.lastInput);
+  purchase.trial.tick(Math.min(Math.max(0, raw), 0.25) * 1000, state.screen === 'playing' && !state.demo && !(state.level && state.level.tutorial) && !document.hidden, performance.now() - state.lastInput);
   if (state.screen === 'playing') tutorialTick();
-  if (state.toastT > 0 && (state.toastT -= dt) <= 0) state.toast = null;
+  advanceToast(dt);
   if (hintT > 0 && (hintT -= dt) <= 0) $('hint-plaque').classList.remove('show');
   if (state.unlockFlash > 0) state.unlockFlash -= dt;
   syncLessonChrome();
@@ -8379,7 +8414,7 @@ function makeTutorialLevel(mode) {
 function tutorialLine() {
   const t = state.tutorial, desk = !touchDevice(), custom = state.tutorialMode === 'custom';
   if (!t || !t.steered) return desk
-    ? 'Drag, or the arrow keys, to tip the tube. Space pauses.'
+    ? 'Drag, or the arrow keys, to tip the tube. H holds the tilt. Space pauses.'
     : 'Tip the phone, or drag, to steer the atom.';
   if (!t.aimed) return 'The open end is a pump. Steer the atom into it.';
   return custom
@@ -8395,7 +8430,8 @@ function sensorSentence() {
   const why = inputReason === 'denied' ? 'Motion access was denied. ' : inputReason === 'none' ? 'No motion sensor found. ' : '';
   const sentence = `${why}Drag or use arrow keys to tip the apparatus`;
   // Ordinary play keeps main's sentence. The lesson plaque closes it, and keeps the last two words together.
-  if (!lessonFraming()) return sentence;
+  // The lesson plate keeps the original sentence. On a computer, the play hint also names the hold key.
+  if (!lessonFraming()) return touchDevice() ? sentence : `${sentence}. H holds the tilt.`;
   return keepPair(sentence + '.');
 }
 // The same query strings as the lesson CSS. max-height includes 420, and squares are portrait.
@@ -8569,12 +8605,12 @@ function showTutorialWin() {
   ensureWinPump();
   $('win-title').textContent = keepPair('Practice done');
   $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
-  const rows = [['Screen time', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par', `${r.par} s at record pace`],
+  const rows = [['Screen time', `${r.t.toFixed(1)} s`], ['Phone-equivalent', `${r.tRef.toFixed(1)} s`], ['Par', `${r.par} s at record pace`],
     ['Stars', 'on record pace'], ['Pump', pumpName(r.exit.pump)], ['Saved', 'Nothing']];
   $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${keepPair(k)}</span><b>${keepPair(v)}</b>`).join('');
   $('win-note').textContent = keepPair(r.mode === 'custom'
     ? 'A maze you build keeps no best time and pays no coins. This practice saved nothing.'
-    : `Stars follow record pace against par. Screen time is the other clock. Record pace is the same crossing on every screen (${b.name}). This practice saved nothing.`);
+    : `Your ${r.t.toFixed(1)} s counts as ${r.tRef.toFixed(1)} s at phone width (bigger windows show more tube). Stars follow record pace against par. This practice saved nothing.`);
   $('b-next').style.display = ''; $('b-next').textContent = keepPair('Continue ▸');
   showPanel('win');
 }
@@ -8627,12 +8663,12 @@ function showWin() {
   }
   $('win-title').textContent = keepPair(`${L.name}: atom extracted!`);
   $('win-stars').textContent = '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
-  const rows = [['Time on this screen', `${r.t.toFixed(1)} s`], ['Record pace', `${r.tRef.toFixed(1)} s`], ['Par (★★★)', `${r.par} s (${L.pathCells} cells, ${b.name})`], ['Wall contacts', r.contacts],
-    [`Best on ${b.name}`, `${store.best[S.bestKey(L.id, r.body)].time.toFixed(1)} s`], ['Pump', pumpName(r.exit.pump) + (r.exit.bonus ? ' (bonus ×1.5)' : '')],
+  const rows = [['Your time', `${r.t.toFixed(1)} s`], ['Phone-equivalent', `${r.tRef.toFixed(1)} s`], ['Par, phone-equivalent', `${r.par} s (${L.pathCells} cells, ${b.name})`], ['Wall contacts', r.contacts],
+    [`Best, phone-equivalent`, `${store.best[S.bestKey(L.id, r.body)].time.toFixed(1)} s`], ['Pump', pumpName(r.exit.pump) + (r.exit.bonus ? ' (bonus ×1.5)' : '')],
     ['Coins', `+${r.coins} (${store.coins} in the purse)`], ['Atom', `${ELEMENTS[state.world.atom.z - 1].name}, captured at ${formatT(state.world.atom.T)}`]];
   $('win-stats').innerHTML = rows.map(([k, v]) => `<span>${keepPair(k)}</span><b>${keepPair(String(v))}</b>`).join('');
-  const paceNote = Math.abs((r.tRef / Math.max(r.t, 1e-9)) - 1) > 0.02 ? ' Record pace adds each moment at the screen width then showing, the reference where the tube fills the width.' : '';
-  $('win-note').textContent = keepPair((r.rec && r.prev ? `New best! (was ${r.prev.time.toFixed(1)} s)` : r.rec ? 'First escape from this apparatus on this world.' : '') + paceNote);
+  const lead = r.rec && r.prev ? `New best! (was ${r.prev.time.toFixed(1)} s). ` : r.rec ? 'First escape from this apparatus on this world. ' : '';
+  $('win-note').textContent = keepPair(`${lead}Your ${r.t.toFixed(1)} s counts as ${r.tRef.toFixed(1)} s at phone width (bigger windows show more tube). Record pace is that phone-equivalent time.`);
   const nxt = state.levelIdx + 1;
   $('b-next').style.display = nxt < RELEASED ? '' : 'none';
   $('b-next').textContent = nxt < RELEASED && !isLevelUnlocked(nxt) ? 'Next apparatus 🔒' : 'Next apparatus ▸';
@@ -8908,6 +8944,25 @@ window.VMSettlePlay = function () {
   return true;
 };
 window.VMShowHint = function () { inputMode = 'manual'; inputReason = 'none'; showHint(); };
+window.VMPlaytest = {
+  dragR: () => dragR(),
+  angles: () => ({ ax: kst.ax, ay: kst.ay }),
+  kick: (code) => { kickKey(code); if (!keys.has(code)) keys.add(code); return { ax: kst.ax, ay: kst.ay }; },
+  release: (code) => { keys.delete(code); },
+  toast: {
+    push: (t) => { toast(t); return { text: state.toast, left: state.toastT, q: toastQueue.slice() }; },
+    read: () => ({ text: state.toast, left: state.toastT, q: toastQueue.slice() }),
+    advance: (sec) => { advanceToast(sec); return { text: state.toast, left: state.toastT, q: toastQueue.slice() }; },
+    clear: () => { state.toast = null; state.toastT = 0; toastQueue.length = 0; },
+  },
+  trialStep: async (rawSeconds) => {
+    if (purchase.getEntitlement().trial.state !== 'running') await purchase.trial.start();
+    const before = purchase.getEntitlement().trial.usedMs;
+    purchase.trial.tick(Math.min(Math.max(0, rawSeconds), 0.25) * 1000, true, 0);
+    const after = purchase.getEntitlement().trial.usedMs;
+    return { before, after, delta: after - before };
+  },
+};
 window.VMPlayGeometry = function () {
   const L = state.level, w = state.world, c = state.cam;
   if (!L || !w || !c) return null;
@@ -9207,6 +9262,17 @@ function render() {
   const a = state.world.atom;
   if (state.world.won) drawExtractionAtom(ctx, E.extractionPose(state.world), theme);
   else {
+    // On a short screen the atom's brass highlight sits in the sliver under the readout. Cover that sliver only, so the rest of the picture stays put.
+    const plate = readoutBox();
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.beginPath();
+    ctx.rect(0, 0, vw, vh);
+    ctx.rect(plate.l, plate.b, Math.max(1, plate.r - plate.l), 6);
+    ctx.clip('evenodd');
+    ctx.translate(vw / 2, inset.top + viewH / 2 + (inset.bias || 0));
+    ctx.scale(c.k, c.k);
+    ctx.translate(-c.x, -c.y);
     A.drawAtoms(ctx, [{ x: a.x, y: a.y, model: state.model, stuck: a.stuck }], theme, state.clock);
     if (!stageQuiet()) {
       const Tk = a.stuck ? a.T : E.kinT(a, state.world.scale);
@@ -9214,6 +9280,7 @@ function render() {
       const tl = `${a.el.sym} ${formatT(Tk)}`;   // dark outline first, so the label stays readable where it crosses a (white/brass) pipe
       clampedText(tl, a.x + a.r * 0.7, a.y - a.r * 0.7, 0, bw ? '#000' : 'rgba(26,14,6,0.85)');   // kept on screen like the world labels
     }
+    ctx.restore();
   }
   ctx.restore();
   const vg = ctx.createRadialGradient(vw / 2, vh / 2, Math.min(vw, vh) * (bw ? 0.45 : 0.42), vw / 2, vh / 2, Math.max(vw, vh) * 0.62);
@@ -9452,14 +9519,28 @@ function drawStart(L, bw) {
   ctx.save(); ctx.strokeStyle = bw ? '#fff' : 'rgba(217,169,67,0.35)'; ctx.setLineDash([3, 5]); ctx.beginPath(); ctx.arc(cell.cx, cell.cy, 26, 0, 7); ctx.stroke(); ctx.restore();
   const c = state.cam, metrics = viewMetrics(), inset = metrics.inset, viewH = metrics.viewH;
   const sx = (cell.cx - c.x) * c.k + vw / 2;
-  const steelTop = (cell.cy - H - WALL_T - c.y) * c.k + inset.top + viewH / 2 + (inset.bias || 0);
+  const sy = (worldY) => (worldY - c.y) * c.k + inset.top + viewH / 2 + (inset.bias || 0);
+  const steelTop = sy(cell.cy - H - WALL_T);
+  const steelBot = sy(cell.cy + H + WALL_T);
   ctx.save();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.font = bw ? `10px ${face(true)}` : `italic 700 11px ${TK.font.italic}`;
-  ctx.fillStyle = bw ? '#fff' : PAL.paperEdge;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  // During the practice the source name sits on the tube. The lesson plate already names the run.
-  if (!lessonFraming() && !stageQuiet()) ctx.fillText(bw ? 'SOURCE' : 'atom source', sx, Math.max(inset.top + 18, steelTop - 18));
+  ctx.fillStyle = bw ? '#fff' : (PAL.paperLight || '#f8eed6');
+  ctx.textAlign = 'center';
+  // The dashed ring is where the atom starts, not the goal. Name it inside the bore, clear of the steel.
+  const fresh = state.world && state.world.stats.time < 4;
+  const plate = readoutBox();
+  let labelY = sy(cell.cy - 30) - 2, baseline = 'bottom';
+  const above = labelY < steelTop - 2 && labelY > plate.b + 20;
+  if (!above) {
+    labelY = sy(cell.cy + 32) + 2;
+    baseline = 'top';
+    if (!(labelY > plate.b + 8 && labelY + 14 < steelBot)) labelY = 0;
+  }
+  if (fresh && labelY && !lessonFraming() && !stageQuiet()) {
+    ctx.textBaseline = baseline;
+    ctx.fillText(bw ? 'SOURCE' : 'source', sx, labelY);
+  }
   ctx.restore();
 }
 
@@ -9537,7 +9618,8 @@ function deadEndLabel(part, x, y, ax, ay, h, bw) {
   const reach = DE_REACH[part] * h + 14;
   ctx.save(); ctx.font = bw ? `9px ${face(true)}` : `italic 700 11px ${FONTS.serif}`; ctx.fillStyle = bw ? '#fff' : PAL.paperLight;
   ctx.textAlign = Math.abs(ax) > 0.5 ? (ax > 0 ? 'left' : 'right') : 'center'; ctx.textBaseline = Math.abs(ay) > 0.5 ? (ay > 0 ? 'top' : 'bottom') : 'middle';
-  const text = info.name.toUpperCase(), lx = x + ax * reach, ly = y + ay * reach;
+  const earlyValve = part === 'valve' && state.level && (state.level.id === 1 || state.level.id === 2 || state.level.id === 3 || state.level.id === 4);
+  const text = earlyValve ? 'DEAD-END PORT' : info.name.toUpperCase(), lx = x + ax * reach, ly = y + ay * reach;
   clampedText(text, lx, ly);
   noteStageLabel({ text, x: lx, y: ly, side: Math.abs(ax) > 0.5 ? Math.sign(ax) : 0, width: ctx.measureText(text).width, size: parseFloat(ctx.font) || 11 });
   ctx.restore();
@@ -9604,7 +9686,7 @@ function hud(theme) {
   const marks = `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`;
   const parWords = L.tutorial
     ? (narrow ? `par ${par} s · pace` : `par ${par} s at record pace`)
-    : `par ${par} s · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
+    : `par ${par} s phone-eq · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
   if (!L.tutorial) field(`${marks} ${parWords}`, x0, y, inner, parH, narrow ? 8 : 9);
   else {
     // The kit engraving face has no star glyph, so a canvas star is drawn instead of a fallback ×.
@@ -9636,6 +9718,19 @@ function hud(theme) {
     if (words && words.bounds) hudInk.push(...words.bounds);
   }
   ctx.restore();
+  if (!L.tutorial && state.screen === 'playing') {
+    ctx.save();
+    ctx.font = bw ? `500 11px ${face(true)}` : `italic 11px ${TK.font.italic}`;
+    const goal = 'Goal: reach the pump';
+    const tw = ctx.measureText(goal).width;
+    const gx = left + width - 8, gy = top + h + 10;
+    ctx.fillStyle = bw ? '#000' : 'rgba(20,12,5,0.78)';
+    ctx.fillRect(gx - tw - 6, gy - 2, tw + 12, 16);
+    ctx.fillStyle = bw ? '#fff' : (TK.ink.victorian || '#f8eed6');
+    ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+    outlined(goal, gx, gy, bw);
+    ctx.restore();
+  }
   if (devHooks.on) window.VMHudInk = { plate: { l: left, t: top, r: left + width, b: top + h }, s: screw, lines: hudInk };
   // spirit level: in-plane gravity g·sin θ
   const gm = Math.hypot(state.tilt.x, state.tilt.y), ang = T.angleOf(state.tilt);
@@ -9705,16 +9800,28 @@ function banner(text, bw, y) {
   ctx.restore();
 }
 function minimap(bw) {
-  const L = state.level, w = state.world, cs = Math.max(5, Math.min(12, Math.floor(110 / Math.max(L.cols, L.rows))));
+  const L = state.level, w = state.world, span = Math.max(L.cols, L.rows, 1), short = Math.min(vw, vh);
+  const cs = Math.max(5, Math.min(24, Math.floor(Math.min(short * 0.42, 280) / span)));
   const mw = L.cols * cs, mh = L.rows * cs, x0 = vw - safe.r - 12 - mw, y0 = vh - safe.b - 12 - mh;
   state.mmRect = { l: x0 - 6, t: y0 - 6, r: x0 + mw + 6, b: y0 + mh + 6 };   // world labels keep clear of it (clampedText)
+  const at = (i, j) => [x0 + (i + 0.5) * cs, y0 + (j + 0.5) * cs];
   ctx.save();
   ctx.fillStyle = bw ? 'rgba(0,0,0,0.8)' : 'rgba(20,12,5,0.7)'; ctx.fillRect(x0 - 6, y0 - 6, mw + 12, mh + 12);
   ctx.strokeStyle = bw ? '#fff' : PAL.brassMid; ctx.lineWidth = 1; ctx.strokeRect(x0 - 5.5, y0 - 5.5, mw + 11, mh + 11);
   ctx.strokeStyle = bw ? '#fff' : '#c9d0d5'; ctx.lineWidth = Math.max(2, cs * 0.45); ctx.lineCap = 'round';
   for (const k of w.visited) {
-    const i = k % L.cols, j = Math.floor(k / L.cols), m = L.open[k], cx = x0 + (i + 0.5) * cs, cy = y0 + (j + 0.5) * cs;
+    const i = k % L.cols, j = Math.floor(k / L.cols), m = L.open[k], [cx, cy] = at(i, j);
     for (const d of M.DIRS) if (m & d.bit) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + d.dx * cs * 0.5, cy + d.dy * cs * 0.5); ctx.stroke(); }
+  }
+  if (L.start) {
+    const [sx, sy] = at(L.start.i, L.start.j);
+    ctx.strokeStyle = bw ? '#fff' : '#d9a943'; ctx.lineWidth = Math.max(1, cs * 0.12);
+    ctx.beginPath(); ctx.arc(sx, sy, Math.max(2, cs * 0.28), 0, 7); ctx.stroke();
+  }
+  ctx.fillStyle = bw ? '#fff' : PAL.brass;
+  for (const e of L.exits || []) {
+    const [ex, ey] = at(e.i, e.j), s = Math.max(2, cs * 0.22);
+    ctx.fillRect(ex - s, ey - s, s * 2, s * 2);
   }
   const a = w.atom; ctx.fillStyle = bw ? '#fff' : '#ff7a4a';
   ctx.beginPath(); ctx.arc(x0 + (a.x / C) * cs, y0 + (a.y / C) * cs, Math.max(2.5, cs * 0.35), 0, 7); ctx.fill();
@@ -10256,6 +10363,7 @@ addEventListener('keydown', (e) => {
     if (panel) { e.preventDefault(); return; }
   }
   if (e.target.closest && e.target.closest('.panel') && e.target.tagName !== 'BUTTON') return;
+  kickKey(e.code);
   keys.add(e.code);
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   // Space pauses only on a computer. Phones keep the old keys: P and Escape. The computer check is the same one used to choose manual steering.

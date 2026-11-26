@@ -1,0 +1,117 @@
+/* Playtest fixes: the goal toast is not replaced by a notebook toast, the trial clock
+   uses wall time under a low frame rate, drag distance for 90° is capped, and an arrow
+   tap kicks the tilt by 8°.
+   Run: node tests/vacuum-playtest.mjs [baseUrl] */
+import { spawn } from 'node:child_process';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+const BASE = process.argv[2] || 'http://127.0.0.1:8772';
+const PORT = 9396;
+const failures = [];
+function fail(msg) { failures.push(msg); console.error('FAIL', msg); }
+
+const chrome = spawn('google-chrome', [
+  '--headless=new', '--no-sandbox', '--disable-gpu', '--hide-scrollbars',
+  `--remote-debugging-port=${PORT}`, '--user-data-dir=/tmp/vac-playtest', 'about:blank',
+], { stdio: 'ignore' });
+
+let ws;
+try {
+  let target;
+  for (let i = 0; i < 40 && !target; i++) {
+    try { target = (await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()).find((t) => t.type === 'page'); } catch {}
+    if (!target) await sleep(120);
+  }
+  if (!target) throw new Error('Chrome did not start');
+  ws = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+  let id = 0; const pending = new Map();
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.method === 'Runtime.exceptionThrown') fail('page exception ' + ((msg.params.exceptionDetails.exception && msg.params.exceptionDetails.exception.description) || '').slice(0, 240));
+    if (msg.id && pending.has(msg.id)) {
+      const p = pending.get(msg.id); pending.delete(msg.id);
+      msg.error ? p.reject(new Error(JSON.stringify(msg.error))) : p.resolve(msg.result);
+    }
+  };
+  const send = (method, params = {}) => new Promise((resolve, reject) => {
+    const msgId = ++id; pending.set(msgId, { resolve, reject });
+    ws.send(JSON.stringify({ id: msgId, method, params }));
+    setTimeout(() => { if (pending.has(msgId)) { pending.delete(msgId); reject(new Error('timeout ' + method)); } }, 15000);
+  });
+  const ev = async (expression) => {
+    const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+    if (r.exceptionDetails) throw new Error(JSON.stringify(r.exceptionDetails).slice(0, 500));
+    return r.result.value;
+  };
+  await send('Page.enable');
+  await send('Runtime.enable');
+  await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+  await send('Page.navigate', { url: BASE + '/play/vacuum-maze/?dev=1' });
+  for (let i = 0; i < 50; i++) {
+    if (await ev(`!!window.VMPlaytest && !!window.VMStartLevel`)) break;
+    await sleep(80);
+  }
+  if (!await ev(`!!window.VMPlaytest`)) fail('playtest hooks missing');
+
+  await ev(`window.VMPlaytest.toast.clear(); true`);
+  const queued = await ev(`window.VMPlaytest.toast.push('Steer the atom into the rotary pump')`);
+  const held = await ev(`window.VMPlaytest.toast.push('New notebook entry: Walls')`);
+  console.log('toast queued', JSON.stringify(held));
+  if (!queued || queued.text !== 'Steer the atom into the rotary pump' || queued.q.length) fail('goal toast did not show ' + JSON.stringify(queued));
+  if (!held || held.text !== 'Steer the atom into the rotary pump' || held.q.length !== 1) fail('notebook toast replaced the goal ' + JSON.stringify(held));
+  const next = await ev(`window.VMPlaytest.toast.advance(3.5)`);
+  console.log('toast next', JSON.stringify(next));
+  if (!next || next.text !== 'New notebook entry: Walls' || next.q.length) fail('notebook toast did not follow the goal ' + JSON.stringify(next));
+
+  await send('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false });
+  await ev(`window.dispatchEvent(new Event('resize')); true`);
+  await sleep(40);
+  const big = await ev(`window.VMPlaytest.dragR()`);
+  console.log('dragR 1600x1000', big);
+  if (!(big <= 260)) fail('dragR was not capped at 260 on a large screen ' + big);
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await ev(`window.dispatchEvent(new Event('resize')); true`);
+  await sleep(40);
+  const phone = await ev(`window.VMPlaytest.dragR()`);
+  console.log('dragR 390x844', phone);
+  if (!(phone >= 160 && phone <= 260)) fail('phone dragR left the old range ' + phone);
+
+  if (!await ev(`window.VMStartLevel(1)`)) fail('level did not start');
+  const opened = await ev(`window.VMPlaytest.toast.read()`);
+  console.log('level toast', JSON.stringify(opened));
+  if (!opened || !/Steer the atom/.test(opened.text)) fail('level start did not lead with the goal ' + JSON.stringify(opened));
+  if (/New notebook entry/.test(opened.text)) fail('a notebook toast replaced the goal at level start ' + JSON.stringify(opened));
+  if (!opened.q.some((t) => /Temperature is the atom/.test(t))) fail('the temperature note was not queued behind the goal ' + JSON.stringify(opened));
+  if (opened.q.length && !/Temperature is the atom/.test(opened.q[0])) fail('a notebook toast jumped ahead of the goal ' + JSON.stringify(opened));
+  const kicks = await ev(`(() => {
+    window.VMPlaytest.release('ArrowRight');
+    const first = window.VMPlaytest.kick('ArrowRight');
+    const repeat = window.VMPlaytest.kick('ArrowRight');
+    window.VMPlaytest.release('ArrowRight');
+    const again = window.VMPlaytest.kick('ArrowRight');
+    return { first, repeat, again };
+  })()`);
+  console.log('kick', JSON.stringify(kicks));
+  if (!kicks || Math.abs(kicks.first.ax - 8) > 0.01) fail('arrow tap did not kick 8 deg ' + JSON.stringify(kicks));
+  if (Math.abs(kicks.repeat.ax - 8) > 0.01) fail('a held arrow kicked again ' + JSON.stringify(kicks));
+  if (Math.abs(kicks.again.ax - 16) > 0.01) fail('a second tap did not add another 8 deg ' + JSON.stringify(kicks));
+
+  const slow = await ev(`window.VMPlaytest.trialStep(1)`);
+  console.log('trial 1s frame', JSON.stringify(slow));
+  if (!slow || Math.abs(slow.delta - 250) > 0.5) fail('a 1 s frame advanced the trial by ' + (slow && slow.delta) + ' ms, not 250');
+  const fast = await ev(`window.VMPlaytest.trialStep(0.02)`);
+  console.log('trial 20ms frame', JSON.stringify(fast));
+  if (!fast || Math.abs(fast.delta - 20) > 0.5) fail('a 20 ms frame advanced the trial by ' + (fast && fast.delta) + ' ms');
+} catch (err) {
+  fail(err && err.stack ? err.stack.split('\n').slice(0, 4).join(' ') : String(err));
+} finally {
+  if (ws) ws.close();
+  chrome.kill();
+}
+
+if (failures.length) {
+  console.error(failures.length + ' failure(s)');
+  process.exit(1);
+}
+console.log('PASS');
