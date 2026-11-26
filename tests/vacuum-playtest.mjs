@@ -122,6 +122,8 @@ try {
     return {
       parElided: !!hud.parElided,
       parLines: hud.parLines || [],
+      goalElided: !!hud.goalElided,
+      goalLines: hud.goalLines || [],
       goal: hud.goal || null,
       toast: hud.toast || null,
       map: hud.map || null,
@@ -168,25 +170,54 @@ try {
     await ev(`window.VMPlaytest.toast.clear(); new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)))`);
     return ev(`(() => {
       const hud = window.VMHudInk || {};
-      return { goal: hud.goal || null, map: hud.map || null, labels: window.VMStageLabels() };
+      return {
+        goal: hud.goal || null, map: hud.map || null, labels: window.VMStageLabels(),
+        parElided: !!hud.parElided, parLines: hud.parLines || [],
+        goalElided: !!hud.goalElided, goalLines: hud.goalLines || [],
+      };
     })()`);
+  }
+  function plateClear(where, lay) {
+    const par = (lay.parLines || []).join(' ');
+    const goal = (lay.goalLines || []).join(' ');
+    if (!par || lay.parElided || /…|\.\.\./.test(par)) fail(where + ' par ellipsis ' + par);
+    if (lay.goal && (!goal || lay.goalElided || /…|\.\.\./.test(goal))) fail(where + ' goal ellipsis ' + goal);
+  }
+  function goalClear(where, lay) {
+    if (!lay.goal) return;
+    const boxes = [...(lay.labels || []), lay.map].filter(Boolean);
+    for (const box of boxes) {
+      const g = gapOf(lay.goal, box);
+      if (g < 3) fail(where + ' goal ' + g.toFixed(1) + ' from ' + (box.text || 'minimap'));
+    }
   }
   for (const theme of ['victorian', 'bw']) {
     for (const id of [1, 4]) {
       const lay = await settled(theme, 568, 320, id);
       console.log('goal short', theme, 'L' + id, lay.goal ? 'shown' : 'hidden', 'labels', (lay.labels || []).length);
-      if (lay.goal) {
-        const boxes = [...(lay.labels || []), lay.map].filter(Boolean);
-        for (const box of boxes) {
-          const g = gapOf(lay.goal, box);
-          if (g < 3) fail(theme + ' 568x320 L' + id + ' goal chip ' + g.toFixed(1) + ' from ' + (box.text || 'minimap'));
-        }
-      }
+      plateClear(theme + ' 568x320 L' + id, lay);
+      goalClear(theme + ' 568x320 L' + id, lay);
     }
-    for (const [w, h] of [[390, 844], [1280, 800]]) {
+    for (const [w, h] of [[320, 568], [390, 844], [1280, 800]]) {
       const lay = await settled(theme, w, h, 1);
       console.log('goal tall', theme, w + 'x' + h, lay.goal ? 'shown' : 'hidden');
       if (!lay.goal) fail(theme + ' ' + w + 'x' + h + ' goal chip hidden');
+      plateClear(theme + ' ' + w + 'x' + h, lay);
+      goalClear(theme + ' ' + w + 'x' + h, lay);
+    }
+    for (const [w, h] of [[390, 844], [430, 932]]) {
+      for (const id of [1, 2, 3, 4]) {
+        const first = await settled(theme, w, h, id);
+        const frames = [first];
+        await ev(`window.VMPlaytest.release('ArrowRight'); window.VMPlaytest.release('ArrowDown'); window.VMPlaytest.kick('ArrowRight'); window.VMPlaytest.kick('ArrowDown'); true`);
+        for (let i = 0; i < 8; i++) {
+          await sleep(250);
+          frames.push(await ev(`(() => { const hud = window.VMHudInk || {}; return { goal: hud.goal || null, map: hud.map || null, labels: window.VMStageLabels() }; })()`));
+        }
+        await ev(`window.VMPlaytest.release('ArrowRight'); window.VMPlaytest.release('ArrowDown'); true`);
+        console.log('goal move', theme, 'L' + id, w + 'x' + h, frames.map((f) => (f.goal ? 'Y' : 'n')).join(''));
+        frames.forEach((lay, i) => goalClear(theme + ' ' + w + 'x' + h + ' L' + id + ' t' + i, lay));
+      }
     }
   }
 } catch (err) {

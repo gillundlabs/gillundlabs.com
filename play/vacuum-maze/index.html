@@ -7937,7 +7937,7 @@ function beginRun(level, demo) {
   state.world.onContact = (a, hit) => onContact(a, hit);
   state.model = A.buildModel(state.world.atom.z);
   const a = state.world.atom; state.cam = { x: a.x, y: a.y, k: 1, lx: 0, ly: 0 };
-  state.winT = 0; state.toast = null; state.toastT = 0; toastQueue.length = 0; state.seenCells = new Set(); state.contacted = false;
+  state.winT = 0; state.toast = null; state.toastT = 0; toastQueue.length = 0; goalQuietUntil = 0; state.seenCells = new Set(); state.contacted = false;
   kst.ax = kst.ay = 0; drag = null;
   if (!demo) {
     ensureMotion();
@@ -7966,6 +7966,7 @@ function beginRun(level, demo) {
 }
 let tempExplained = false;
 const toastQueue = [];
+let goalQuietUntil = 0;
 function toast(t) {
   if (!t) return;
   if (state.toast && state.toastT > 0) { toastQueue.push(t); return; }
@@ -8810,7 +8811,9 @@ function readoutBox() {
   const pad = bw ? (narrow ? 8 : 12) : (compact ? 6 : (narrow ? 22 : 20));
   const titleH = narrow ? 15 : 18, labH = 12, valH = narrow ? 16 : 22;
   const parH = !(state.level && state.level.tutorial) ? (narrow ? 30 : 22) : (narrow ? 14 : 16);
-  const block = titleH + (narrow ? 6 : 10) + labH + 4 + valH + (narrow ? 6 : 8) + parH;
+  const goalOn = state.level && !state.level.tutorial && state.screen === 'playing' && !(state.toast && state.toastT > 0);
+  const goalH = goalOn ? (narrow ? 16 : 18) : 0, goalGap = goalOn ? 4 : 0;
+  const block = titleH + (narrow ? 6 : 10) + labH + 4 + valH + (narrow ? 6 : 8) + parH + goalGap + goalH;
   const h = pad * 2 + block;
   return { l: left, t: top, r: left + width, b: top + h };
 }
@@ -9580,6 +9583,14 @@ function clampedText(t, x, y, rot = 0, outline = null) {   // outline: stroke co
 // the kit's dead-end label, drawn here (same font, colour and reach as HW.deadEndPart) so it can be clamped to the screen
 const DE_REACH = { blank: 0.7, bellows: 2.1, viewport: 0.7, valve: 2.5, ionGauge: 2.5, pirani: 2.0, capacitance: 2.1 };
 function stageQuiet() { return !!curPanel(); }
+function goalCrowded(row) {
+  const boxes = [...(state.stageLabels || [])];
+  if (settings.minimap && state.mmRect) boxes.push(state.mmRect);
+  const hint = clientBox(document.getElementById('rotate-hint'));
+  if (hint) boxes.push(hint);
+  if (window.VMCaptionInk && window.VMCaptionInk.box) boxes.push(window.VMCaptionInk.box);
+  return boxes.some((b) => b && labelGap(row, b) < 3);
+}
 function labelGap(a, b) {
   const xOver = Math.min(a.r, b.r) - Math.max(a.l, b.l);
   const yOver = Math.min(a.b, b.b) - Math.max(a.t, b.t);
@@ -9639,7 +9650,11 @@ function hud(theme) {
   const titleH = narrow ? 15 : 18, labH = 12, valH = narrow ? 16 : 22;
   // Two lines, so the par line can wrap instead of ending in an ellipsis.
   const parH = !L.tutorial ? (narrow ? 30 : 22) : (narrow ? 14 : 16);
-  const block = titleH + (narrow ? 6 : 10) + labH + 4 + valH + (narrow ? 6 : 8) + parH;
+  const toastUp = !!(state.toast && state.toastT > 0);
+  // The goal is a row of this plate, not a chip over the maze, so a moving label cannot cross it.
+  const goalOn = !L.tutorial && state.screen === 'playing' && !toastUp;
+  const goalH = goalOn ? (narrow ? 16 : 18) : 0, goalGap = goalOn ? 4 : 0;
+  const block = titleH + (narrow ? 6 : 10) + labH + 4 + valH + (narrow ? 6 : 8) + parH + goalGap + goalH;
   const h = inset * 2 + block;
   const best = !L.tutorial && store.best[S.bestKey(L.id, body)], bname = body === 'arcade' ? `Arcade ${g.toFixed(2)} m/s²` : E.BODIES[body].name;
   // A tight lesson uses a smaller screw so the readout text still clears that rule by 3 px without eating the pump's band.
@@ -9721,29 +9736,38 @@ function hud(theme) {
     });
     if (words && words.bounds) hudInk.push(...words.bounds);
   }
-  ctx.restore();
-  const toastUp = !!(state.toast && state.toastT > 0);
-  let goalRect = null;
-  // On a short landscape the chip sits on world labels. The toast and the minimap pump marker carry the goal there.
-  if (!L.tutorial && state.screen === 'playing' && !toastUp && vh >= 480) {
+  let goalDrawn = null;
+  if (goalOn) {
+    const yGoal = y + parH + goalGap;
+    const goalText = 'Goal: reach the pump';
+    const size = narrow ? 11 : 12;
     ctx.save();
-    ctx.font = bw ? `500 11px ${face(true)}` : `italic 11px ${TK.font.italic}`;
-    const goal = 'Goal: reach the pump';
-    const tw = ctx.measureText(goal).width;
-    const gx = left + width - 8, gy = top + h + 10;
-    const gl = gx - tw - 6, gt = gy - 2, gw = tw + 12, gh = 16;
-    ctx.fillStyle = bw ? '#000' : 'rgba(20,12,5,0.78)';
-    ctx.fillRect(gl, gt, gw, gh);
-    ctx.fillStyle = bw ? '#fff' : (TK.ink.victorian || '#f8eed6');
-    ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-    outlined(goal, gx, gy, bw);
+    ctx.font = `600 ${size}px ${bw ? face(true) : FONTS.engraved}`;
+    ctx.letterSpacing = bw ? '0px' : `${Math.max(0.5, size * 0.08)}px`;
+    const tw = ctx.measureText(goalText).width;
     ctx.restore();
-    goalRect = { l: gl, t: gt, r: gl + gw, b: gt + gh };
+    const cx = x0 + inner / 2;
+    const ink = { l: cx - tw / 2 - 2, t: yGoal, r: cx + tw / 2 + 2, b: yGoal + goalH };
+    const near = goalCrowded(ink);
+    const now = performance.now();
+    if (near) goalQuietUntil = now + 500;
+    if (!near && now >= goalQuietUntil) goalDrawn = field(goalText, x0, yGoal, inner, goalH, size);
+  }
+  ctx.restore();
+  let goalRect = null;
+  if (goalDrawn && goalDrawn.bounds && goalDrawn.bounds.length) {
+    const b = goalDrawn.bounds;
+    goalRect = {
+      l: Math.min(...b.map((n) => n.left)), t: Math.min(...b.map((n) => n.top)),
+      r: Math.max(...b.map((n) => n.right)), b: Math.max(...b.map((n) => n.bottom)),
+    };
   }
   if (devHooks.on) window.VMHudInk = {
     plate: { l: left, t: top, r: left + width, b: top + h }, s: screw, lines: hudInk,
     parElided: !!(parDrawn && parDrawn.elided),
     parLines: (parDrawn && parDrawn.lines) || [],
+    goalElided: !!(goalDrawn && goalDrawn.elided),
+    goalLines: (goalDrawn && goalDrawn.lines) || [],
     goal: goalRect,
   };
   // spirit level: in-plane gravity g·sin θ
