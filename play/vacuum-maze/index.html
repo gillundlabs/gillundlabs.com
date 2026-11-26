@@ -8808,7 +8808,8 @@ function readoutBox() {
   if (compact) avail = Math.min(avail, 248);
   const width = Math.min(560, Math.max(148, avail)), narrow = width < 340, bw = document.body.dataset.theme === 'bw';
   const pad = bw ? (narrow ? 8 : 12) : (compact ? 6 : (narrow ? 22 : 20));
-  const titleH = narrow ? 15 : 18, labH = 12, valH = narrow ? 16 : 22, parH = narrow ? 14 : 16;
+  const titleH = narrow ? 15 : 18, labH = 12, valH = narrow ? 16 : 22;
+  const parH = !(state.level && state.level.tutorial) ? (narrow ? 30 : 22) : (narrow ? 14 : 16);
   const block = titleH + (narrow ? 6 : 10) + labH + 4 + valH + (narrow ? 6 : 8) + parH;
   const h = pad * 2 + block;
   return { l: left, t: top, r: left + width, b: top + h };
@@ -9635,7 +9636,9 @@ function hud(theme) {
   const narrow = width < 340;
   const compact = lessonTight();
   const inset = bw ? (narrow ? 8 : 12) : (compact ? 6 : (narrow ? 22 : 20));
-  const titleH = narrow ? 15 : 18, labH = 12, valH = narrow ? 16 : 22, parH = narrow ? 14 : 16;
+  const titleH = narrow ? 15 : 18, labH = 12, valH = narrow ? 16 : 22;
+  // Two lines, so the par line can wrap instead of ending in an ellipsis.
+  const parH = !L.tutorial ? (narrow ? 30 : 22) : (narrow ? 14 : 16);
   const block = titleH + (narrow ? 6 : 10) + labH + 4 + valH + (narrow ? 6 : 8) + parH;
   const h = inset * 2 + block;
   const best = !L.tutorial && store.best[S.bestKey(L.id, body)], bname = body === 'arcade' ? `Arcade ${g.toFixed(2)} m/s²` : E.BODIES[body].name;
@@ -9686,8 +9689,9 @@ function hud(theme) {
   const marks = `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`;
   const parWords = L.tutorial
     ? (narrow ? `par ${par} s · pace` : `par ${par} s at record pace`)
-    : `par ${par} s phone-eq · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
-  if (!L.tutorial) field(`${marks} ${parWords}`, x0, y, inner, parH, narrow ? 8 : 9);
+    : `par ${par} s (phone) · ${bname}${best ? ` · best ${best.time.toFixed(1)} s` : ''}`;
+  let parDrawn = null;
+  if (!L.tutorial) parDrawn = field(`${marks} ${parWords}`, x0, y, inner, parH, narrow ? 8 : 9);
   else {
     // The kit engraving face has no star glyph, so a canvas star is drawn instead of a fallback ×.
     const r = narrow ? 4.5 : 5.5;
@@ -9718,20 +9722,29 @@ function hud(theme) {
     if (words && words.bounds) hudInk.push(...words.bounds);
   }
   ctx.restore();
-  if (!L.tutorial && state.screen === 'playing') {
+  const toastUp = !!(state.toast && state.toastT > 0);
+  let goalRect = null;
+  if (!L.tutorial && state.screen === 'playing' && !toastUp) {
     ctx.save();
     ctx.font = bw ? `500 11px ${face(true)}` : `italic 11px ${TK.font.italic}`;
     const goal = 'Goal: reach the pump';
     const tw = ctx.measureText(goal).width;
     const gx = left + width - 8, gy = top + h + 10;
+    const gl = gx - tw - 6, gt = gy - 2, gw = tw + 12, gh = 16;
     ctx.fillStyle = bw ? '#000' : 'rgba(20,12,5,0.78)';
-    ctx.fillRect(gx - tw - 6, gy - 2, tw + 12, 16);
+    ctx.fillRect(gl, gt, gw, gh);
     ctx.fillStyle = bw ? '#fff' : (TK.ink.victorian || '#f8eed6');
     ctx.textAlign = 'right'; ctx.textBaseline = 'top';
     outlined(goal, gx, gy, bw);
     ctx.restore();
+    goalRect = { l: gl, t: gt, r: gl + gw, b: gt + gh };
   }
-  if (devHooks.on) window.VMHudInk = { plate: { l: left, t: top, r: left + width, b: top + h }, s: screw, lines: hudInk };
+  if (devHooks.on) window.VMHudInk = {
+    plate: { l: left, t: top, r: left + width, b: top + h }, s: screw, lines: hudInk,
+    parElided: !!(parDrawn && parDrawn.elided),
+    parLines: (parDrawn && parDrawn.lines) || [],
+    goal: goalRect,
+  };
   // spirit level: in-plane gravity g·sin θ
   const gm = Math.hypot(state.tilt.x, state.tilt.y), ang = T.angleOf(state.tilt);
   HW.bubbleLevel(ctx, safe.l + 52, vh - safe.b - 56, 34, state.tilt.x, state.tilt.y, { theme: settings.theme });
@@ -9761,7 +9774,17 @@ function hud(theme) {
   if (manual && state.screen === 'playing') plumb(drag ? drag.x0 : vw / 2, drag ? drag.y0 : vh * 0.62, ang, bw, g);
   const tr = purchase.getEntitlement().trial;
   if (tr.enabled && tr.state === 'running' && !purchase.getEntitlement().full) stopwatch(left + 4, top + h + 10, tr.remainingMs, bw);
-  if (state.toast && state.screen === 'playing') banner(state.toast, bw, top + Math.max(h, 112) + 8 + (tr.state === 'running' ? 34 : 0));
+  let toastRect = null;
+  if (state.toast && state.screen === 'playing') {
+    const by = top + Math.max(h, 112) + 8 + (tr.state === 'running' ? 34 : 0);
+    const bwW = Math.min(vw - 24 - safe.l - safe.r, 520), bx = (vw - bwW) / 2, bh = bw ? 36 : 40;
+    toastRect = { l: bx, t: by, r: bx + bwW, b: by + bh };
+    banner(state.toast, bw, by);
+  }
+  if (devHooks.on && window.VMHudInk) {
+    window.VMHudInk.toast = toastRect;
+    window.VMHudInk.map = state.mmRect || null;
+  }
 }
 // light readout text that can sit over a white (B&W) or pale (Victorian) pipe: dark outline first, as for the atom's label
 function outlined(t, x, y, bw) {
@@ -9801,9 +9824,47 @@ function banner(text, bw, y) {
 }
 function minimap(bw) {
   const L = state.level, w = state.world, span = Math.max(L.cols, L.rows, 1), short = Math.min(vw, vh);
-  const cs = Math.max(5, Math.min(24, Math.floor(Math.min(short * 0.42, 280) / span)));
-  const mw = L.cols * cs, mh = L.rows * cs, x0 = vw - safe.r - 12 - mw, y0 = vh - safe.b - 12 - mh;
-  state.mmRect = { l: x0 - 6, t: y0 - 6, r: x0 + mw + 6, b: y0 + mh + 6 };   // world labels keep clear of it (clampedText)
+  const hintEl = $('rotate-hint');
+  if (hintEl) {
+    hintEl.style.left = ''; hintEl.style.right = ''; hintEl.style.width = '';
+    hintEl.style.maxWidth = ''; hintEl.style.transform = ''; hintEl.style.bottom = '';
+    hintEl.style.boxSizing = '';
+  }
+  const hint = clientBox(hintEl);
+  let cs = Math.max(5, Math.min(24, Math.floor(Math.min(short * 0.42, 280) / span)));
+  const place = (cell) => {
+    const mw = L.cols * cell, mh = L.rows * cell;
+    const x0 = vw - safe.r - 12 - mw, y0 = vh - safe.b - 12 - mh;
+    return { x0, y0, mw, mh, rect: { l: x0 - 6, t: y0 - 6, r: x0 + mw + 6, b: y0 + mh + 6 } };
+  };
+  let box = place(cs);
+  // A narrow rotate plaque can clear a smaller map. A full-width line cannot; that one is moved aside below.
+  const wideHint = hint && (hint.r - hint.l) > vw * 0.72;
+  if (hint && !wideHint) {
+    while (cs > 5 && labelGap(box.rect, hint) < 3) { cs -= 1; box = place(cs); }
+  }
+  const { x0, y0, mw, mh } = box;
+  state.mmRect = box.rect;   // world labels keep clear of it (clampedText)
+  if (hintEl && hint && labelGap(state.mmRect, hint) < 3) {
+    if (wideHint) {
+      // A full-width line cannot sit beside the map. Lift it above the map and the spirit level.
+      const gaugeTop = vh - safe.b - 56 - 46;
+      const ceiling = Math.min(state.mmRect.t, gaugeTop);
+      hintEl.style.bottom = (vh - ceiling + 3) + 'px';
+      hintEl.style.left = '8px';
+      hintEl.style.right = '8px';
+      hintEl.style.width = 'auto';
+      hintEl.style.transform = 'none';
+    } else {
+      const right = state.mmRect.l - 3, width = Math.max(96, right - 8);
+      hintEl.style.transform = 'none';
+      hintEl.style.boxSizing = 'border-box';
+      hintEl.style.left = '8px';
+      hintEl.style.right = 'auto';
+      hintEl.style.width = width + 'px';
+      hintEl.style.maxWidth = width + 'px';
+    }
+  }
   const at = (i, j) => [x0 + (i + 0.5) * cs, y0 + (j + 0.5) * cs];
   ctx.save();
   ctx.fillStyle = bw ? 'rgba(0,0,0,0.8)' : 'rgba(20,12,5,0.7)'; ctx.fillRect(x0 - 6, y0 - 6, mw + 12, mh + 12);

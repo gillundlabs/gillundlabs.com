@@ -103,6 +103,60 @@ try {
   const fast = await ev(`window.VMPlaytest.trialStep(0.02)`);
   console.log('trial 20ms frame', JSON.stringify(fast));
   if (!fast || Math.abs(fast.delta - 20) > 0.5) fail('a 20 ms frame advanced the trial by ' + (fast && fast.delta) + ' ms');
+
+  const gapOf = (a, b) => {
+    if (!a || !b) return 99;
+    const xOver = Math.min(a.r, b.r) - Math.max(a.l, b.l);
+    const yOver = Math.min(a.b, b.b) - Math.max(a.t, b.t);
+    if (xOver > 0 && yOver > 0) return -Math.min(xOver, yOver);
+    if (xOver > 0) return Math.max(a.t, b.t) - Math.min(a.b, b.b);
+    if (yOver > 0) return Math.max(a.l, b.l) - Math.min(a.r, b.r);
+    return Math.hypot(Math.max(a.l, b.l) - Math.min(a.r, b.r), Math.max(a.t, b.t) - Math.min(a.b, b.b));
+  };
+  const readLayout = `(() => {
+    const hud = window.VMHudInk || {};
+    const hintEl = document.getElementById('rotate-hint');
+    const cs = hintEl ? getComputedStyle(hintEl) : null;
+    const r = hintEl ? hintEl.getBoundingClientRect() : null;
+    const shown = !!(cs && cs.display !== 'none' && cs.visibility !== 'hidden' && r && r.width > 2 && r.height > 2);
+    return {
+      parElided: !!hud.parElided,
+      parLines: hud.parLines || [],
+      goal: hud.goal || null,
+      toast: hud.toast || null,
+      map: hud.map || null,
+      hint: shown ? { l: r.left, t: r.top, r: r.right, b: r.bottom } : null,
+    };
+  })()`;
+  async function show(theme, w, h) {
+    const portrait = h >= w;
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: w, height: h, deviceScaleFactor: 1, mobile: Math.min(w, h) < 900,
+      screenOrientation: { type: portrait ? 'portraitPrimary' : 'landscapePrimary', angle: portrait ? 0 : 90 },
+    });
+    await ev(`document.getElementById('s-map').checked = true; document.getElementById('s-theme').value = ${JSON.stringify(theme)}; document.getElementById('s-theme').dispatchEvent(new Event('input', { bubbles: true })); window.dispatchEvent(new Event('resize')); true`);
+    if (!await ev(`window.VMStartLevel(1)`)) fail(theme + ' ' + w + 'x' + h + ' did not start');
+    await sleep(60);
+    return ev(readLayout);
+  }
+  for (const theme of ['victorian', 'bw']) {
+    const par = await show(theme, 320, 568);
+    const text = (par.parLines || []).join(' ');
+    console.log('par', theme, JSON.stringify(text), 'elided', par.parElided);
+    if (!text || par.parElided || /…|\.\.\./.test(text)) fail(theme + ' 320 par line ellipsis ' + text);
+    if (par.goal && par.toast && gapOf(par.goal, par.toast) < 0) fail(theme + ' 320 goal chip intersects the toast');
+  }
+  const phones = [[320, 568], [568, 320], [360, 640], [640, 360], [375, 667], [667, 375], [390, 844], [844, 390], [414, 896], [896, 414], [430, 932], [932, 430], [1280, 800], [820, 1180]];
+  for (const theme of ['victorian', 'bw']) {
+    for (const [w, h] of phones) {
+      const lay = await show(theme, w, h);
+      if (lay.hint && lay.map) {
+        const g = gapOf(lay.hint, lay.map);
+        if (g < 3) fail(theme + ' ' + w + 'x' + h + ' rotate hint vs minimap ' + g.toFixed(1));
+      } else if (h > w && !lay.hint) fail(theme + ' ' + w + 'x' + h + ' rotate hint missing');
+      if (lay.goal && lay.toast && gapOf(lay.goal, lay.toast) < 0) fail(theme + ' ' + w + 'x' + h + ' goal chip intersects the toast');
+    }
+  }
 } catch (err) {
   fail(err && err.stack ? err.stack.split('\n').slice(0, 4).join(' ') : String(err));
 } finally {
