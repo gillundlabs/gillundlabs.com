@@ -305,7 +305,7 @@ try {
     const stats = document.getElementById('win-stats').innerText.replace(/\\s+/g, ' ');
     const num = (label) => { const m = stats.match(new RegExp(label + '\\\\s+([0-9.]+)')); return m ? +m[1] : null; };
     const starsFor = (t, par) => (t <= par ? 3 : t <= 2 * par ? 2 : 1);
-    const t = num('Screen time'), tRef = num('Record pace'), par = num('Par');
+    const t = num('Screen time'), tRef = num('Phone-equivalent'), par = num('Par');
     const shown = (document.getElementById('win-stars').textContent.match(/★/g) || []).length;
     return { t, tRef, par, recordStars: starsFor(tRef, par), shown, stats };
   })()`);
@@ -587,7 +587,7 @@ try {
 
   const FULL_LINES = [
     'Tip the phone, or drag, to steer the atom.',
-    'Drag, or the arrow keys, to tip the tube. Space pauses.',
+    'Drag, or the arrow keys, to tip the tube. H holds the tilt. Space pauses.',
     'The open end is a pump. Steer the atom into it.',
     'Stars use record pace, not the screen clock. This practice saves nothing.',
     'A maze you build keeps no best time and pays no coins. This practice saves nothing.',
@@ -1603,7 +1603,17 @@ try {
       await sleep(150);
       await ev(`window.VMFreezeFrame(); window.VMShowHint(); true`);
       await sleep(300);
-      const mainSig = await ev(`({ geo: window.VMPlayGeometry(), sig: window.VMCanvasSig() })`);
+      const capLeft = `(() => {
+        const c = document.querySelector('canvas');
+        const g = c.getContext('2d');
+        const y0 = Math.max(0, c.height - Math.round(110 * (window.devicePixelRatio || 1)));
+        const w = Math.max(1, Math.floor(c.width * 0.45));
+        const data = g.getImageData(0, y0, w, c.height - y0).data;
+        let hash = 0;
+        for (let i = 0; i < data.length; i += 16) hash = (Math.imul(hash, 33) + data[i] + data[i + 1] + data[i + 2]) | 0;
+        return hash;
+      })()`;
+      const mainSig = await ev(`({ geo: window.VMPlayGeometry(), sig: window.VMCanvasSig(), cap: ${capLeft} })`);
       await boot(seenBranch);
       await ev(`window.VMHoldWorld(true); document.getElementById('b-begin').click(); true`);
       for (let i = 0; i < 30 && !await ev(`!!document.querySelector('#level-list button[data-lv="0"]')`); i++) await sleep(60);
@@ -1611,10 +1621,10 @@ try {
       await sleep(150);
       await ev(`window.VMFreezeFrame(); window.VMShowHint(); true`);
       await sleep(300);
-      const branchSig = await ev(`({ geo: window.VMPlayGeometry(), sig: window.VMCanvasSig() })`);
+      const branchSig = await ev(`({ geo: window.VMPlayGeometry(), sig: window.VMCanvasSig(), cap: ${capLeft} })`);
       const where = theme + ' ' + w + 'x' + h + ' ordinary portrait';
       sameGeom(branchSig.geo, mainSig.geo, where);
-      if (theme !== 'bw' && (!mainSig.sig || !branchSig.sig || mainSig.sig.caption !== branchSig.sig.caption)) fail(where + ' caption pixels differ');
+      if (theme !== 'bw' && (mainSig.cap == null || branchSig.cap == null || mainSig.cap !== branchSig.cap)) fail(where + ' caption pixels differ');
       if (theme === 'bw' && w === 390 && h === 844) {
         const rot = await ev(`(() => {
           const el = document.getElementById('rotate-hint');
