@@ -9724,7 +9724,8 @@ function hud(theme) {
   ctx.restore();
   const toastUp = !!(state.toast && state.toastT > 0);
   let goalRect = null;
-  if (!L.tutorial && state.screen === 'playing' && !toastUp) {
+  // On a short landscape the chip sits on world labels. The toast and the minimap pump marker carry the goal there.
+  if (!L.tutorial && state.screen === 'playing' && !toastUp && vh >= 480) {
     ctx.save();
     ctx.font = bw ? `500 11px ${face(true)}` : `italic 11px ${TK.font.italic}`;
     const goal = 'Goal: reach the pump';

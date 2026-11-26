@@ -157,6 +157,38 @@ try {
       if (lay.goal && lay.toast && gapOf(lay.goal, lay.toast) < 0) fail(theme + ' ' + w + 'x' + h + ' goal chip intersects the toast');
     }
   }
+  async function settled(theme, w, h, levelId) {
+    const portrait = h >= w;
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: w, height: h, deviceScaleFactor: 1, mobile: Math.min(w, h) < 900,
+      screenOrientation: { type: portrait ? 'portraitPrimary' : 'landscapePrimary', angle: portrait ? 0 : 90 },
+    });
+    await ev(`document.getElementById('s-map').checked = true; document.getElementById('s-theme').value = ${JSON.stringify(theme)}; document.getElementById('s-theme').dispatchEvent(new Event('input', { bubbles: true })); window.dispatchEvent(new Event('resize')); true`);
+    if (!await ev(`window.VMStartLevel(${levelId})`)) fail(theme + ' L' + levelId + ' ' + w + 'x' + h + ' did not start');
+    await ev(`window.VMPlaytest.toast.clear(); new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)))`);
+    return ev(`(() => {
+      const hud = window.VMHudInk || {};
+      return { goal: hud.goal || null, map: hud.map || null, labels: window.VMStageLabels() };
+    })()`);
+  }
+  for (const theme of ['victorian', 'bw']) {
+    for (const id of [1, 4]) {
+      const lay = await settled(theme, 568, 320, id);
+      console.log('goal short', theme, 'L' + id, lay.goal ? 'shown' : 'hidden', 'labels', (lay.labels || []).length);
+      if (lay.goal) {
+        const boxes = [...(lay.labels || []), lay.map].filter(Boolean);
+        for (const box of boxes) {
+          const g = gapOf(lay.goal, box);
+          if (g < 3) fail(theme + ' 568x320 L' + id + ' goal chip ' + g.toFixed(1) + ' from ' + (box.text || 'minimap'));
+        }
+      }
+    }
+    for (const [w, h] of [[390, 844], [1280, 800]]) {
+      const lay = await settled(theme, w, h, 1);
+      console.log('goal tall', theme, w + 'x' + h, lay.goal ? 'shown' : 'hidden');
+      if (!lay.goal) fail(theme + ' ' + w + 'x' + h + ' goal chip hidden');
+    }
+  }
 } catch (err) {
   fail(err && err.stack ? err.stack.split('\n').slice(0, 4).join(' ') : String(err));
 } finally {
