@@ -118,7 +118,17 @@ try {
     const hintEl = document.getElementById('rotate-hint');
     const cs = hintEl ? getComputedStyle(hintEl) : null;
     const r = hintEl ? hintEl.getBoundingClientRect() : null;
-    const shown = !!(cs && cs.display !== 'none' && cs.visibility !== 'hidden' && r && r.width > 2 && r.height > 2);
+    let hint = null;
+    if (cs && cs.display !== 'none' && cs.visibility !== 'hidden' && r && r.width > 2 && r.height > 2) {
+      hint = { l: r.left, t: r.top, r: r.right, b: r.bottom };
+      if (r.left <= 1 && r.right >= innerWidth - 1) {
+        const node = [...hintEl.childNodes].find((n) => n.nodeType === 3) || hintEl;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const ink = range.getBoundingClientRect();
+        if (ink.width > 2) hint = { l: ink.left, t: ink.top, r: ink.right, b: ink.bottom };
+      }
+    }
     return {
       parElided: !!hud.parElided,
       parLines: hud.parLines || [],
@@ -127,7 +137,7 @@ try {
       goal: hud.goal || null,
       toast: hud.toast || null,
       map: hud.map || null,
-      hint: shown ? { l: r.left, t: r.top, r: r.right, b: r.bottom } : null,
+      hint,
     };
   })()`;
   async function show(theme, w, h) {
@@ -145,7 +155,7 @@ try {
     const par = await show(theme, 320, 568);
     const text = (par.parLines || []).join(' ');
     console.log('par', theme, JSON.stringify(text), 'elided', par.parElided);
-    if (!text || par.parElided || /…|\.\.\./.test(text)) fail(theme + ' 320 par line ellipsis ' + text);
+    if (!text || par.parLines.length !== 1 || par.parElided || /…|\.\.\./.test(text) || !/Earth/.test(text)) fail(theme + ' 320 par line ' + text);
     if (par.goal && par.toast && gapOf(par.goal, par.toast) < 0) fail(theme + ' 320 goal chip intersects the toast');
   }
   const phones = [[320, 568], [568, 320], [360, 640], [640, 360], [375, 667], [667, 375], [390, 844], [844, 390], [414, 896], [896, 414], [430, 932], [932, 430], [1280, 800], [820, 1180]];
@@ -156,7 +166,8 @@ try {
         const g = gapOf(lay.hint, lay.map);
         if (g < 3) fail(theme + ' ' + w + 'x' + h + ' rotate hint vs minimap ' + g.toFixed(1));
       } else if (h > w && !lay.hint) fail(theme + ' ' + w + 'x' + h + ' rotate hint missing');
-      if (lay.goal && lay.toast && gapOf(lay.goal, lay.toast) < 0) fail(theme + ' ' + w + 'x' + h + ' goal chip intersects the toast');
+      if (lay.toast && lay.goal) fail(theme + ' ' + w + 'x' + h + ' goal chip visible during a toast');
+      if (h < 480 && lay.goal) fail(theme + ' ' + w + 'x' + h + ' goal chip shown below 480');
     }
   }
   async function settled(theme, w, h, levelId) {
@@ -180,7 +191,7 @@ try {
   function plateClear(where, lay) {
     const par = (lay.parLines || []).join(' ');
     const goal = (lay.goalLines || []).join(' ');
-    if (!par || lay.parElided || /…|\.\.\./.test(par)) fail(where + ' par ellipsis ' + par);
+    if (!par || (lay.parLines || []).length !== 1 || lay.parElided || /…|\.\.\./.test(par)) fail(where + ' par ellipsis ' + par);
     if (lay.goal && (!goal || lay.goalElided || /…|\.\.\./.test(goal))) fail(where + ' goal ellipsis ' + goal);
   }
   function goalClear(where, lay) {
@@ -195,8 +206,8 @@ try {
     for (const id of [1, 4]) {
       const lay = await settled(theme, 568, 320, id);
       console.log('goal short', theme, 'L' + id, lay.goal ? 'shown' : 'hidden', 'labels', (lay.labels || []).length);
+      if (lay.goal) fail(theme + ' 568x320 L' + id + ' goal chip shown below 480');
       plateClear(theme + ' 568x320 L' + id, lay);
-      goalClear(theme + ' 568x320 L' + id, lay);
     }
     for (const [w, h] of [[320, 568], [390, 844], [1280, 800]]) {
       const lay = await settled(theme, w, h, 1);
